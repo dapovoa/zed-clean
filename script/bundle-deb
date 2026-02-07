@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+# Build a .deb package for Linux.
+# Usage: script/bundle-deb
+#
+# Prerequisites: same as bundle-linux (run script/linux first for deps)
+# Output: target/release/zed-linux-<arch>.deb
+
+channel=$(<crates/zed/RELEASE_CHANNEL)
+version="$(script/get-crate-version zed)"
+arch="$(uname -m)"
+target_dir="${CARGO_TARGET_DIR:-target}"
+
+# Map arch to debian naming
+case "$arch" in
+    x86_64)  deb_arch="amd64" ;;
+    aarch64) deb_arch="arm64" ;;
+    *)       echo "Unsupported architecture: $arch" && exit 1 ;;
+esac
+
+suffix=""
+if [ "$channel" != "stable" ]; then
+    suffix="-$channel"
+fi
+
+pkg_name="zed${suffix}"
+
+export ZED_BUNDLE=true
+export RELEASE_VERSION="${version}"
+export ZED_UPDATE_EXPLANATION="This is a custom build. Update manually."
+
+# Generate licenses
+script/generate-licenses
+
+# Build
+version_info=$(rustc --version --verbose)
+host_line=$(echo "$version_info" | grep host)
+target_triple=${host_line#*: }
+
+export CC=$(which clang)
+export RUSTFLAGS="${RUSTFLAGS:-} -C link-args=-Wl,--disable-new-dtags,-rpath,/usr/lib/zed-editor"
+cargo build --release --target "${target_triple}" --package zed --package cli
+
+# Strip debug symbols
+objcopy --strip-debug "${target_dir}/${target_triple}/release/zed"
+objcopy --strip-debug "${target_dir}/${target_triple}/release/cli"
+
+# Collect shared libs
+find_libs() {
+    ldd "${target_dir}/${target_triple}/release/zed" |\
+        cut -d' ' -f3 |\
+        grep -v '\<\(libstdc++.so\|libc.so\|libgcc_s.so\|libm.so\|libpthread.so\|libdl.so\|libasound.so\)'
+}
+
+# Build .deb structure
+deb_dir=$(mktemp -d)
+trap "rm -rf ${deb_dir}" EXIT
+
+mkdir -p "${deb_dir}/DEBIAN"
+mkdir -p "${deb_dir}/usr/bin"
+mkdir -p "${deb_dir}/usr/libexec"
+mkdir -p "${deb_dir}/usr/lib/zed-editor"
+mkdir -p "${deb_dir}/usr/share/applications"
+mkdir -p "${deb_dir}/usr/share/icons/hicolor/512x512/apps"
+mkdir -p "${deb_dir}/usr/share/icons/hicolor/1024x1024/apps"
+mkdir -p "${deb_dir}/usr/share/doc/${pkg_name}"
+
+# Binaries
+cp "${target_dir}/${target_triple}/release/zed" "${deb_dir}/usr/libexec/zed-editor"
+cp "${target_dir}/${target_triple}/release/cli" "${deb_dir}/usr/bin/zed"
+
+# Shared libs
+cp $(find_libs) "${deb_dir}/usr/lib/zed-editor/"
+
+# Icons
+cp "crates/zed/resources/app-icon${suffix}.png" "${deb_dir}/usr/share/icons/hicolor/512x512/apps/zed.png" 2>/dev/null \
+    || cp "crates/zed/resources/app-icon.png" "${deb_dir}/usr/share/icons/hicolor/512x512/apps/zed.png"
+cp "crates/zed/resources/app-icon${suffix}@2x.png" "${deb_dir}/usr/share/icons/hicolor/1024x1024/apps/zed.png" 2>/dev/null \
+    || cp "crates/zed/resources/app-icon@2x.png" "${deb_dir}/usr/share/icons/hicolor/1024x1024/apps/zed.png"
+
+# .desktop file
+export DO_STARTUP_NOTIFY="true"
+export APP_CLI="zed"
+export APP_ICON="zed"
+export APP_ARGS="%U"
+export APP_NAME="Zed"
+if [[ "$channel" == "preview" ]]; then
+    export APP_NAME="Zed Preview"
+elif [[ "$channel" == "nightly" ]]; then
+    export APP_NAME="Zed Nightly"
+elif [[ "$channel" == "dev" ]]; then
+    export APP_NAME="Zed Devel"
+fi
+envsubst < "crates/zed/resources/zed.desktop.in" > "${deb_dir}/usr/share/applications/${pkg_name}.desktop"
+
+# Licenses
+cp "assets/licenses.md" "${deb_dir}/usr/share/doc/${pkg_name}/copyright"
+
+# Calculate installed size (in KB)
+installed_size=$(du -sk "${deb_dir}" | cut -f1)
+
+# DEBIAN/control
+cat > "${deb_dir}/DEBIAN/control" <<EOF
+Package: ${pkg_name}
+Version: ${version}
+Section: editors
+Priority: optional
+Architecture: ${deb_arch}
+Installed-Size: ${installed_size}
+Depends: libasound2, libglib2.0-0, libxkbcommon0, libvulkan1, libwayland-client0
+Maintainer: dapovoa
+Description: Zed - A high-performance code editor (clean build)
+ Custom build of Zed editor with telemetry, auto-update,
+ and cloud services disabled. Uses direct API keys for LLM providers.
+Homepage: https://github.com/dapovoa/zed
+EOF
+
+# Build the .deb
+deb_file="${target_dir}/release/zed-linux-${arch}.deb"
+dpkg-deb --build "${deb_dir}" "${deb_file}"
+
+echo ""
+echo "=== .deb package created ==="
+echo "  ${deb_file}"
+echo "  Install with: sudo dpkg -i ${deb_file}"
+echo ""

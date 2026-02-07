@@ -372,11 +372,11 @@ impl Telemetry {
     }
 
     pub fn metrics_enabled(self: &Arc<Self>) -> bool {
-        self.state.lock().settings.metrics
+        false
     }
 
     pub fn diagnostics_enabled(self: &Arc<Self>) -> bool {
-        self.state.lock().settings.diagnostics
+        false
     }
 
     pub fn set_authenticated_user_info(
@@ -511,7 +511,11 @@ impl Telemetry {
         Some(project_types)
     }
 
+    #[allow(unused_variables, unused_mut, unreachable_code)]
     fn report_event(self: &Arc<Self>, mut event: Event) {
+        // Telemetry completely disabled in this build
+        return;
+
         let mut state = self.state.lock();
         // RUST_LOG=telemetry=trace to debug telemetry events
         log::trace!(target: "telemetry", "{:?}", event);

@@ -1,11 +1,9 @@
 use anyhow::{Context as _, Result};
 use client::{Client, telemetry::MINIDUMP_ENDPOINT};
 use futures::{AsyncReadExt, TryStreamExt};
-use gpui::{App, AppContext as _, SerializedThreadTaskTimings};
-use http_client::{self, AsyncBody, HttpClient, Request};
+use gpui::{App, SerializedThreadTaskTimings};
+use http_client::{AsyncBody, HttpClient, Request};
 use log::info;
-use project::Project;
-use proto::{CrashReport, GetCrashFilesResponse};
 use reqwest::{
     Method,
     multipart::{Form, Part},
@@ -18,54 +16,9 @@ use crate::STARTUP_TIME;
 
 const MAX_HANG_TRACES: usize = 3;
 
-pub fn init(client: Arc<Client>, cx: &mut App) {
+pub fn init(_client: Arc<Client>, cx: &mut App) {
     monitor_hangs(cx);
-
-    if client.telemetry().diagnostics_enabled() {
-        let client = client.clone();
-        cx.background_spawn(async move {
-            upload_previous_minidumps(client).await.warn_on_err();
-        })
-        .detach()
-    }
-
-    cx.observe_new(move |project: &mut Project, _, cx| {
-        let client = client.clone();
-
-        let Some(remote_client) = project.remote_client() else {
-            return;
-        };
-        remote_client.update(cx, |remote_client, cx| {
-            if !client.telemetry().diagnostics_enabled() {
-                return;
-            }
-            let request = remote_client
-                .proto_client()
-                .request(proto::GetCrashFiles {});
-            cx.background_spawn(async move {
-                let GetCrashFilesResponse { crashes } = request.await?;
-
-                let Some(endpoint) = MINIDUMP_ENDPOINT.as_ref() else {
-                    return Ok(());
-                };
-                for CrashReport {
-                    metadata,
-                    minidump_contents,
-                } in crashes
-                {
-                    if let Some(metadata) = serde_json::from_str(&metadata).log_err() {
-                        upload_minidump(client.clone(), endpoint, minidump_contents, &metadata)
-                            .await
-                            .log_err();
-                    }
-                }
-
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
-        })
-    })
-    .detach();
+    // Crash report uploads disabled in this build
 }
 
 fn monitor_hangs(cx: &App) {
@@ -198,6 +151,7 @@ fn save_hang_trace(
     );
 }
 
+#[allow(dead_code)]
 pub async fn upload_previous_minidumps(client: Arc<Client>) -> anyhow::Result<()> {
     let Some(minidump_endpoint) = MINIDUMP_ENDPOINT.as_ref() else {
         log::warn!("Minidump endpoint not set");
@@ -239,6 +193,7 @@ pub async fn upload_previous_minidumps(client: Arc<Client>) -> anyhow::Result<()
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn upload_minidump(
     client: Arc<Client>,
     endpoint: &str,
@@ -374,6 +329,7 @@ async fn upload_minidump(
     Ok(())
 }
 
+#[allow(dead_code)]
 trait FormExt {
     fn text_if_some(
         self,
