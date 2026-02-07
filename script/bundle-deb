@@ -86,14 +86,18 @@ export APP_CLI="zed"
 export APP_ICON="zed"
 export APP_ARGS="%U"
 export APP_NAME="Zed"
+export APP_WMCLASS="dev.zed.Zed"
 if [[ "$channel" == "preview" ]]; then
     export APP_NAME="Zed Preview"
+    export APP_WMCLASS="dev.zed.Zed-Preview"
 elif [[ "$channel" == "nightly" ]]; then
     export APP_NAME="Zed Nightly"
+    export APP_WMCLASS="dev.zed.Zed-Nightly"
 elif [[ "$channel" == "dev" ]]; then
     export APP_NAME="Zed Devel"
+    export APP_WMCLASS="dev.zed.Zed-Dev"
 fi
-envsubst < "crates/zed/resources/zed.desktop.in" > "${deb_dir}/usr/share/applications/${pkg_name}.desktop"
+envsubst < "crates/zed/resources/zed.desktop.in" > "${deb_dir}/usr/share/applications/${APP_WMCLASS}.desktop"
 
 # Licenses
 cp "assets/licenses.md" "${deb_dir}/usr/share/doc/${pkg_name}/copyright"
@@ -116,6 +120,32 @@ Description: Zed - A high-performance code editor (clean build)
  and cloud services disabled. Uses direct API keys for LLM providers.
 Homepage: https://github.com/dapovoa/zed
 EOF
+
+# DEBIAN/postinst - update caches after install
+cat > "${deb_dir}/DEBIAN/postinst" <<'EOF'
+#!/bin/sh
+set -e
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+EOF
+chmod 755 "${deb_dir}/DEBIAN/postinst"
+
+# DEBIAN/postrm - update caches after removal
+cat > "${deb_dir}/DEBIAN/postrm" <<'EOF'
+#!/bin/sh
+set -e
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+EOF
+chmod 755 "${deb_dir}/DEBIAN/postrm"
 
 # Build the .deb
 deb_file="${target_dir}/release/zed-linux-${arch}.deb"
