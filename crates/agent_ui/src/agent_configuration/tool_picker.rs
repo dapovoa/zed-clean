@@ -152,6 +152,32 @@ impl ToolPickerDelegate {
     }
 }
 
+fn display_name_for_tool(name: &str) -> SharedString {
+    match name {
+        "copy_path" => "Copy Path".into(),
+        "create_directory" => "Create Directory".into(),
+        "delete_path" => "Delete Path".into(),
+        "diagnostics" => "Diagnostics".into(),
+        "edit_file" => "Edit File".into(),
+        "fetch" => "Fetch URL".into(),
+        "find_path" => "Find Path".into(),
+        "grep" => "Grep".into(),
+        "list_directory" => "List Directory".into(),
+        "move_path" => "Move Path".into(),
+        "now" => "Current Time".into(),
+        "open" => "Open".into(),
+        "read_file" => "Read File".into(),
+        "restore_file_from_disk" => "Restore File".into(),
+        "save_file" => "Save File".into(),
+        "streaming_edit_file" => "Streaming Edit File".into(),
+        "subagent" => "Subagent".into(),
+        "terminal" => "Terminal".into(),
+        "thinking" => "Thinking".into(),
+        "web_search" => "Web Search".into(),
+        other => SharedString::from(other.to_string()),
+    }
+}
+
 impl PickerDelegate for ToolPickerDelegate {
     type ListItem = AnyElement;
 
@@ -207,9 +233,13 @@ impl PickerDelegate for ToolPickerDelegate {
                     let mut tools_by_provider: BTreeMap<Option<Arc<str>>, Vec<Arc<str>>> =
                         BTreeMap::default();
 
+                    let query_lower = query.to_lowercase();
                     for item in all_items.iter() {
                         if let PickerItem::Tool { server_id, name } = item.clone()
-                            && name.contains(&query)
+                            && (name.to_lowercase().contains(&query_lower)
+                                || display_name_for_tool(&name)
+                                    .to_lowercase()
+                                    .contains(&query_lower))
                         {
                             tools_by_provider.entry(server_id).or_default().push(name);
                         }
@@ -380,7 +410,7 @@ impl PickerDelegate for ToolPickerDelegate {
                         .inset(true)
                         .spacing(ListItemSpacing::Sparse)
                         .toggle_state(selected)
-                        .child(Label::new(name.clone()))
+                        .child(Label::new(display_name_for_tool(&name).clone()))
                         .end_slot::<Icon>(is_enabled.then(|| {
                             Icon::new(IconName::Check)
                                 .size(IconSize::Small)
