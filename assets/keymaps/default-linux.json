@@ -241,7 +241,7 @@
     "context": "AgentPanel",
     "bindings": {
       "ctrl-n": "agent::NewThread",
-      "ctrl-alt-n": "agent::NewTextThread",
+      // "ctrl-alt-n": "agent::NewTextThread", // Disabled in this build
       "ctrl-shift-h": "agent::OpenHistory",
       "ctrl-alt-c": "agent::OpenSettings",
       "ctrl-alt-p": "agent::ManageProfiles",
@@ -272,13 +272,14 @@
       "ctrl-c": "markdown::CopyAsMarkdown",
     },
   },
-  {
-    "context": "AgentPanel && text_thread",
-    "bindings": {
-      "ctrl-n": "agent::NewTextThread",
-      "ctrl-alt-t": "agent::NewThread",
-    },
-  },
+  // Text Thread keybindings disabled in this build
+  // {
+  //   "context": "AgentPanel && text_thread",
+  //   "bindings": {
+  //     "ctrl-n": "agent::NewTextThread",
+  //     "ctrl-alt-t": "agent::NewThread",
+  //   },
+  // },
   {
     "context": "AgentPanel && acp_thread",
     "use_key_equivalents": true,
