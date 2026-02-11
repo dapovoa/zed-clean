@@ -167,7 +167,7 @@ impl ReleaseChannel {
 
     /// Returns whether we want to poll for updates for this [`ReleaseChannel`]
     pub fn poll_for_updates(&self) -> bool {
-        !matches!(self, ReleaseChannel::Dev)
+        false
     }
 
     /// Returns the display name for this [`ReleaseChannel`].
