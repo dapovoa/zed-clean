@@ -885,6 +885,8 @@ pub struct TokenUsage {
     pub used_tokens: u64,
     pub input_tokens: u64,
     pub output_tokens: u64,
+    pub cache_creation_input_tokens: u64,
+    pub cache_read_input_tokens: u64,
 }
 
 impl TokenUsage {

@@ -2714,6 +2714,9 @@ impl AcpThreadView {
             let output = crate::text_thread_editor::humanize_token_count(usage.output_tokens);
             let output_max = crate::text_thread_editor::humanize_token_count(max_output_tokens);
 
+            let has_cache = usage.cache_read_input_tokens > 0
+                || usage.cache_creation_input_tokens > 0;
+
             Some(
                 h_flex()
                     .flex_shrink_0()
@@ -2759,7 +2762,30 @@ impl AcpThreadView {
                                     .color(Color::Muted),
                             ),
                     )
-                    .into_any_element(),
+                    .when(has_cache, |container| {
+                        let cache_read = crate::text_thread_editor::humanize_token_count(
+                            usage.cache_read_input_tokens,
+                        );
+                        let cache_write = crate::text_thread_editor::humanize_token_count(
+                            usage.cache_creation_input_tokens,
+                        );
+                        container.child(
+                            h_flex()
+                                .gap_0p5()
+                                .child(
+                                    Icon::new(IconName::BoltFilled)
+                                        .size(IconSize::XSmall)
+                                        .color(Color::Muted),
+                                )
+                                .child(token_label(cache_read, "cache-read-label"))
+                                .child(
+                                    Label::new("/")
+                                        .size(LabelSize::Small)
+                                        .color(separator_color),
+                                )
+                                .child(token_label(cache_write, "cache-write-label"))
+                        )
+                    }),
             )
         } else {
             let used = crate::text_thread_editor::humanize_token_count(usage.used_tokens);

@@ -266,6 +266,10 @@ impl LanguageModel for DeepSeekLanguageModel {
         self.model.max_output_tokens()
     }
 
+    fn supports_split_token_display(&self) -> bool {
+        true
+    }
+
     fn count_tokens(
         &self,
         request: LanguageModelRequest,
@@ -473,11 +477,14 @@ impl DeepSeekEventMapper {
         }
 
         if let Some(usage) = event.usage {
+            // In DeepSeek, prompt_tokens = prompt_cache_hit_tokens + prompt_cache_miss_tokens.
+            // To align with Zed's TokenUsage (where total = input + cache_read + cache_write),
+            // we map the miss tokens to input_tokens and hit tokens to cache_read.
             events.push(Ok(LanguageModelCompletionEvent::UsageUpdate(TokenUsage {
-                input_tokens: usage.prompt_tokens,
+                input_tokens: usage.prompt_cache_miss_tokens,
                 output_tokens: usage.completion_tokens,
                 cache_creation_input_tokens: 0,
-                cache_read_input_tokens: 0,
+                cache_read_input_tokens: usage.prompt_cache_hit_tokens,
             })));
         }
 

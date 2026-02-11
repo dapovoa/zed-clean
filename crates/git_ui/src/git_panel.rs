@@ -2679,34 +2679,39 @@ impl GitPanel {
 
                 let text_empty = subject.trim().is_empty();
 
-                let rules_section = match &rules_content {
+                let system_prompt = match &rules_content {
                     Some(rules) => format!(
-                        "\n\nThe user has provided the following project rules that you should follow when writing the commit message:\n\
-                        <project_rules>\n{rules}\n</project_rules>\n"
+                        "{prompt}\n\n\
+                        The user has provided the following project rules that you should follow when writing the commit message:\n\
+                        <project_rules>\n{rules}\n</project_rules>"
                     ),
-                    None => String::new(),
+                    None => prompt,
                 };
 
-                let subject_section = if text_empty {
-                    String::new()
+                let user_content = if text_empty {
+                    format!("Here are the changes in this commit:\n{diff_text}")
                 } else {
-                    format!("\nHere is the user's subject line:\n{subject}")
+                    format!("Here is the user's subject line:\n{subject}\n\nHere are the changes in this commit:\n{diff_text}")
                 };
-
-                let content = format!(
-                    "{prompt}{rules_section}{subject_section}\nHere are the changes in this commit:\n{diff_text}"
-                );
 
                 let request = LanguageModelRequest {
                     thread_id: None,
                     prompt_id: None,
                     intent: Some(CompletionIntent::GenerateGitCommitMessage),
-                    messages: vec![LanguageModelRequestMessage {
-                        role: Role::User,
-                        content: vec![content.into()],
-                        cache: false,
-                        reasoning_details: None,
-                    }],
+                    messages: vec![
+                        LanguageModelRequestMessage {
+                            role: Role::System,
+                            content: vec![system_prompt.into()],
+                            cache: false,
+                            reasoning_details: None,
+                        },
+                        LanguageModelRequestMessage {
+                            role: Role::User,
+                            content: vec![user_content.into()],
+                            cache: false,
+                            reasoning_details: None,
+                        },
+                    ],
                     tools: Vec::new(),
                     tool_choice: None,
                     stop: Vec::new(),
