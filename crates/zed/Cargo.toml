@@ -12,6 +12,8 @@ default-run = "zed"
 workspace = true
 
 [features]
+default = ["mimalloc"]
+mimalloc = ["dep:mimalloc"]
 tracy = ["ztracing/tracy"]
 test-support = [
     "gpui/test-support",

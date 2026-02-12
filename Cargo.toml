@@ -876,8 +876,9 @@ zed_actions = { codegen-units = 1 }
 
 [profile.release]
 debug = "limited"
-lto = "thin"
+lto = "fat"
 codegen-units = 1
+panic = "abort"
 
 [profile.release.package]
 zed = { codegen-units = 16 }
