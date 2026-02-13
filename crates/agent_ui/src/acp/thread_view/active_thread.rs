@@ -1,3 +1,4 @@
+use theme::ThemeSettings;
 use gpui::{Corner, List};
 use language_model::LanguageModelEffortLevel;
 use settings::update_settings_file;
@@ -303,9 +304,10 @@ impl AcpThreadView {
                 available_commands.clone(),
                 agent_name.clone(),
                 &placeholder,
-                editor::EditorMode::AutoHeight {
-                    min_lines: AgentSettings::get_global(cx).message_editor_min_lines,
-                    max_lines: Some(AgentSettings::get_global(cx).set_message_editor_max_lines()),
+                editor::EditorMode::Full {
+                    scale_ui_elements_with_buffer_font_size: false,
+                    show_active_line_background: false,
+                    sizing_behavior: editor::SizingBehavior::Default,
                 },
                 window,
                 cx,
@@ -2370,7 +2372,7 @@ impl AcpThreadView {
         }
 
         let focus_handle = self.message_editor.focus_handle(cx);
-        let editor_bg_color = cx.theme().colors().editor_background;
+        let editor_bg_color = cx.theme().colors().agent_user_message_background;
         let editor_expanded = self.editor_expanded;
         let (expand_icon, expand_tooltip) = if editor_expanded {
             (IconName::Minimize, "Minimize Message Editor")
@@ -2378,9 +2380,11 @@ impl AcpThreadView {
             (IconName::Maximize, "Expand Message Editor")
         };
 
+        let settings = ThemeSettings::get_global(cx);
+        let min_height = settings.clean_chat_input_height_rems(cx);
+
         v_flex()
             .on_action(cx.listener(Self::expand_message_editor))
-            .p_2()
             .gap_2()
             .border_t_1()
             .border_color(cx.theme().colors().border)
@@ -2391,9 +2395,11 @@ impl AcpThreadView {
             .child(
                 v_flex()
                     .relative()
-                    .size_full()
-                    .pt_1()
-                    .pr_2p5()
+                    .h(rems(min_height))
+                    .w_full()
+                    .px_4()
+                    .py_3()
+                    .bg(cx.theme().colors().agent_user_message_background)
                     .child(self.message_editor.clone())
                     .child(
                         h_flex()
@@ -3484,15 +3490,16 @@ impl AcpThreadView {
                             .relative()
                             .child(
                                 div()
-                                    .py_3()
-                                    .px_2()
+                                    .py(rems(cx.theme().colors().agent_user_message_padding_y))
+                                    .px(rems(cx.theme().colors().agent_user_message_padding_x))
                                     .rounded_md()
-                                    .bg(cx.theme().colors().editor_background)
+                                    .shadow_md()
+                                    .bg(cx.theme().colors().agent_user_message_background)
                                     .border_1()
                                     .when(is_indented, |this| {
                                         this.py_2().px_2().shadow_sm()
                                     })
-                                    .border_color(cx.theme().colors().border)
+                                    .border_color(cx.theme().colors().agent_user_message_border)
                                     .map(|this| {
                                         if is_subagent {
                                             return this.border_dashed();
@@ -3510,7 +3517,7 @@ impl AcpThreadView {
                                         }
                                         this
                                     })
-                                    .text_xs()
+                                    .text_size(rems(cx.theme().colors().agent_user_message_font_size))
                                     .child(editor.clone().into_any_element())
                             )
                             .when(editor_focus, |this| {

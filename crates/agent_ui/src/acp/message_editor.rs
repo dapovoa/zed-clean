@@ -16,15 +16,15 @@ use agent_client_protocol as acp;
 use anyhow::{Result, anyhow};
 use collections::HashSet;
 use editor::{
-    Addon, AnchorRangeExt, ContextMenuOptions, ContextMenuPlacement, Editor, EditorElement,
-    EditorEvent, EditorMode, EditorStyle, Inlay, MultiBuffer, MultiBufferOffset,
+    Addon, AnchorRangeExt, ContextMenuOptions, ContextMenuPlacement, CurrentLineHighlight, Editor,
+    EditorElement, EditorEvent, EditorMode, EditorStyle, Inlay, MultiBuffer, MultiBufferOffset,
     MultiBufferSnapshot, ToOffset, actions::Paste, code_context_menus::CodeContextMenu,
     scroll::Autoscroll,
 };
 use futures::{FutureExt as _, future::join_all};
 use gpui::{
-    AppContext, ClipboardEntry, Context, Entity, EventEmitter, FocusHandle, Focusable, ImageFormat,
-    KeyContext, SharedString, Subscription, Task, TextStyle, WeakEntity,
+    AppContext, ClipboardEntry, Context, Entity, EventEmitter, FocusHandle, Focusable, Hsla,
+    ImageFormat, KeyContext, SharedString, Subscription, Task, TextStyle, WeakEntity,
 };
 use language::{Buffer, Language, language_settings::InlayHintKind};
 use project::{CompletionIntent, InlayHint, InlayHintLabel, InlayId, Project, Worktree};
@@ -130,6 +130,9 @@ impl MessageEditor {
             let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
 
             let mut editor = Editor::new(mode, buffer, None, window, cx);
+            editor.set_show_gutter(false, cx);
+            editor.set_current_line_highlight(Some(CurrentLineHighlight::None));
+            editor.set_vertical_scroll_margin(0, cx);
             editor.set_placeholder_text(placeholder, window, cx);
             editor.set_show_indent_guides(false, cx);
             editor.set_show_completions_on_input(Some(true));
@@ -1316,7 +1319,9 @@ impl Focusable for MessageEditor {
 
 impl Render for MessageEditor {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+        let settings = ThemeSettings::get_global(cx);
+
+        v_flex()
             .key_context("MessageEditor")
             .on_action(cx.listener(Self::chat))
             .on_action(cx.listener(Self::send_immediately))
@@ -1324,30 +1329,35 @@ impl Render for MessageEditor {
             .on_action(cx.listener(Self::cancel))
             .on_action(cx.listener(Self::paste_raw))
             .capture_action(cx.listener(Self::paste))
+            .size_full()
             .flex_1()
             .child({
-                let settings = ThemeSettings::get_global(cx);
-
+                let font_size_rems = cx.theme().colors().agent_user_message_font_size;
                 let text_style = TextStyle {
-                    color: cx.theme().colors().text,
+                    color: cx.theme().colors().agent_user_message_foreground,
                     font_family: settings.buffer_font.family.clone(),
                     font_fallbacks: settings.buffer_font.fallbacks.clone(),
                     font_features: settings.buffer_font.features.clone(),
-                    font_size: settings.agent_buffer_font_size(cx).into(),
+                    font_size: rems(font_size_rems).into(),
                     line_height: relative(settings.buffer_line_height.value()),
                     ..Default::default()
                 };
 
-                EditorElement::new(
-                    &self.editor,
-                    EditorStyle {
-                        background: cx.theme().colors().editor_background,
-                        local_player: cx.theme().players().local(),
-                        text: text_style,
-                        syntax: cx.theme().syntax().clone(),
-                        inlay_hints_style: editor::make_inlay_hints_style(cx),
-                        ..Default::default()
-                    },
+                let mut local_player = cx.theme().players().local();
+                local_player.selection = cx.theme().colors().agent_user_message_selection_background;
+
+                v_flex().size_full().flex_1().child(
+                    EditorElement::new(
+                        &self.editor,
+                        EditorStyle {
+                            background: Hsla::transparent_black(),
+                            local_player,
+                            text: text_style,
+                            syntax: cx.theme().syntax().clone(),
+                            inlay_hints_style: editor::make_inlay_hints_style(cx),
+                            ..Default::default()
+                        },
+                    )
                 )
             })
     }

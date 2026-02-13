@@ -5784,6 +5784,7 @@ impl EditorElement {
             let scroll_top = layout.position_map.snapshot.scroll_position().y;
             let gutter_bg = cx.theme().colors().editor_gutter_background;
             window.paint_quad(fill(layout.gutter_hitbox.bounds, gutter_bg));
+
             window.paint_quad(fill(
                 layout.position_map.text_hitbox.bounds,
                 self.style.background,
@@ -6470,7 +6471,7 @@ impl EditorElement {
         cx: &mut App,
     ) -> SmallVec<[Range<DisplayPoint>; 32]> {
         window.paint_layer(layout.position_map.text_hitbox.bounds, |window| {
-            let mut invisible_display_ranges = SmallVec::<[Range<DisplayPoint>; 32]>::new();
+            let invisible_display_ranges = SmallVec::<[Range<DisplayPoint>; 32]>::new();
             let line_end_overshoot = 0.15 * layout.position_map.line_height;
             for (range, color) in &layout.highlighted_ranges {
                 self.paint_highlighted_range(
@@ -6491,20 +6492,18 @@ impl EditorElement {
             };
 
             for (player_color, selections) in &layout.selections {
+                let selection_color = player_color.selection;
+
                 for selection in selections.iter() {
                     self.paint_highlighted_range(
                         selection.range.clone(),
                         true,
-                        player_color.selection,
+                        selection_color,
                         corner_radius,
                         corner_radius * 2.,
                         layout,
                         window,
                     );
-
-                    if selection.is_local && !selection.range.is_empty() {
-                        invisible_display_ranges.push(selection.range.clone());
-                    }
                 }
             }
             invisible_display_ranges
@@ -9451,8 +9450,11 @@ impl Element for EditorElement {
                         max_lines,
                     } => {
                         let editor_handle = cx.entity();
+                        let mut style = Style::default();
+                        style.flex_grow = 1.0;
+                        style.size.width = relative(1.).into();
                         window.request_measured_layout(
-                            Style::default(),
+                            style,
                             move |known_dimensions, available_space, window, cx| {
                                 editor_handle
                                     .update(cx, |editor, cx| {
@@ -9480,6 +9482,7 @@ impl Element for EditorElement {
                         sizing_behavior, ..
                     } => {
                         let mut style = Style::default();
+                        style.flex_grow = 1.0;
                         style.size.width = relative(1.).into();
                         if sizing_behavior == SizingBehavior::SizeByContent {
                             let snapshot = editor.snapshot(window, cx);

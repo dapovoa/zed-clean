@@ -76,6 +76,7 @@ pub struct MarkdownStyle {
     pub height_is_multiple_of_line_height: bool,
     pub prevent_mouse_interaction: bool,
     pub table_columns_min_size: bool,
+    pub font: MarkdownFont,
 }
 
 impl Default for MarkdownStyle {
@@ -98,13 +99,25 @@ impl Default for MarkdownStyle {
             height_is_multiple_of_line_height: false,
             prevent_mouse_interaction: false,
             table_columns_min_size: false,
+            font: MarkdownFont::Editor,
         }
     }
 }
 
 pub enum MarkdownFont {
     Agent,
+    UserAgent,
     Editor,
+}
+
+impl Clone for MarkdownFont {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Agent => Self::Agent,
+            Self::UserAgent => Self::UserAgent,
+            Self::Editor => Self::Editor,
+        }
+    }
 }
 
 impl MarkdownStyle {
@@ -113,7 +126,7 @@ impl MarkdownStyle {
         let colors = cx.theme().colors();
 
         let (buffer_font_size, ui_font_size) = match font {
-            MarkdownFont::Agent => (
+            MarkdownFont::Agent | MarkdownFont::UserAgent => (
                 theme_settings.agent_buffer_font_size(cx),
                 theme_settings.agent_ui_font_size(cx),
             ),
@@ -123,10 +136,18 @@ impl MarkdownStyle {
             ),
         };
 
-        let text_color = colors.text;
+        let text_color = match font {
+            MarkdownFont::Agent => colors.agent_foreground,
+            MarkdownFont::UserAgent => colors.agent_user_message_foreground,
+            MarkdownFont::Editor => colors.text,
+        };
 
         let mut text_style = window.text_style();
-        let line_height = buffer_font_size * 1.75;
+        let line_height_multiplier = match font {
+            MarkdownFont::Agent | MarkdownFont::UserAgent => theme_settings.agent_buffer_line_height(),
+            MarkdownFont::Editor => 1.75,
+        };
+        let line_height = buffer_font_size * line_height_multiplier;
 
         text_style.refine(&TextStyleRefinement {
             font_family: Some(theme_settings.ui_font.family.clone()),
@@ -141,7 +162,11 @@ impl MarkdownStyle {
         MarkdownStyle {
             base_text_style: text_style.clone(),
             syntax: cx.theme().syntax().clone(),
-            selection_background_color: colors.element_selection_background,
+            selection_background_color: match font {
+                MarkdownFont::Agent => colors.agent_selection_background,
+                MarkdownFont::UserAgent => colors.agent_user_message_selection_background,
+                MarkdownFont::Editor => colors.element_selection_background,
+            },
             code_block_overflow_x_scroll: true,
             heading_level_styles: Some(HeadingLevelStyles {
                 h1: Some(TextStyleRefinement {
@@ -189,8 +214,16 @@ impl MarkdownStyle {
                     right: Some(AbsoluteLength::Pixels(px(1.))),
                     bottom: Some(AbsoluteLength::Pixels(px(1.))),
                 },
-                border_color: Some(colors.border_variant),
-                background: Some(colors.editor_background.into()),
+                border_color: Some(match font {
+                    MarkdownFont::Agent => colors.agent_code_block_border,
+                    MarkdownFont::UserAgent => colors.agent_user_message_border,
+                    MarkdownFont::Editor => colors.border_variant,
+                }),
+                background: Some(match font {
+                    MarkdownFont::Agent => colors.agent_code_block_background,
+                    MarkdownFont::UserAgent => colors.agent_user_message_background,
+                    MarkdownFont::Editor => colors.editor_background,
+                }.into()),
                 text: TextStyleRefinement {
                     font_family: Some(theme_settings.buffer_font.family.clone()),
                     font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
@@ -205,7 +238,10 @@ impl MarkdownStyle {
                 font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
                 font_features: Some(theme_settings.buffer_font.features.clone()),
                 font_size: Some(buffer_font_size.into()),
-                background_color: Some(colors.editor_foreground.opacity(0.08)),
+                background_color: Some(match font {
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_background,
+                    MarkdownFont::Editor => colors.editor_foreground.opacity(0.08),
+                }),
                 ..Default::default()
             },
             link: TextStyleRefinement {
@@ -218,6 +254,7 @@ impl MarkdownStyle {
                 }),
                 ..Default::default()
             },
+            font,
             ..Default::default()
         }
     }
@@ -1047,7 +1084,7 @@ impl Element for MarkdownElement {
                         MarkdownTag::Paragraph => {
                             builder.push_div(
                                 div().when(!self.style.height_is_multiple_of_line_height, |el| {
-                                    el.mb_2().line_height(rems(1.3))
+                                    el.mb_2().line_height(self.style.base_text_style.line_height)
                                 }),
                                 range,
                                 markdown_end,
@@ -1123,7 +1160,7 @@ impl Element for MarkdownElement {
                                             .notify_content();
 
                                         parent_container
-                                            .rounded_lg()
+                                            .rounded_md()
                                             .custom_scrollbars(scrollbars, window, cx)
                                             .into()
                                     } else {
@@ -1133,18 +1170,47 @@ impl Element for MarkdownElement {
                                     if let CodeBlockRenderer::Default { border: true, .. } =
                                         &self.code_block_renderer
                                     {
+                                        let colors = cx.theme().colors();
                                         parent_container = parent_container
                                             .rounded_md()
                                             .border_1()
-                                            .border_color(cx.theme().colors().border_variant);
+                                            .border_color(match self.style.font {
+                                                MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_code_block_border,
+                                                MarkdownFont::Editor => colors.border_variant,
+                                            });
                                     }
 
                                     parent_container.style().refine(&self.style.code_block);
+                                    
+                                    // Add terminal header for agent code blocks
+                                    let mut parent_container = parent_container;
+                                    if matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent) {
+                                        let colors = cx.theme().colors();
+                                        let language_name = match kind {
+                                            CodeBlockKind::FencedLang(name) => name.to_string(),
+                                            _ => "code".to_string(),
+                                        };
+                                        
+                                        parent_container = parent_container.child(
+                                            h_flex()
+                                                .bg(colors.clean_surface_background)
+                                                .px_3()
+                                                .py_1()
+                                                .border_b_1()
+                                                .border_color(colors.agent_code_block_border)
+                                                .child(
+                                                    Label::new(language_name)
+                                                        .size(LabelSize::XSmall)
+                                                        .color(Color::Muted)
+                                                )
+                                        );
+                                    }
+
                                     builder.push_div(parent_container, range, markdown_end);
 
                                     let code_block = div()
                                         .id(("code-block", range.start))
-                                        .rounded_lg()
+                                        .rounded_none() // Square corners inside the container
                                         .map(|mut code_block| {
                                             if let Some(scroll_handle) = scroll_handle.as_ref() {
                                                 code_block.style().restrict_scroll_to_axis =
@@ -1195,7 +1261,7 @@ impl Element for MarkdownElement {
                             builder.push_div(
                                 div()
                                     .when(!self.style.height_is_multiple_of_line_height, |el| {
-                                        el.mb_1().gap_1().line_height(rems(1.3))
+                                        el.mb_1().gap_1().line_height(self.style.base_text_style.line_height)
                                     })
                                     .h_flex()
                                     .items_start()
@@ -1538,8 +1604,8 @@ impl Element for MarkdownElement {
         });
 
         self.paint_mouse_listeners(hitbox, &rendered_markdown.text, window, cx);
-        rendered_markdown.element.paint(window, cx);
         self.paint_selection(bounds, &rendered_markdown.text, window, cx);
+        rendered_markdown.element.paint(window, cx);
     }
 }
 

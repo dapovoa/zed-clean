@@ -583,7 +583,6 @@ struct ItemColors {
     default: Hsla,
     hover: Hsla,
     drag_over: Hsla,
-    marked: Hsla,
     focused: Hsla,
 }
 
@@ -601,7 +600,6 @@ fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
         } else {
             colors.element_hover
         },
-        marked: colors.element_selected,
         focused: colors.panel_focused_border,
         drag_over: colors.drop_target_background,
     }
@@ -4998,7 +4996,7 @@ impl ProjectPanel {
         &self,
         entry_id: ProjectEntryId,
         details: EntryDetails,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         const GROUP_NAME: &str = "project_entry";
@@ -5052,17 +5050,8 @@ impl ProjectPanel {
             marked_selections: Arc::from(self.marked_entries.clone()),
         };
 
-        let bg_color = if is_marked {
-            item_colors.marked
-        } else {
-            item_colors.default
-        };
-
-        let bg_hover_color = if is_marked {
-            item_colors.marked
-        } else {
-            item_colors.hover
-        };
+        let bg_color = item_colors.default;
+        let bg_hover_color = item_colors.hover;
 
         let validation_color_and_message = if show_editor {
             match self
@@ -5079,25 +5068,23 @@ impl ProjectPanel {
             None
         };
 
-        let border_color =
-            if !self.mouse_down && is_active && self.focus_handle.contains_focused(window, cx) {
-                match validation_color_and_message {
-                    Some((color, _)) => color,
-                    None => item_colors.focused,
-                }
-            } else {
-                bg_color
-            };
+        let border_color = if show_editor {
+            match validation_color_and_message {
+                Some((color, _)) => color,
+                None => item_colors.focused,
+            }
+        } else {
+            bg_color
+        };
 
-        let border_hover_color =
-            if !self.mouse_down && is_active && self.focus_handle.contains_focused(window, cx) {
-                match validation_color_and_message {
-                    Some((color, _)) => color,
-                    None => item_colors.focused,
-                }
-            } else {
-                bg_hover_color
-            };
+        let border_hover_color = if show_editor {
+            match validation_color_and_message {
+                Some((color, _)) => color,
+                None => item_colors.focused,
+            }
+        } else {
+            bg_hover_color
+        };
 
         let folded_directory_drag_target = self.folded_directory_drag_target;
         let is_highlighted = {
@@ -5143,7 +5130,11 @@ impl ProjectPanel {
             .border_1()
             .border_r_2()
             .border_color(border_color)
-            .hover(|style| style.bg(bg_hover_color).border_color(border_hover_color))
+            .hover(|style| {
+                style
+                    .bg(bg_hover_color)
+                    .border_color(border_hover_color)
+            })
             .when(is_sticky, |this| this.block_mouse_except_scroll())
             .when(!is_sticky, |this| {
                 this.when(
@@ -5486,6 +5477,17 @@ impl ProjectPanel {
                         )
                     })
                     .child(if let Some(icon) = &icon {
+                        let item_colors = cx.theme().colors();
+                        let normal_color = item_colors.clean_project_panel_text;
+                        let hover_color = item_colors.clean_project_panel_hover_text;
+                        let active_color = item_colors.clean_project_panel_active_text;
+
+                        let icon_base_color = if is_active || is_marked {
+                            active_color
+                        } else {
+                            normal_color
+                        };
+
                         if let Some((_, decoration_color)) =
                             entry_diagnostic_aware_icon_decoration_and_color(diagnostic_severity)
                         {
@@ -5494,7 +5496,8 @@ impl ProjectPanel {
                                 .unwrap_or(false);
                             div().child(
                                 DecoratedIcon::new(
-                                    Icon::from_path(icon.clone()).color(Color::Muted),
+                                    Icon::from_path(icon.clone())
+                                        .color(ui::Color::Custom(icon_base_color)),
                                     Some(
                                         IconDecoration::new(
                                             if kind.is_file() {
@@ -5521,7 +5524,16 @@ impl ProjectPanel {
                                 .into_any_element(),
                             )
                         } else {
-                            h_flex().child(Icon::from_path(icon.to_string()).color(Color::Muted))
+                            h_flex().child(
+                                div()
+                                    .group_hover(GROUP_NAME, |style| {
+                                        style.text_color(hover_color)
+                                    })
+                                    .child(
+                                        Icon::from_path(icon.to_string())
+                                            .color(ui::Color::Custom(icon_base_color))
+                                    )
+                            )
                         }
                     } else if let Some((icon_name, color)) =
                         entry_diagnostic_aware_icon_name_and_color(diagnostic_severity)
@@ -5559,16 +5571,36 @@ impl ProjectPanel {
                                     ))
                                 }
 
-                                None => this.child(
-                                    Label::new(file_name)
-                                        .single_line()
-                                        .color(filename_text_color)
-                                        .when(
-                                            settings.bold_folder_labels && kind.is_dir(),
-                                            |this| this.weight(FontWeight::SEMIBOLD),
-                                        )
-                                        .into_any_element(),
-                                ),
+                                None => {
+                                    let item_colors = cx.theme().colors();
+                                    
+                                    let normal_color = item_colors.clean_project_panel_text;
+                                    let hover_color = item_colors.clean_project_panel_hover_text;
+                                    let active_color = item_colors.clean_project_panel_active_text;
+
+                                    let base_color = if is_active || is_marked {
+                                        active_color
+                                    } else {
+                                        normal_color
+                                    };
+
+                                    this.child(
+                                        div()
+                                            .group_hover(GROUP_NAME, |style| {
+                                                style.text_color(hover_color)
+                                            })
+                                            .child(
+                                                Label::new(file_name)
+                                                    .single_line()
+                                                    .color(ui::Color::Custom(base_color))
+                                                    .when(
+                                                        settings.bold_folder_labels && kind.is_dir(),
+                                                        |this| this.weight(FontWeight::SEMIBOLD),
+                                                    ),
+                                            )
+                                            .into_any_element(),
+                                    )
+                                }
                             })
                     })
                     .on_secondary_mouse_down(cx.listener(

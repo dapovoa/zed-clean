@@ -1,5 +1,5 @@
 use crate::{
-    Appearance, DEFAULT_ICON_THEME_NAME, SyntaxTheme, Theme, status_colors_refinement,
+    ActiveTheme, Appearance, DEFAULT_ICON_THEME_NAME, SyntaxTheme, Theme, status_colors_refinement,
     syntax_overrides, theme_colors_refinement,
 };
 use collections::HashMap;
@@ -114,6 +114,8 @@ pub struct ThemeSettings {
     agent_ui_font_size: Option<Pixels>,
     /// The agent buffer font size. Determines the size of user messages in the agent panel.
     agent_buffer_font_size: Option<Pixels>,
+    /// The line height for the agent panel. Falls back to a 1.75x multiplier of the buffer font size if unset.
+    agent_buffer_line_height: Option<BufferLineHeight>,
     /// The line height for buffers, and the terminal.
     ///
     /// Changing this may affect the spacing of some UI elements.
@@ -498,6 +500,19 @@ impl ThemeSettings {
             .unwrap_or_else(|| self.buffer_font_size(cx))
     }
 
+    /// Returns the agent panel line height as a multiplier.
+    /// Falls back to 1.75 if unset.
+    pub fn agent_buffer_line_height(&self) -> f32 {
+        self.agent_buffer_line_height
+            .map(|lh| f32::max(lh.value(), MIN_LINE_HEIGHT))
+            .unwrap_or(1.75)
+    }
+
+    /// Returns the clean chat input height in rems.
+    pub fn clean_chat_input_height_rems(&self, cx: &App) -> f32 {
+        cx.theme().colors().clean_chat_input_height
+    }
+
     /// Returns the buffer font size, read from the settings.
     ///
     /// The real buffer font size is stored in-memory, to support temporary font size changes.
@@ -561,10 +576,40 @@ impl ThemeSettings {
         }
         let status_color_refinement = status_colors_refinement(&theme_overrides.status);
 
-        base_theme.styles.colors.refine(&theme_colors_refinement(
+        let colors_refinement = theme_colors_refinement(
             &theme_overrides.colors,
             &status_color_refinement,
-        ));
+        );
+
+        let mut final_colors = colors_refinement.clone();
+        
+        // Semantic mapping for 'clean' namespace - only set if global counterparts are NOT explicitly set in this override
+        if let Some(clean_bg) = colors_refinement.clean_background {
+            final_colors.background = final_colors.background.or(Some(clean_bg));
+        }
+        if let Some(clean_surface_bg) = colors_refinement.clean_surface_background {
+            final_colors.surface_background = final_colors.surface_background.or(Some(clean_surface_bg));
+        }
+        if let Some(clean_elevated_surface_bg) = colors_refinement.clean_elevated_surface_background {
+            final_colors.elevated_surface_background = final_colors.elevated_surface_background.or(Some(clean_elevated_surface_bg));
+        }
+        if let Some(clean_border) = colors_refinement.clean_border {
+            final_colors.border = final_colors.border.or(Some(clean_border));
+            final_colors.border_variant = final_colors.border_variant.or(Some(clean_border));
+        }
+        if let Some(clean_editor_bg) = colors_refinement.clean_editor_background {
+            final_colors.editor_background = final_colors.editor_background.or(Some(clean_editor_bg));
+            final_colors.editor_gutter_background = final_colors.editor_gutter_background.or(Some(clean_editor_bg));
+        }
+        if let Some(clean_terminal_bg) = colors_refinement.clean_terminal_background {
+            final_colors.terminal_background = final_colors.terminal_background.or(Some(clean_terminal_bg));
+            final_colors.terminal_ansi_background = final_colors.terminal_ansi_background.or(Some(clean_terminal_bg));
+        }
+        if let Some(clean_selection) = colors_refinement.clean_selection {
+            final_colors.element_selection_background = final_colors.element_selection_background.or(Some(clean_selection));
+        }
+
+        base_theme.styles.colors.refine(&final_colors);
         base_theme.styles.status.refine(&status_color_refinement);
         base_theme.styles.player.merge(&theme_overrides.players);
         base_theme.styles.accents.merge(&theme_overrides.accents);
@@ -730,6 +775,7 @@ impl settings::Settings for ThemeSettings {
             buffer_line_height: content.buffer_line_height.unwrap().into(),
             agent_ui_font_size: content.agent_ui_font_size.map(|s| s.into_gpui()),
             agent_buffer_font_size: content.agent_buffer_font_size.map(|s| s.into_gpui()),
+            agent_buffer_line_height: content.agent_buffer_line_height.map(|lh| lh.into()),
             theme: theme_selection,
             experimental_theme_overrides: content.experimental_theme_overrides.clone(),
             theme_overrides: content.theme_overrides.clone(),

@@ -400,6 +400,10 @@ pub fn theme_colors_refinement(
             .text_accent
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
+        text_hover: this
+            .text_hover
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
         icon: this
             .icon
             .as_ref()
@@ -836,6 +840,86 @@ pub fn theme_colors_refinement(
             .vim_helix_select_foreground
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
+        agent_foreground: this
+            .agent_foreground
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_code_block_background: this
+            .agent_code_block_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_inline_code_background: this
+            .agent_inline_code_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_user_message_background: this
+            .agent_user_message_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_user_message_border: this
+            .agent_user_message_border
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_selection_background: this
+            .agent_selection_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_code_block_border: this
+            .agent_code_block_border
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_user_message_foreground: this
+            .agent_user_message_foreground
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        agent_user_message_selection_background: this
+            .agent_user_message_selection_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_background: this
+            .clean_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_surface_background: this
+            .clean_surface_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_elevated_surface_background: this
+            .clean_elevated_surface_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_border: this
+            .clean_border
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_editor_background: this
+            .clean_editor_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_terminal_background: this
+            .clean_terminal_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_selection: this
+            .clean_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_project_panel_text: this
+            .clean_project_panel_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_project_panel_hover_text: this
+            .clean_project_panel_hover_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_project_panel_active_text: this
+            .clean_project_panel_active_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_input_height: Some(this.clean_chat_input_height.unwrap_or(10.0)),
+        agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),
+        agent_user_message_padding_y: Some(this.agent_user_message_padding_y.unwrap_or(0.75)),
+        agent_user_message_padding_x: Some(this.agent_user_message_padding_x.unwrap_or(0.5)),
     }
 }
 

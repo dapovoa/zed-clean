@@ -149,6 +149,8 @@ pub struct ThemeSettingsContent {
     pub agent_ui_font_size: Option<FontSize>,
     /// The font size for user messages in the agent panel.
     pub agent_buffer_font_size: Option<FontSize>,
+    /// The line height for the agent panel. Falls back to 1.75x multiplier if unset.
+    pub agent_buffer_line_height: Option<BufferLineHeight>,
     /// The name of the Zed theme to use.
     pub theme: Option<ThemeSelection>,
     /// The name of the icon theme to use.
@@ -590,7 +592,7 @@ pub struct ThemeColorsContent {
     ///
     /// Elements might include: Buttons, Inputs, Checkboxes, Radio Buttons...
     ///
-    /// For an element that should have a different background than the surface it's on, use `element_background`.
+    /// For an element that should have the same background as the surface it's on, use `element_background`.
     #[serde(rename = "ghost_element.background")]
     pub ghost_element_background: Option<String>,
 
@@ -639,6 +641,10 @@ pub struct ThemeColorsContent {
     /// Text Color. Color used for emphasis or highlighting certain text, like an active filter or a matched character in a search.
     #[serde(rename = "text.accent")]
     pub text_accent: Option<String>,
+
+    /// Text Color. Color used when an element is hovered.
+    #[serde(rename = "text.hover")]
+    pub text_hover: Option<String>,
 
     /// Fill Color. Used for the default fill color of an icon.
     #[serde(rename = "icon")]
@@ -1063,6 +1069,110 @@ pub struct ThemeColorsContent {
     /// Foreground color for Vim Helix Select mode indicator.
     #[serde(rename = "vim.helix_select.foreground")]
     pub vim_helix_select_foreground: Option<String>,
+
+    /// Agent panel foreground text color.
+    #[serde(rename = "agent.foreground")]
+    pub agent_foreground: Option<String>,
+
+    /// Agent panel code block background color.
+    #[serde(rename = "agent.code_block.background")]
+    pub agent_code_block_background: Option<String>,
+
+    /// Agent panel inline code background color.
+    #[serde(rename = "agent.inline_code.background")]
+    pub agent_inline_code_background: Option<String>,
+
+    /// Agent panel user message background color.
+    #[serde(rename = "agent.user_message.background")]
+    pub agent_user_message_background: Option<String>,
+
+    /// Agent panel user message border color.
+    #[serde(rename = "agent.user_message.border")]
+    pub agent_user_message_border: Option<String>,
+
+    /// Agent panel selection background color.
+    #[serde(rename = "agent.selection.background")]
+    pub agent_selection_background: Option<String>,
+
+    /// Agent panel code block border color.
+    #[serde(rename = "agent.code_block.border")]
+    pub agent_code_block_border: Option<String>,
+
+    /// Agent panel user message foreground color.
+    #[serde(rename = "agent.user_message.foreground")]
+    pub agent_user_message_foreground: Option<String>,
+
+    /// Agent panel user message selection background color.
+    #[serde(rename = "agent.user_message.selection.background")]
+    pub agent_user_message_selection_background: Option<String>,
+
+    /// Project panel item normal foreground color.
+    #[serde(rename = "project_panel.item.foreground")]
+    pub project_panel_item_foreground: Option<String>,
+
+    /// Project panel item hover foreground color.
+    #[serde(rename = "project_panel.item.hover_foreground")]
+    pub project_panel_item_hover_foreground: Option<String>,
+
+    /// Project panel item active foreground color.
+    #[serde(rename = "project_panel.item.active_foreground")]
+    pub project_panel_item_active_foreground: Option<String>,
+
+    /// Clean mode background color.
+    #[serde(rename = "clean.background")]
+    pub clean_background: Option<String>,
+
+    /// Clean mode surface background color.
+    #[serde(rename = "clean.surface_background")]
+    pub clean_surface_background: Option<String>,
+
+    /// Clean mode elevated surface background color.
+    #[serde(rename = "clean.elevated_surface_background")]
+    pub clean_elevated_surface_background: Option<String>,
+
+    /// Clean mode border color.
+    #[serde(rename = "clean.border")]
+    pub clean_border: Option<String>,
+
+    /// Clean mode editor background color.
+    #[serde(rename = "clean.editor_background")]
+    pub clean_editor_background: Option<String>,
+
+    /// Clean mode terminal background color.
+    #[serde(rename = "clean.terminal_background")]
+    pub clean_terminal_background: Option<String>,
+
+    /// Clean mode selection color.
+    #[serde(rename = "clean.selection")]
+    pub clean_selection: Option<String>,
+
+    /// Clean mode project panel item text color.
+    #[serde(rename = "clean.project_panel.item_text")]
+    pub clean_project_panel_text: Option<String>,
+
+    /// Clean mode project panel hover text color.
+    #[serde(rename = "clean.project_panel.hover_text")]
+    pub clean_project_panel_hover_text: Option<String>,
+
+    /// Clean mode project panel active text color.
+    #[serde(rename = "clean.project_panel.active_text")]
+    pub clean_project_panel_active_text: Option<String>,
+
+    /// Clean mode chat input height in rems.
+    #[serde(rename = "clean.chat_input_height")]
+    pub clean_chat_input_height: Option<f32>,
+
+    /// Agent user message bubble font size in rems. Default: 0.75 (text_xs).
+    #[serde(rename = "agent.user_message.font_size")]
+    pub agent_user_message_font_size: Option<f32>,
+
+    /// Agent user message bubble vertical padding in rems. Default: 0.75.
+    #[serde(rename = "agent.user_message.padding_y")]
+    pub agent_user_message_padding_y: Option<f32>,
+
+    /// Agent user message bubble horizontal padding in rems. Default: 0.5.
+    #[serde(rename = "agent.user_message.padding_x")]
+    pub agent_user_message_padding_x: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]

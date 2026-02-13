@@ -193,6 +193,7 @@ impl ActiveScrollbarState {
 
 pub struct ScrollManager {
     pub(crate) vertical_scroll_margin: ScrollOffset,
+    pub(crate) custom_vertical_scroll_margin: bool,
     anchor: Entity<SharedScrollAnchor>,
     /// Value to be used for clamping the x component of the SharedScrollAnchor's offset.
     ///
@@ -231,6 +232,7 @@ impl ScrollManager {
         });
         ScrollManager {
             vertical_scroll_margin: EditorSettings::get_global(cx).vertical_scroll_margin,
+            custom_vertical_scroll_margin: false,
             anchor,
             scroll_max_x: None,
             ongoing: OngoingScroll::new(),
@@ -640,6 +642,7 @@ impl Editor {
 
     pub fn set_vertical_scroll_margin(&mut self, margin_rows: usize, cx: &mut Context<Self>) {
         self.scroll_manager.vertical_scroll_margin = margin_rows as f64;
+        self.scroll_manager.custom_vertical_scroll_margin = true;
         cx.notify();
     }
 

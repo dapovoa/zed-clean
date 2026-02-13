@@ -65,7 +65,7 @@ pub struct ThemeColors {
     ///
     /// Elements might include: Buttons, Inputs, Checkboxes, Radio Buttons...
     ///
-    /// For an element that should have a different background than the surface it's on, use `element_background`.
+    /// For an element that should have the same background as the surface it's on, use `element_background`.
     pub ghost_element_background: Hsla,
     /// Background Color. Used for the hover state of a ghost element that should have the same background as the surface it's on.
     ///
@@ -95,6 +95,8 @@ pub struct ThemeColors {
     pub text_disabled: Hsla,
     /// Text Color. Color used for emphasis or highlighting certain text, like an active filter or a matched character in a search.
     pub text_accent: Hsla,
+    /// Text Color. Color used when an element is hovered.
+    pub text_hover: Hsla,
     /// Fill Color. Used for the default fill color of an icon.
     pub icon: Hsla,
     /// Fill Color. Used for the muted or deemphasized fill color of an icon.
@@ -323,6 +325,60 @@ pub struct ThemeColors {
     pub version_control_conflict_marker_ours: Hsla,
     /// Represents the "theirs" region of a merge conflict.
     pub version_control_conflict_marker_theirs: Hsla,
+
+    // ===
+    // Agent Panel
+    // ===
+    /// Agent panel foreground text color.
+    pub agent_foreground: Hsla,
+    /// Agent panel code block background.
+    pub agent_code_block_background: Hsla,
+    /// Agent panel inline code background.
+    pub agent_inline_code_background: Hsla,
+    /// Agent panel user message background.
+    pub agent_user_message_background: Hsla,
+    /// Agent panel user message border.
+    pub agent_user_message_border: Hsla,
+    /// Agent panel selection background.
+    pub agent_selection_background: Hsla,
+    /// Agent panel code block border.
+    pub agent_code_block_border: Hsla,
+    /// Agent panel user message foreground.
+    pub agent_user_message_foreground: Hsla,
+    /// Agent panel user message selection background.
+    pub agent_user_message_selection_background: Hsla,
+
+    // ===
+    // Clean (Custom project namespace)
+    // ===
+    /// Main background color for the 'clean' theme.
+    pub clean_background: Hsla,
+    /// Surface background color for the 'clean' theme.
+    pub clean_surface_background: Hsla,
+    /// Elevated surface background color for the 'clean' theme.
+    pub clean_elevated_surface_background: Hsla,
+    /// Border color for the 'clean' theme.
+    pub clean_border: Hsla,
+    /// Editor background color for the 'clean' theme.
+    pub clean_editor_background: Hsla,
+    /// Terminal background color for the 'clean' theme.
+    pub clean_terminal_background: Hsla,
+    /// Text selection background color for the 'clean' theme.
+    pub clean_selection: Hsla,
+    /// Project panel item normal text color for the 'clean' theme.
+    pub clean_project_panel_text: Hsla,
+    /// Project panel item hover text color for the 'clean' theme.
+    pub clean_project_panel_hover_text: Hsla,
+    /// Project panel item active text color for the 'clean' theme.
+    pub clean_project_panel_active_text: Hsla,
+    /// Height of the chat input area in rems.
+    pub clean_chat_input_height: f32,
+    /// Font size for user message bubbles in the agent chat, in rems.
+    pub agent_user_message_font_size: f32,
+    /// Vertical padding for user message bubbles in the agent chat, in rems.
+    pub agent_user_message_padding_y: f32,
+    /// Horizontal padding for user message bubbles in the agent chat, in rems.
+    pub agent_user_message_padding_x: f32,
 }
 
 #[derive(EnumIter, Debug, Clone, Copy, AsRefStr)]
@@ -354,6 +410,7 @@ pub enum ThemeColorField {
     TextPlaceholder,
     TextDisabled,
     TextAccent,
+    TextHover,
     Icon,
     IconMuted,
     IconDisabled,
@@ -439,6 +496,25 @@ pub enum ThemeColorField {
     VersionControlRenamed,
     VersionControlConflict,
     VersionControlIgnored,
+    AgentForeground,
+    AgentCodeBlockBackground,
+    AgentInlineCodeBackground,
+    AgentUserMessageBackground,
+    AgentUserMessageBorder,
+    AgentSelectionBackground,
+    AgentCodeBlockBorder,
+    AgentUserMessageForeground,
+    AgentUserMessageSelectionBackground,
+    CleanBackground,
+    CleanSurfaceBackground,
+    CleanElevatedSurfaceBackground,
+    CleanBorder,
+    CleanEditorBackground,
+    CleanTerminalBackground,
+    CleanSelection,
+    CleanProjectPanelText,
+    CleanProjectPanelHoverText,
+    CleanProjectPanelActiveText,
 }
 
 impl ThemeColors {
@@ -470,6 +546,7 @@ impl ThemeColors {
             ThemeColorField::TextPlaceholder => self.text_placeholder,
             ThemeColorField::TextDisabled => self.text_disabled,
             ThemeColorField::TextAccent => self.text_accent,
+            ThemeColorField::TextHover => self.text_hover,
             ThemeColorField::Icon => self.icon,
             ThemeColorField::IconMuted => self.icon_muted,
             ThemeColorField::IconDisabled => self.icon_disabled,
@@ -565,6 +642,27 @@ impl ThemeColors {
             ThemeColorField::VersionControlRenamed => self.version_control_renamed,
             ThemeColorField::VersionControlConflict => self.version_control_conflict,
             ThemeColorField::VersionControlIgnored => self.version_control_ignored,
+            ThemeColorField::AgentForeground => self.agent_foreground,
+            ThemeColorField::AgentCodeBlockBackground => self.agent_code_block_background,
+            ThemeColorField::AgentInlineCodeBackground => self.agent_inline_code_background,
+            ThemeColorField::AgentUserMessageBackground => self.agent_user_message_background,
+            ThemeColorField::AgentUserMessageBorder => self.agent_user_message_border,
+            ThemeColorField::AgentSelectionBackground => self.agent_selection_background,
+            ThemeColorField::AgentCodeBlockBorder => self.agent_code_block_border,
+            ThemeColorField::AgentUserMessageForeground => self.agent_user_message_foreground,
+            ThemeColorField::AgentUserMessageSelectionBackground => {
+                self.agent_user_message_selection_background
+            }
+            ThemeColorField::CleanBackground => self.clean_background,
+            ThemeColorField::CleanSurfaceBackground => self.clean_surface_background,
+            ThemeColorField::CleanElevatedSurfaceBackground => self.clean_elevated_surface_background,
+            ThemeColorField::CleanBorder => self.clean_border,
+            ThemeColorField::CleanEditorBackground => self.clean_editor_background,
+            ThemeColorField::CleanTerminalBackground => self.clean_terminal_background,
+            ThemeColorField::CleanSelection => self.clean_selection,
+            ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,
+            ThemeColorField::CleanProjectPanelHoverText => self.clean_project_panel_hover_text,
+            ThemeColorField::CleanProjectPanelActiveText => self.clean_project_panel_active_text,
         }
     }
 
