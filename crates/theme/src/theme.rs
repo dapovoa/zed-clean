@@ -134,7 +134,7 @@ pub fn init(themes_to_load: LoadThemes, cx: &mut App) {
     let mut prev_theme_name = settings.theme.name(SystemAppearance::global(cx).0);
     let mut prev_icon_theme_name = settings.icon_theme.name(SystemAppearance::global(cx).0);
     let mut prev_theme_overrides = (
-        settings.experimental_theme_overrides.clone(),
+        settings.ui_theme_overrides.clone(),
         settings.theme_overrides.clone(),
     );
 
@@ -148,7 +148,7 @@ pub fn init(themes_to_load: LoadThemes, cx: &mut App) {
         let theme_name = settings.theme.name(SystemAppearance::global(cx).0);
         let icon_theme_name = settings.icon_theme.name(SystemAppearance::global(cx).0);
         let theme_overrides = (
-            settings.experimental_theme_overrides.clone(),
+            settings.ui_theme_overrides.clone(),
             settings.theme_overrides.clone(),
         );
 

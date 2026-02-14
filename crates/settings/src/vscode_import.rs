@@ -928,9 +928,8 @@ impl VsCodeSettings {
             icon_theme: None,
             ui_density: None,
             unnecessary_code_fade: None,
-            experimental_theme_overrides: None,
-            theme_overrides: Default::default(),
-        }
+                            ui_theme_overrides: None,
+                            theme_overrides: Default::default(),        }
     }
 
     fn workspace_settings_content(&self) -> WorkspaceSettingsContent {

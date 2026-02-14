@@ -1620,7 +1620,7 @@ mod tests {
         assert_eq!(initial_styles.len(), 1, "Should have one highlight style");
         let initial_color = initial_styles[0].color;
 
-        // Changing experimental_theme_overrides triggers GlobalTheme reload,
+        // Changing ui_theme_overrides triggers GlobalTheme reload,
         // which fires theme_changed → refresh_semantic_token_highlights.
         let red_color: Hsla = Rgba {
             r: 1.0,
@@ -1632,7 +1632,7 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.experimental_theme_overrides = Some(ThemeStyleContent {
+                    settings.theme.ui_theme_overrides = Some(ThemeStyleContent {
                         syntax: IndexMap::from_iter([(
                             "function".to_string(),
                             HighlightStyleContent {
@@ -1674,7 +1674,7 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.experimental_theme_overrides = Some(ThemeStyleContent {
+                    settings.theme.ui_theme_overrides = Some(ThemeStyleContent {
                         syntax: IndexMap::from_iter([(
                             "function".to_string(),
                             HighlightStyleContent {
@@ -1705,7 +1705,7 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.experimental_theme_overrides = None;
+                    settings.theme.ui_theme_overrides = None;
                 });
             });
         });

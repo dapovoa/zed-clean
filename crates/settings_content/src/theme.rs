@@ -166,11 +166,11 @@ pub struct ThemeSettingsContent {
     #[schemars(range(min = 0.0, max = 0.9))]
     pub unnecessary_code_fade: Option<CodeFade>,
 
-    /// EXPERIMENTAL: Overrides for the current theme.
+    /// Overrides for the current theme.
     ///
     /// These values will override the ones on the current theme specified in `theme`.
-    #[serde(rename = "experimental.theme_overrides")]
-    pub experimental_theme_overrides: Option<ThemeStyleContent>,
+    #[serde(rename = "clean.theme_overrides", alias = "experimental.theme_overrides")]
+    pub ui_theme_overrides: Option<ThemeStyleContent>,
 
     /// Overrides per theme
     ///

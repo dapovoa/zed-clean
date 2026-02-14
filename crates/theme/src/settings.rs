@@ -125,15 +125,12 @@ pub struct ThemeSettings {
     /// The current theme selection.
     pub theme: ThemeSelection,
     /// Manual overrides for the active theme.
-    ///
-    /// Note: This setting is still experimental. See [this tracking issue](https://github.com/zed-industries/zed/issues/18078)
-    pub experimental_theme_overrides: Option<settings::ThemeStyleContent>,
+    pub ui_theme_overrides: Option<settings::ThemeStyleContent>,
     /// Manual overrides per theme
     pub theme_overrides: HashMap<String, settings::ThemeStyleContent>,
     /// The current icon theme selection.
     pub icon_theme: IconThemeSelection,
     /// The density of the UI.
-    /// Note: This setting is still experimental. See [this tracking issue](
     pub ui_density: UiDensity,
     /// The amount of fading applied to unnecessary code.
     pub unnecessary_code_fade: f32,
@@ -554,9 +551,9 @@ impl ThemeSettings {
     /// Applies the theme overrides, if there are any, to the current theme.
     pub fn apply_theme_overrides(&self, mut arc_theme: Arc<Theme>) -> Arc<Theme> {
         // Apply the old overrides setting first, so that the new setting can override those.
-        if let Some(experimental_theme_overrides) = &self.experimental_theme_overrides {
+        if let Some(ui_theme_overrides) = &self.ui_theme_overrides {
             let mut theme = (*arc_theme).clone();
-            ThemeSettings::modify_theme(&mut theme, experimental_theme_overrides);
+            ThemeSettings::modify_theme(&mut theme, ui_theme_overrides);
             arc_theme = Arc::new(theme);
         }
 
@@ -777,7 +774,7 @@ impl settings::Settings for ThemeSettings {
             agent_buffer_font_size: content.agent_buffer_font_size.map(|s| s.into_gpui()),
             agent_buffer_line_height: content.agent_buffer_line_height.map(|lh| lh.into()),
             theme: theme_selection,
-            experimental_theme_overrides: content.experimental_theme_overrides.clone(),
+            ui_theme_overrides: content.ui_theme_overrides.clone(),
             theme_overrides: content.theme_overrides.clone(),
             icon_theme: icon_theme_selection,
             ui_density: content.ui_density.unwrap_or_default().into(),
