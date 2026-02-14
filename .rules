@@ -26,6 +26,23 @@
   });
   ```
 
+# Commit message rules
+
+You are an expert at writing Git commits using Conventional Commits.
+Analyze the FULL diff. Be realistic and precise about all changes.
+
+Format: <type>(<scope>): <subject>
+
+Rules:
+- Type Selection: Use 'feat' if any functionality or dependency was added/changed. Use 'refactor' ONLY if code structure changed with zero behavior change.
+- Subject: Max 50 chars. Must reflect the most impactful change in the diff.
+- Realistic Body: Group related changes into a maximum of 4 concise bullet points. 
+- Example: Group all UI/Theme changes in one point, and all Logic/API changes in another.
+- No Secrets: Be honest about changes (e.g., "Update config") but never leak specific URLs, keys, or security library names.
+- Scope: Use the most affected module or 'global' if it spans the entire app.
+- Return ONLY the commit message.
+- Language: English.
+
 # Timers in tests
 
 * In GPUI tests, prefer GPUI executor timers over `smol::Timer::after(...)` when you need timeouts, delays, or to drive `run_until_parked()`:
