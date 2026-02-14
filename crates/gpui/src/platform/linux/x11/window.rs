@@ -3,11 +3,11 @@ use x11rb::connection::RequestConnection;
 
 use crate::platform::wgpu::{WgpuContext, WgpuRenderer, WgpuSurfaceConfig};
 use crate::{
-    AnyWindowHandle, Bounds, Decorations, DevicePixels, ForegroundExecutor, GpuSpecs, Modifiers,
-    Pixels, PlatformAtlas, PlatformDisplay, PlatformInput, PlatformInputHandler, PlatformWindow,
-    Point, PromptButton, PromptLevel, RequestFrameOptions, ResizeEdge, ScaledPixels, Scene, Size,
-    Tiling, WindowAppearance, WindowBackgroundAppearance, WindowBounds, WindowControlArea,
-    WindowDecorations, WindowKind, WindowParams, X11ClientStatePtr, px,
+    AnyWindowHandle, Bounds, CursorStyle, Decorations, DevicePixels, ForegroundExecutor, GpuSpecs,
+    Modifiers, Pixels, PlatformAtlas, PlatformDisplay, PlatformInput, PlatformInputHandler,
+    PlatformWindow, Point, PromptButton, PromptLevel, RequestFrameOptions, ResizeEdge,
+    ScaledPixels, Scene, Size, Tiling, WindowAppearance, WindowBackgroundAppearance, WindowBounds,
+    WindowControlArea, WindowDecorations, WindowKind, WindowParams, X11ClientStatePtr, px,
 };
 
 use collections::FxHashSet;
@@ -28,7 +28,7 @@ use x11rb::{
 };
 
 use std::{
-    cell::RefCell, ffi::c_void, fmt::Display, num::NonZeroU32, ops::Div, ptr::NonNull, rc::Rc,
+    cell::RefCell, ffi::c_void, fmt::Display, num::NonZeroU32, ptr::NonNull, rc::Rc,
     sync::Arc,
 };
 
@@ -108,6 +108,17 @@ impl ResizeEdge {
             ResizeEdge::BottomLeft => 6,
             ResizeEdge::Left => 7,
         }
+    }
+}
+
+pub(crate) fn cursor_style_for_resize_edge(edge: ResizeEdge) -> CursorStyle {
+    match edge {
+        ResizeEdge::Top => CursorStyle::ResizeUp,
+        ResizeEdge::Bottom => CursorStyle::ResizeDown,
+        ResizeEdge::Left => CursorStyle::ResizeLeft,
+        ResizeEdge::Right => CursorStyle::ResizeRight,
+        ResizeEdge::TopLeft | ResizeEdge::BottomRight => CursorStyle::ResizeUpLeftDownRight,
+        ResizeEdge::TopRight | ResizeEdge::BottomLeft => CursorStyle::ResizeUpRightDownLeft,
     }
 }
 
@@ -455,6 +466,22 @@ impl X11WindowState {
             );
             bounds.size.width = 800.into();
             bounds.size.height = 600.into();
+        }
+
+        let screen = &xcb.setup().roots[x_screen_index];
+        let screen_width = screen.width_in_pixels as i32;
+        let screen_height = screen.height_in_pixels as i32;
+        if bounds.size.width.0 > screen_width {
+            bounds.size.width = DevicePixels(screen_width);
+        }
+        if bounds.size.height.0 > screen_height {
+            bounds.size.height = DevicePixels(screen_height);
+        }
+        if bounds.origin.x.0 + bounds.size.width.0 > screen_width {
+            bounds.origin.x = DevicePixels(screen_width - bounds.size.width.0);
+        }
+        if bounds.origin.y.0 + bounds.size.height.0 > screen_height {
+            bounds.origin.y = DevicePixels(screen_height - bounds.size.height.0);
         }
 
         check_reply(
@@ -932,6 +959,91 @@ impl X11WindowStatePtr {
         }
     }
 
+    pub fn resize_edge_at_position(&self, position: Point<Pixels>) -> Option<ResizeEdge> {
+        let state = self.state.borrow();
+
+        if matches!(state.decorations, WindowDecorations::Server) || state.fullscreen {
+            return None;
+        }
+
+        let [left, right, top, bottom] = state.last_insets;
+        if left == 0 && right == 0 && top == 0 && bottom == 0 {
+            return None;
+        }
+
+        let scale = state.scale_factor;
+        let left = Pixels(left as f32 / scale);
+        let right = Pixels(right as f32 / scale);
+        let top = Pixels(top as f32 / scale);
+        let bottom = Pixels(bottom as f32 / scale);
+
+        let width = state.bounds.size.width;
+        let height = state.bounds.size.height;
+
+        let in_top = position.y < top;
+        let in_bottom = position.y >= height - bottom;
+        let in_left = position.x < left;
+        let in_right = position.x >= width - right;
+
+        match (in_top, in_bottom, in_left, in_right) {
+            (true, _, true, _) => Some(ResizeEdge::TopLeft),
+            (true, _, _, true) => Some(ResizeEdge::TopRight),
+            (_, true, true, _) => Some(ResizeEdge::BottomLeft),
+            (_, true, _, true) => Some(ResizeEdge::BottomRight),
+            (true, _, _, _) => Some(ResizeEdge::Top),
+            (_, true, _, _) => Some(ResizeEdge::Bottom),
+            (_, _, true, _) => Some(ResizeEdge::Left),
+            (_, _, _, true) => Some(ResizeEdge::Right),
+            _ => None,
+        }
+    }
+
+    pub fn start_window_resize(&self, edge: ResizeEdge) {
+        let state = self.state.borrow();
+
+        check_reply(
+            || "X11 UngrabPointer before resize failed.",
+            self.xcb.ungrab_pointer(x11rb::CURRENT_TIME),
+        )
+        .log_err();
+
+        let pointer = match get_reply(
+            || "X11 QueryPointer before resize failed.",
+            self.xcb.query_pointer(self.x_window),
+        ) {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Failed to query pointer for resize: {e}");
+                return;
+            }
+        };
+
+        let message = ClientMessageEvent::new(
+            32,
+            self.x_window,
+            state.atoms._NET_WM_MOVERESIZE,
+            [
+                pointer.root_x as u32,
+                pointer.root_y as u32,
+                edge.to_moveresize(),
+                0,
+                0,
+            ],
+        );
+        check_reply(
+            || "X11 SendEvent to resize window failed.",
+            self.xcb.send_event(
+                false,
+                state.x_root_window,
+                xproto::EventMask::SUBSTRUCTURE_REDIRECT | xproto::EventMask::SUBSTRUCTURE_NOTIFY,
+                message,
+            ),
+        )
+        .log_err();
+
+        xcb_flush(&self.xcb);
+    }
+
     pub fn property_notify(&self, event: xproto::PropertyNotifyEvent) -> anyhow::Result<()> {
         let mut state = self.state.borrow_mut();
         if event.atom == state.atoms._NET_WM_STATE {
@@ -1264,12 +1376,8 @@ impl PlatformWindow for X11Window {
     }
 
     fn content_size(&self) -> Size<Pixels> {
-        // We divide by the scale factor here because this value is queried to determine how much to draw,
-        // but it will be multiplied later by the scale to adjust for scaling.
         let state = self.0.state.borrow();
-        state
-            .content_size()
-            .map(|size| size.div(state.scale_factor))
+        state.content_size()
     }
 
     fn resize(&mut self, size: Size<Pixels>) {
@@ -1309,13 +1417,17 @@ impl PlatformWindow for X11Window {
     }
 
     fn mouse_position(&self) -> Point<Pixels> {
+        let state = self.0.state.borrow();
         get_reply(
             || "X11 QueryPointer failed.",
             self.0.xcb.query_pointer(self.0.x_window),
         )
         .log_err()
         .map_or(Point::new(Pixels::ZERO, Pixels::ZERO), |reply| {
-            Point::new((reply.root_x as u32).into(), (reply.root_y as u32).into())
+            Point::new(
+                px(reply.root_x as f32 / state.scale_factor),
+                px(reply.root_y as f32 / state.scale_factor),
+            )
         })
     }
 

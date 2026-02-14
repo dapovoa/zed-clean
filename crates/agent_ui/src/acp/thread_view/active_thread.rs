@@ -2678,7 +2678,7 @@ impl AcpThreadView {
             .is_some_and(|model| model.supports_split_token_display())
     }
 
-    fn render_token_usage(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
+    fn render_token_usage(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let thread = self.thread.read(cx);
         let usage = thread.token_usage()?;
         let is_generating = thread.status() != ThreadStatus::Idle;
@@ -2791,7 +2791,8 @@ impl AcpThreadView {
                                 )
                                 .child(token_label(cache_write, "cache-write-label"))
                         )
-                    }),
+                    })
+                    .into_any_element(),
             )
         } else {
             let used = crate::text_thread_editor::humanize_token_count(usage.used_tokens);

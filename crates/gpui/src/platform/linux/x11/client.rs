@@ -44,8 +44,8 @@ use super::{
     ButtonOrScroll, ScrollDirection, X11Display, X11WindowStatePtr, XcbAtoms, XimCallbackEvent,
     XimHandler, button_or_scroll_from_event_detail, check_reply,
     clipboard::{self, Clipboard},
-    get_reply, get_valuator_axis_index, handle_connection_error, modifiers_from_state,
-    pressed_button_from_mask,
+    cursor_style_for_resize_edge, get_reply, get_valuator_axis_index, handle_connection_error,
+    modifiers_from_state, pressed_button_from_mask,
 };
 
 use crate::platform::{
@@ -1108,6 +1108,14 @@ impl X11Client {
                     px(event.event_y as f32 / u16::MAX as f32 / state.scale_factor),
                 );
 
+                if event.detail == 1 {
+                    if let Some(edge) = window.resize_edge_at_position(position) {
+                        drop(state);
+                        window.start_window_resize(edge);
+                        return Some(());
+                    }
+                }
+
                 if state.composing && state.ximc.is_some() {
                     drop(state);
                     self.reset_ime();
@@ -1235,14 +1243,47 @@ impl X11Client {
                 );
                 let modifiers = modifiers_from_xinput_info(event.mods);
                 state.modifiers = modifiers;
-                drop(state);
 
-                if event.valuator_mask[0] & 3 != 0 {
-                    window.handle_input(PlatformInput::MouseMove(crate::MouseMoveEvent {
-                        position,
-                        pressed_button,
-                        modifiers,
-                    }));
+                if !window.is_blocked() {
+                    if let Some(edge) = window.resize_edge_at_position(position) {
+                        let style = cursor_style_for_resize_edge(edge);
+                        let current_style = state
+                            .cursor_styles
+                            .get(&window.x_window)
+                            .unwrap_or(&CursorStyle::Arrow);
+                        if *current_style != style
+                            && let Some(cursor) = state.get_cursor_icon(style)
+                        {
+                            state.cursor_styles.insert(window.x_window, style);
+                            check_reply(
+                                || "Failed to set cursor style",
+                                state.xcb_connection.change_window_attributes(
+                                    window.x_window,
+                                    &ChangeWindowAttributesAux {
+                                        cursor: Some(cursor),
+                                        ..Default::default()
+                                    },
+                                ),
+                            )
+                            .log_err();
+                            state.xcb_connection.flush().log_err();
+                        }
+                        drop(state);
+                    } else {
+                        drop(state);
+
+                        if event.valuator_mask[0] & 3 != 0 {
+                            window.handle_input(PlatformInput::MouseMove(
+                                crate::MouseMoveEvent {
+                                    position,
+                                    pressed_button,
+                                    modifiers,
+                                },
+                            ));
+                        }
+                    }
+                } else {
+                    drop(state);
                 }
 
                 state = self.0.borrow_mut();
