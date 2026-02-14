@@ -16,8 +16,8 @@ use cloud_llm_client::CompletionIntent;
 use collections::{BTreeMap, HashMap, HashSet};
 use db::kvp::KEY_VALUE_STORE;
 use editor::{
-    Direction, Editor, EditorElement, EditorMode, MultiBuffer, MultiBufferOffset,
-    actions::ExpandAllDiffHunks,
+    CurrentLineHighlight, Direction, Editor, EditorElement, EditorMode, MultiBuffer,
+    MultiBufferOffset, actions::ExpandAllDiffHunks,
 };
 use editor::{EditorStyle, RewrapOptions};
 use futures::StreamExt as _;
@@ -647,16 +647,16 @@ pub(crate) fn commit_message_editor(
     commit_message_buffer: Entity<Buffer>,
     placeholder: Option<SharedString>,
     project: Entity<Project>,
-    in_panel: bool,
+    _in_panel: bool,
     window: &mut Window,
     cx: &mut Context<Editor>,
 ) -> Editor {
     let buffer = cx.new(|cx| MultiBuffer::singleton(commit_message_buffer, cx));
-    let max_lines = if in_panel { MAX_PANEL_EDITOR_LINES } else { 18 };
     let mut commit_editor = Editor::new(
-        EditorMode::AutoHeight {
-            min_lines: max_lines,
-            max_lines: Some(max_lines),
+        EditorMode::Full {
+            scale_ui_elements_with_buffer_font_size: false,
+            show_active_line_background: false,
+            sizing_behavior: editor::SizingBehavior::Default,
         },
         buffer,
         None,
@@ -669,6 +669,9 @@ pub(crate) fn commit_message_editor(
     commit_editor.set_use_modal_editing(true);
     commit_editor.set_show_wrap_guides(false, cx);
     commit_editor.set_show_indent_guides(false, cx);
+    commit_editor.set_vertical_scroll_margin(0, cx);
+    commit_editor.set_current_line_highlight(Some(CurrentLineHighlight::None));
+    commit_editor.set_soft_wrap();
     let placeholder = placeholder.unwrap_or("Enter commit message".into());
     commit_editor.set_placeholder_text(&placeholder, window, cx);
     commit_editor
@@ -4251,12 +4254,7 @@ impl GitPanel {
         let head_commit = active_repository.read(cx).head_commit.clone();
 
         let footer_size = px(32.);
-        let gap = px(9.0);
-        let max_height = panel_editor_style
-            .text
-            .line_height_in_pixels(window.rem_size())
-            * MAX_PANEL_EDITOR_LINES
-            + gap;
+        let input_height = rems(cx.theme().colors().clean_git_commit_input_height).to_pixels(window.rem_size());
 
         let git_panel = cx.entity();
         let display_name = SharedString::from(Arc::from(
@@ -4281,7 +4279,7 @@ impl GitPanel {
                     .id("commit-editor-container")
                     .relative()
                     .w_full()
-                    .h(max_height + footer_size)
+                    .h(input_height)
                     .border_t_1()
                     .border_color(cx.theme().colors().border)
                     .cursor_text()
@@ -4289,15 +4287,23 @@ impl GitPanel {
                         window.focus(&this.commit_editor.focus_handle(cx), cx);
                     }))
                     .child(
+                        div()
+                            .flex_grow()
+                            .on_action(|&zed_actions::editor::MoveUp, _, cx| {
+                                cx.stop_propagation();
+                            })
+                            .on_action(|&zed_actions::editor::MoveDown, _, cx| {
+                                cx.stop_propagation();
+                            })
+                            .child(EditorElement::new(&self.commit_editor, panel_editor_style)),
+                    )
+                    .child(
                         h_flex()
                             .id("commit-footer")
                             .border_t_1()
                             .when(editor_is_long, |el| {
                                 el.border_color(cx.theme().colors().border_variant)
                             })
-                            .absolute()
-                            .bottom_0()
-                            .left_0()
                             .w_full()
                             .px_2()
                             .h(footer_size)
@@ -4313,17 +4319,6 @@ impl GitPanel {
                                     .children(enable_coauthors)
                                     .child(self.render_commit_button(cx)),
                             ),
-                    )
-                    .child(
-                        div()
-                            .pr_2p5()
-                            .on_action(|&zed_actions::editor::MoveUp, _, cx| {
-                                cx.stop_propagation();
-                            })
-                            .on_action(|&zed_actions::editor::MoveDown, _, cx| {
-                                cx.stop_propagation();
-                            })
-                            .child(EditorElement::new(&self.commit_editor, panel_editor_style)),
                     )
                     .child(
                         h_flex()

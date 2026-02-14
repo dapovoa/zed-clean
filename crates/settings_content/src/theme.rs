@@ -1162,6 +1162,10 @@ pub struct ThemeColorsContent {
     #[serde(rename = "clean.chat_input_height")]
     pub clean_chat_input_height: Option<f32>,
 
+    /// Clean mode git commit input height in rems.
+    #[serde(rename = "clean.git_commit_input_height")]
+    pub clean_git_commit_input_height: Option<f32>,
+
     /// Agent user message bubble font size in rems. Default: 0.75 (text_xs).
     #[serde(rename = "agent.user_message.font_size")]
     pub agent_user_message_font_size: Option<f32>,

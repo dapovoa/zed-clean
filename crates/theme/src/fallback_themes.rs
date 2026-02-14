@@ -286,6 +286,7 @@ pub(crate) fn zed_default_dark() -> Theme {
                 clean_project_panel_hover_text: blue,
                 clean_project_panel_active_text: blue,
                 clean_chat_input_height: 10.0,
+                clean_git_commit_input_height: 10.0,
                 agent_user_message_font_size: 0.75,
                 agent_user_message_padding_y: 0.75,
                 agent_user_message_padding_x: 0.5,

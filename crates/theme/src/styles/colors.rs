@@ -373,6 +373,8 @@ pub struct ThemeColors {
     pub clean_project_panel_active_text: Hsla,
     /// Height of the chat input area in rems.
     pub clean_chat_input_height: f32,
+    /// Height of the git commit input area in rems.
+    pub clean_git_commit_input_height: f32,
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
     /// Vertical padding for user message bubbles in the agent chat, in rems.
