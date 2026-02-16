@@ -102,6 +102,9 @@ where
 {
     let element_id = config.id.take().unwrap_or_else(|| caller_location.into());
     let track_color = config.track_color;
+    let thumb_color = config.thumb_color;
+    let thumb_hover_color = config.thumb_hover_color;
+    let thumb_active_color = config.thumb_active_color;
 
     let state = window.use_keyed_state(element_id, cx, |window, cx| {
         let parent_id = cx.entity_id();
@@ -111,9 +114,10 @@ where
     });
 
     state.update(cx, |state, cx| {
-        state
-            .0
-            .update(cx, |state, _cx| state.update_track_color(track_color))
+        state.0.update(cx, |state, _cx| {
+            state.update_track_color(track_color);
+            state.update_thumb_colors(thumb_color, thumb_hover_color, thumb_active_color);
+        })
     });
     state
 }
@@ -387,6 +391,9 @@ pub struct Scrollbars<T: ScrollableHandle = ScrollHandle> {
     scrollable_handle: Handle<T>,
     visibility: Point<ReservedSpace>,
     track_color: Option<Hsla>,
+    thumb_color: Option<Hsla>,
+    thumb_hover_color: Option<Hsla>,
+    thumb_active_color: Option<Hsla>,
     scrollbar_width: ScrollbarWidth,
 }
 
@@ -409,6 +416,9 @@ impl Scrollbars {
             tracked_entity: None,
             visibility: show_along.apply_to(Default::default(), ReservedSpace::Thumb),
             track_color: None,
+            thumb_color: None,
+            thumb_hover_color: None,
+            thumb_active_color: None,
             scrollbar_width: ScrollbarWidth::Normal,
         }
     }
@@ -450,6 +460,9 @@ impl<ScrollHandle: ScrollableHandle> Scrollbars<ScrollHandle> {
             visibility,
             get_visibility,
             track_color,
+            thumb_color,
+            thumb_hover_color,
+            thumb_active_color,
             ..
         } = self;
 
@@ -460,6 +473,9 @@ impl<ScrollHandle: ScrollableHandle> Scrollbars<ScrollHandle> {
             visibility,
             scrollbar_width,
             track_color,
+            thumb_color,
+            thumb_hover_color,
+            thumb_active_color,
             get_visibility,
         }
     }
@@ -472,6 +488,21 @@ impl<ScrollHandle: ScrollableHandle> Scrollbars<ScrollHandle> {
     pub fn with_track_along(mut self, along: ScrollAxes, background_color: Hsla) -> Self {
         self.visibility = along.apply_to(self.visibility, ReservedSpace::Track);
         self.track_color = Some(background_color);
+        self
+    }
+
+    pub fn with_thumb_color(mut self, color: Hsla) -> Self {
+        self.thumb_color = Some(color);
+        self
+    }
+
+    pub fn with_thumb_hover_color(mut self, color: Hsla) -> Self {
+        self.thumb_hover_color = Some(color);
+        self
+    }
+
+    pub fn with_thumb_active_color(mut self, color: Hsla) -> Self {
+        self.thumb_active_color = Some(color);
         self
     }
 
@@ -600,6 +631,9 @@ struct ScrollbarState<T: ScrollableHandle = ScrollHandle> {
     get_visibility: fn(&App) -> ShowScrollbar,
     visibility: Point<ReservedSpace>,
     track_color: Option<Hsla>,
+    thumb_color: Option<Hsla>,
+    thumb_hover_color: Option<Hsla>,
+    thumb_active_color: Option<Hsla>,
     show_state: VisibilityState,
     mouse_in_parent: bool,
     last_prepaint_state: Option<ScrollbarPrepaintState>,
@@ -630,6 +664,9 @@ impl<T: ScrollableHandle> ScrollbarState<T> {
             width: config.scrollbar_width,
             visibility: config.visibility,
             track_color: config.track_color,
+            thumb_color: config.thumb_color,
+            thumb_hover_color: config.thumb_hover_color,
+            thumb_active_color: config.thumb_active_color,
             show_behavior,
             get_visibility: config.get_visibility,
             show_state: VisibilityState::from_behavior(show_behavior),
@@ -804,6 +841,17 @@ impl<T: ScrollableHandle> ScrollbarState<T> {
 
     fn update_track_color(&mut self, track_color: Option<Hsla>) {
         self.track_color = track_color;
+    }
+
+    fn update_thumb_colors(
+        &mut self,
+        thumb_color: Option<Hsla>,
+        thumb_hover_color: Option<Hsla>,
+        thumb_active_color: Option<Hsla>,
+    ) {
+        self.thumb_color = thumb_color;
+        self.thumb_hover_color = thumb_hover_color;
+        self.thumb_active_color = thumb_active_color;
     }
 
     fn parent_hovered(&self, window: &Window) -> bool {
@@ -1269,14 +1317,19 @@ impl<T: ScrollableHandle> Element for ScrollbarElement<T> {
                 } in &prepaint_state.thumbs
                 {
                     const MAXIMUM_OPACITY: f32 = 0.7;
+                    let (custom_thumb, custom_thumb_hover, custom_thumb_active) = {
+                        let state_read = self.state.read(cx);
+                        (state_read.thumb_color, state_read.thumb_hover_color, state_read.thumb_active_color)
+                    };
+
                     let (thumb_base_color, hovered) = match thumb_state {
                         ThumbState::Dragging(dragged_axis, _) if dragged_axis == axis => {
-                            (colors.scrollbar_thumb_active_background, false)
+                            (custom_thumb_active.or(custom_thumb_hover).unwrap_or(colors.scrollbar_thumb_active_background), false)
                         }
                         ThumbState::Hover(hovered_axis) if hovered_axis == axis => {
-                            (colors.scrollbar_thumb_hover_background, true)
+                            (custom_thumb_hover.unwrap_or(colors.scrollbar_thumb_hover_background), true)
                         }
-                        _ => (colors.scrollbar_thumb_background, false),
+                        _ => (custom_thumb.unwrap_or(colors.scrollbar_thumb_background), false),
                     };
 
                     let blending_color = if hovered || reserved_space.needs_scroll_track() {

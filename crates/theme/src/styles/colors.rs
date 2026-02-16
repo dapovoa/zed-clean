@@ -349,32 +349,105 @@ pub struct ThemeColors {
     pub agent_user_message_selection_background: Hsla,
 
     // ===
-    // Clean (Custom project namespace)
+    // Clean (Custom project namespace - Hierarchical)
     // ===
-    /// Main background color for the 'clean' theme.
-    pub clean_background: Hsla,
-    /// Surface background color for the 'clean' theme.
-    pub clean_surface_background: Hsla,
-    /// Elevated surface background color for the 'clean' theme.
-    pub clean_elevated_surface_background: Hsla,
-    /// Border color for the 'clean' theme.
-    pub clean_border: Hsla,
-    /// Editor background color for the 'clean' theme.
-    pub clean_editor_background: Hsla,
-    /// Terminal background color for the 'clean' theme.
-    pub clean_terminal_background: Hsla,
-    /// Text selection background color for the 'clean' theme.
-    pub clean_selection: Hsla,
+    /// UI background color for the 'clean' theme.
+    pub clean_ui_background: Hsla,
+    /// UI border color for the 'clean' theme.
+    pub clean_ui_border: Hsla,
+    /// Scrollbar thumb color for the 'clean' theme.
+    pub clean_ui_scrollbar_thumb: Hsla,
+    /// Scrollbar thumb hover color for the 'clean' theme.
+    pub clean_ui_scrollbar_thumb_hover: Hsla,
+    
+    /// Project panel background color for the 'clean' theme.
+    pub clean_project_panel_background: Hsla,
+    /// Project panel item hover background color for the 'clean' theme.
+    pub clean_project_panel_hover_background: Hsla,
     /// Project panel item normal text color for the 'clean' theme.
     pub clean_project_panel_text: Hsla,
     /// Project panel item hover text color for the 'clean' theme.
     pub clean_project_panel_hover_text: Hsla,
     /// Project panel item active text color for the 'clean' theme.
     pub clean_project_panel_active_text: Hsla,
+    
     /// Height of the chat input area in rems.
     pub clean_chat_input_height: f32,
-    /// Height of the git commit input area in rems.
-    pub clean_git_commit_input_height: f32,
+    /// Chat input background color for the 'clean' theme.
+    pub clean_chat_input_background: Hsla,
+    /// Chat input text color for the 'clean' theme.
+    pub clean_chat_input_text: Hsla,
+    /// Chat input border color for the 'clean' theme.
+    pub clean_chat_input_border: Hsla,
+    
+    /// Chat output text color for the 'clean' theme.
+    pub clean_chat_output_text: Hsla,
+    /// Chat output selection background color for the 'clean' theme.
+    pub clean_chat_output_selection: Hsla,
+    /// Chat output user bubble background color for the 'clean' theme.
+    pub clean_chat_output_user_bubble_bg: Hsla,
+    /// Chat output user bubble text color for the 'clean' theme.
+    pub clean_chat_output_user_bubble_text: Hsla,
+    /// Chat output user bubble border color for the 'clean' theme.
+    pub clean_chat_output_user_bubble_border: Hsla,
+    /// Chat output run command header color for the 'clean' theme.
+    pub clean_chat_output_run_command_header: Hsla,
+    /// Chat output run command body color for the 'clean' theme.
+    pub clean_chat_output_run_command_body: Hsla,
+    /// Chat output run command text color for the 'clean' theme.
+    pub clean_chat_output_run_command_text: Hsla,
+    /// Chat output terminal header color for the 'clean' theme.
+    pub clean_chat_output_terminal_header: Hsla,
+    /// Chat output terminal body color for the 'clean' theme.
+    pub clean_chat_output_terminal_body: Hsla,
+    /// Chat output terminal text color for the 'clean' theme.
+    pub clean_chat_output_terminal_text: Hsla,
+    /// Chat output edit header color for the 'clean' theme.
+    pub clean_chat_output_edit_header: Hsla,
+    /// Chat output edit body color for the 'clean' theme.
+    pub clean_chat_output_edit_body: Hsla,
+    /// Chat output code header color for the 'clean' theme.
+    pub clean_chat_output_code_header: Hsla,
+    /// Chat output code body color for the 'clean' theme.
+    pub clean_chat_output_code_body: Hsla,
+    /// Chat output thinking header color for the 'clean' theme.
+    pub clean_chat_output_thinking_header: Hsla,
+    /// Chat output thinking body color for the 'clean' theme.
+    pub clean_chat_output_thinking_body: Hsla,
+    /// Chat output indent guide color for the 'clean' theme.
+    pub clean_chat_output_indent_guide: Hsla,
+    /// Chat output scrollbar thumb color for the 'clean' theme.
+    pub clean_chat_output_scrollbar_thumb: Hsla,
+    /// Chat output scrollbar thumb hover color for the 'clean' theme.
+    pub clean_chat_output_scrollbar_thumb_hover: Hsla,
+    /// Chat output scrollbar thumb active/dragging color for the 'clean' theme.
+    pub clean_chat_output_scrollbar_thumb_active: Hsla,
+    /// Chat output background color for the 'clean' theme.
+    pub clean_chat_output_background: Hsla,
+    
+    /// Height of the git input area in rems.
+    pub clean_git_input_height: f32,
+    /// Git background color for the 'clean' theme.
+    pub clean_git_background: Hsla,
+    /// Git text color for the 'clean' theme.
+    pub clean_git_text: Hsla,
+    /// Git selection background color for the 'clean' theme.
+    pub clean_git_selection: Hsla,
+    
+    /// Editor background color for the 'clean' theme.
+    pub clean_editor_background: Hsla,
+    /// Editor selection background color for the 'clean' theme.
+    pub clean_editor_selection: Hsla,
+    
+    /// Terminal background color for the 'clean' theme.
+    pub clean_terminal_background: Hsla,
+    
+    /// Terminal foreground color for the 'clean' theme.
+    pub clean_terminal_foreground: Hsla,
+    
+    /// Terminal selection color for the 'clean' theme.
+    pub clean_terminal_selection: Hsla,
+    
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
     /// Vertical padding for user message bubbles in the agent chat, in rems.
@@ -507,16 +580,48 @@ pub enum ThemeColorField {
     AgentCodeBlockBorder,
     AgentUserMessageForeground,
     AgentUserMessageSelectionBackground,
-    CleanBackground,
-    CleanSurfaceBackground,
-    CleanElevatedSurfaceBackground,
-    CleanBorder,
-    CleanEditorBackground,
-    CleanTerminalBackground,
-    CleanSelection,
+    CleanUiBackground,
+    CleanUiBorder,
+    CleanUiScrollbarThumb,
+    CleanUiScrollbarThumbHover,
+    CleanProjectPanelBackground,
+    CleanProjectPanelHoverBackground,
     CleanProjectPanelText,
     CleanProjectPanelHoverText,
     CleanProjectPanelActiveText,
+    CleanChatInputBackground,
+    CleanChatInputText,
+    CleanChatInputBorder,
+    CleanChatOutputText,
+    CleanChatOutputSelection,
+    CleanChatOutputUserBubbleBg,
+    CleanChatOutputUserBubbleText,
+    CleanChatOutputUserBubbleBorder,
+    CleanChatOutputRunCommandHeader,
+    CleanChatOutputRunCommandBody,
+    CleanChatOutputRunCommandText,
+    CleanChatOutputTerminalHeader,
+    CleanChatOutputTerminalBody,
+    CleanChatOutputTerminalText,
+    CleanChatOutputEditHeader,
+    CleanChatOutputEditBody,
+    CleanChatOutputCodeHeader,
+    CleanChatOutputCodeBody,
+    CleanChatOutputThinkingHeader,
+    CleanChatOutputThinkingBody,
+    CleanChatOutputIndentGuide,
+    CleanChatOutputScrollbarThumb,
+    CleanChatOutputScrollbarThumbHover,
+    CleanChatOutputScrollbarThumbActive,
+    CleanChatOutputBackground,
+    CleanGitBackground,
+    CleanGitText,
+    CleanGitSelection,
+    CleanEditorBackground,
+    CleanEditorSelection,
+    CleanTerminalBackground,
+    CleanTerminalForeground,
+    CleanTerminalSelection,
 }
 
 impl ThemeColors {
@@ -655,16 +760,54 @@ impl ThemeColors {
             ThemeColorField::AgentUserMessageSelectionBackground => {
                 self.agent_user_message_selection_background
             }
-            ThemeColorField::CleanBackground => self.clean_background,
-            ThemeColorField::CleanSurfaceBackground => self.clean_surface_background,
-            ThemeColorField::CleanElevatedSurfaceBackground => self.clean_elevated_surface_background,
-            ThemeColorField::CleanBorder => self.clean_border,
-            ThemeColorField::CleanEditorBackground => self.clean_editor_background,
-            ThemeColorField::CleanTerminalBackground => self.clean_terminal_background,
-            ThemeColorField::CleanSelection => self.clean_selection,
+            ThemeColorField::CleanUiBackground => self.clean_ui_background,
+            ThemeColorField::CleanUiBorder => self.clean_ui_border,
+            ThemeColorField::CleanUiScrollbarThumb => self.clean_ui_scrollbar_thumb,
+            ThemeColorField::CleanUiScrollbarThumbHover => self.clean_ui_scrollbar_thumb_hover,
+            ThemeColorField::CleanProjectPanelBackground => self.clean_project_panel_background,
+            ThemeColorField::CleanProjectPanelHoverBackground => self.clean_project_panel_hover_background,
             ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,
             ThemeColorField::CleanProjectPanelHoverText => self.clean_project_panel_hover_text,
             ThemeColorField::CleanProjectPanelActiveText => self.clean_project_panel_active_text,
+            ThemeColorField::CleanChatInputBackground => self.clean_chat_input_background,
+            ThemeColorField::CleanChatInputText => self.clean_chat_input_text,
+            ThemeColorField::CleanChatInputBorder => self.clean_chat_input_border,
+            ThemeColorField::CleanChatOutputText => self.clean_chat_output_text,
+            ThemeColorField::CleanChatOutputSelection => self.clean_chat_output_selection,
+            ThemeColorField::CleanChatOutputUserBubbleBg => self.clean_chat_output_user_bubble_bg,
+            ThemeColorField::CleanChatOutputUserBubbleText => self.clean_chat_output_user_bubble_text,
+            ThemeColorField::CleanChatOutputUserBubbleBorder => self.clean_chat_output_user_bubble_border,
+            ThemeColorField::CleanChatOutputRunCommandHeader => self.clean_chat_output_run_command_header,
+            ThemeColorField::CleanChatOutputRunCommandBody => self.clean_chat_output_run_command_body,
+            ThemeColorField::CleanChatOutputRunCommandText => self.clean_chat_output_run_command_text,
+            ThemeColorField::CleanChatOutputTerminalHeader => self.clean_chat_output_terminal_header,
+            ThemeColorField::CleanChatOutputTerminalBody => self.clean_chat_output_terminal_body,
+            ThemeColorField::CleanChatOutputTerminalText => self.clean_chat_output_terminal_text,
+            ThemeColorField::CleanChatOutputEditHeader => self.clean_chat_output_edit_header,
+            ThemeColorField::CleanChatOutputEditBody => self.clean_chat_output_edit_body,
+            ThemeColorField::CleanChatOutputCodeHeader => self.clean_chat_output_code_header,
+            ThemeColorField::CleanChatOutputCodeBody => self.clean_chat_output_code_body,
+            ThemeColorField::CleanChatOutputThinkingHeader => self.clean_chat_output_thinking_header,
+            ThemeColorField::CleanChatOutputThinkingBody => self.clean_chat_output_thinking_body,
+            ThemeColorField::CleanChatOutputIndentGuide => self.clean_chat_output_indent_guide,
+            ThemeColorField::CleanChatOutputScrollbarThumb => {
+                self.clean_chat_output_scrollbar_thumb
+            }
+            ThemeColorField::CleanChatOutputScrollbarThumbHover => {
+                self.clean_chat_output_scrollbar_thumb_hover
+            }
+            ThemeColorField::CleanChatOutputScrollbarThumbActive => {
+                self.clean_chat_output_scrollbar_thumb_active
+            }
+            ThemeColorField::CleanChatOutputBackground => self.clean_chat_output_background,
+            ThemeColorField::CleanGitBackground => self.clean_git_background,
+            ThemeColorField::CleanGitText => self.clean_git_text,
+            ThemeColorField::CleanGitSelection => self.clean_git_selection,
+            ThemeColorField::CleanEditorBackground => self.clean_editor_background,
+            ThemeColorField::CleanEditorSelection => self.clean_editor_selection,
+            ThemeColorField::CleanTerminalBackground => self.clean_terminal_background,
+            ThemeColorField::CleanTerminalForeground => self.clean_terminal_foreground,
+            ThemeColorField::CleanTerminalSelection => self.clean_terminal_selection,
         }
     }
 

@@ -876,32 +876,28 @@ pub fn theme_colors_refinement(
             .agent_user_message_selection_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_background: this
-            .clean_background
+        clean_ui_background: this
+            .clean_ui_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_surface_background: this
-            .clean_surface_background
+        clean_ui_border: this
+            .clean_ui_border
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_elevated_surface_background: this
-            .clean_elevated_surface_background
+        clean_ui_scrollbar_thumb: this
+            .clean_ui_scrollbar_thumb
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_border: this
-            .clean_border
+        clean_ui_scrollbar_thumb_hover: this
+            .clean_ui_scrollbar_thumb_hover
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_editor_background: this
-            .clean_editor_background
+        clean_project_panel_background: this
+            .clean_project_panel_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_terminal_background: this
-            .clean_terminal_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_selection: this
-            .clean_selection
+        clean_project_panel_hover_background: this
+            .clean_project_panel_hover_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
         clean_project_panel_text: this
@@ -917,7 +913,139 @@ pub fn theme_colors_refinement(
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
         clean_chat_input_height: Some(this.clean_chat_input_height.unwrap_or(10.0)),
-        clean_git_commit_input_height: Some(this.clean_git_commit_input_height.unwrap_or(10.0)),
+        clean_chat_input_background: this
+            .clean_chat_input_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_input_text: this
+            .clean_chat_input_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_input_border: this
+            .clean_chat_input_border
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_text: this
+            .clean_chat_output_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_selection: this
+            .clean_chat_output_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_user_bubble_bg: this
+            .clean_chat_output_user_bubble_bg
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_user_bubble_text: this
+            .clean_chat_output_user_bubble_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_user_bubble_border: this
+            .clean_chat_output_user_bubble_border
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_run_command_header: this
+            .clean_chat_output_run_command_header
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_run_command_body: this
+            .clean_chat_output_run_command_body
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_run_command_text: this
+            .clean_chat_output_run_command_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_terminal_header: this
+            .clean_chat_output_terminal_header
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_terminal_body: this
+            .clean_chat_output_terminal_body
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_terminal_text: this
+            .clean_chat_output_terminal_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_edit_header: this
+            .clean_chat_output_edit_header
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_edit_body: this
+            .clean_chat_output_edit_body
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_code_header: this
+            .clean_chat_output_code_header
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_code_body: this
+            .clean_chat_output_code_body
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_thinking_header: this
+            .clean_chat_output_thinking_header
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_thinking_body: this
+            .clean_chat_output_thinking_body
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_indent_guide: this
+            .clean_chat_output_indent_guide
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_scrollbar_thumb: this
+            .clean_chat_output_scrollbar_thumb
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_scrollbar_thumb_hover: this
+            .clean_chat_output_scrollbar_thumb_hover
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_scrollbar_thumb_active: this
+            .clean_chat_output_scrollbar_thumb_active
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_background: this
+            .clean_chat_output_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_git_input_height: Some(this.clean_git_input_height.unwrap_or(10.0)),
+        clean_git_background: this
+            .clean_git_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_git_text: this
+            .clean_git_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_git_selection: this
+            .clean_git_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_editor_background: this
+            .clean_editor_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_editor_selection: this
+            .clean_editor_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_terminal_background: this
+            .clean_terminal_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_terminal_foreground: this
+            .clean_terminal_foreground
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_terminal_selection: this
+            .clean_terminal_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
         agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),
         agent_user_message_padding_y: Some(this.agent_user_message_padding_y.unwrap_or(0.75)),
         agent_user_message_padding_x: Some(this.agent_user_message_padding_x.unwrap_or(0.5)),

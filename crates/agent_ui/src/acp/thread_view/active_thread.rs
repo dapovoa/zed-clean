@@ -2372,7 +2372,7 @@ impl AcpThreadView {
         }
 
         let focus_handle = self.message_editor.focus_handle(cx);
-        let editor_bg_color = cx.theme().colors().agent_user_message_background;
+        let editor_bg_color = cx.theme().colors().clean_chat_input_background;
         let editor_expanded = self.editor_expanded;
         let (expand_icon, expand_tooltip) = if editor_expanded {
             (IconName::Minimize, "Minimize Message Editor")
@@ -2387,7 +2387,8 @@ impl AcpThreadView {
             .on_action(cx.listener(Self::expand_message_editor))
             .gap_2()
             .border_t_1()
-            .border_color(cx.theme().colors().border)
+            .border_color(cx.theme().colors().clean_chat_input_border)
+            .text_color(cx.theme().colors().clean_chat_input_text)
             .bg(editor_bg_color)
             .when(editor_expanded, |this| {
                 this.h(vh(0.8, window)).size_full().justify_between()
@@ -2399,7 +2400,7 @@ impl AcpThreadView {
                     .w_full()
                     .px_4()
                     .py_3()
-                    .bg(cx.theme().colors().agent_user_message_background)
+                    .bg(cx.theme().colors().clean_chat_input_background)
                     .child(self.message_editor.clone())
                     .child(
                         h_flex()
@@ -3460,7 +3461,7 @@ impl AcpThreadView {
                         }
                     })
                     .pb_3()
-                    .px_2()
+                    .px_5()
                     .gap_1p5()
                     .w_full()
                     .children(rules_item)
@@ -3495,12 +3496,13 @@ impl AcpThreadView {
                                     .px(rems(cx.theme().colors().agent_user_message_padding_x))
                                     .rounded_md()
                                     .shadow_md()
-                                    .bg(cx.theme().colors().agent_user_message_background)
+                                    .bg(cx.theme().colors().clean_chat_output_user_bubble_bg)
+                                    .text_color(cx.theme().colors().clean_chat_output_user_bubble_text)
                                     .border_1()
                                     .when(is_indented, |this| {
                                         this.py_2().px_2().shadow_sm()
                                     })
-                                    .border_color(cx.theme().colors().agent_user_message_border)
+                                    .border_color(cx.theme().colors().clean_chat_output_user_bubble_border)
                                     .map(|this| {
                                         if is_subagent {
                                             return this.border_dashed();
@@ -3671,6 +3673,7 @@ impl AcpThreadView {
                         .when(is_last, |this| this.pb_4())
                         .w_full()
                         .text_ui(cx)
+                        .text_color(cx.theme().colors().clean_chat_output_text)
                         .child(self.render_message_context_menu(entry_ix, message_body, cx))
                         .into_any()
                 }
@@ -3714,7 +3717,7 @@ impl AcpThreadView {
                         .top(line_top)
                         .bottom_0()
                         .w_px()
-                        .bg(cx.theme().colors().border.opacity(0.6)),
+                        .bg(cx.theme().colors().clean_chat_output_indent_guide),
                 )
                 .child(primary)
                 .into_any_element()
@@ -4227,45 +4230,50 @@ impl AcpThreadView {
         v_flex()
             .gap_1()
             .child(
-                h_flex()
+                v_flex()
                     .id(header_id)
                     .group(&card_header_id)
-                    .relative()
-                    .w_full()
-                    .pr_1()
-                    .justify_between()
+                    .bg(cx.theme().colors().clean_chat_output_thinking_header)
+                    .rounded_t_sm()
                     .child(
                         h_flex()
-                            .h(window.line_height() - px(2.))
-                            .gap_1p5()
-                            .overflow_hidden()
+                            .relative()
+                            .w_full()
+                            .px_1()
+                            .justify_between()
                             .child(
-                                Icon::new(IconName::ToolThink)
-                                    .size(IconSize::Small)
-                                    .color(Color::Muted),
+                                h_flex()
+                                    .h(window.line_height() - px(2.))
+                                    .gap_1p5()
+                                    .overflow_hidden()
+                                    .child(
+                                        Icon::new(IconName::ToolThink)
+                                            .size(IconSize::Small)
+                                            .color(Color::Muted),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_size(self.tool_name_font_size())
+                                            .text_color(cx.theme().colors().text_muted)
+                                            .child("Thinking"),
+                                    ),
                             )
                             .child(
-                                div()
-                                    .text_size(self.tool_name_font_size())
-                                    .text_color(cx.theme().colors().text_muted)
-                                    .child("Thinking"),
+                                Disclosure::new(("expand", entry_ix), is_open)
+                                    .opened_icon(IconName::ChevronUp)
+                                    .closed_icon(IconName::ChevronDown)
+                                    .visible_on_hover(&card_header_id)
+                                    .on_click(cx.listener({
+                                        move |this, _event, _window, cx| {
+                                            if is_open {
+                                                this.expanded_thinking_blocks.remove(&key);
+                                            } else {
+                                                this.expanded_thinking_blocks.insert(key);
+                                            }
+                                            cx.notify();
+                                        }
+                                    })),
                             ),
-                    )
-                    .child(
-                        Disclosure::new(("expand", entry_ix), is_open)
-                            .opened_icon(IconName::ChevronUp)
-                            .closed_icon(IconName::ChevronDown)
-                            .visible_on_hover(&card_header_id)
-                            .on_click(cx.listener({
-                                move |this, _event, _window, cx| {
-                                    if is_open {
-                                        this.expanded_thinking_blocks.remove(&key);
-                                    } else {
-                                        this.expanded_thinking_blocks.insert(key);
-                                    }
-                                    cx.notify();
-                                }
-                            })),
                     )
                     .on_click(cx.listener(move |this, _event, _window, cx| {
                         if is_open {
@@ -4283,6 +4291,7 @@ impl AcpThreadView {
                         .pl_3p5()
                         .border_l_1()
                         .border_color(self.tool_card_border_color(cx))
+                        .bg(cx.theme().colors().clean_chat_output_thinking_body)
                         .child(thinking_content),
                 )
             })
@@ -4457,25 +4466,33 @@ impl AcpThreadView {
         let command_group =
             SharedString::from(format!("collapsible-command-group-{}", tool_call_id));
 
+        let colors = cx.theme().colors();
+
         v_flex()
             .group(command_group.clone())
-            .bg(self.tool_card_header_bg(cx))
+            .bg(colors.clean_chat_output_run_command_body)
+            .text_color(colors.clean_chat_output_run_command_text)
+            .relative()
+            .when(is_preview, |this| {
+                this.child(
+                    h_flex()
+                        .w_full()
+                        .px_2()
+                        .py_1()
+                        .bg(colors.clean_chat_output_run_command_header)
+                        .border_b_1()
+                        .border_color(self.tool_card_border_color(cx))
+                        .child(
+                            Label::new("Run Command")
+                                .buffer_font(cx)
+                                .size(LabelSize::XSmall)
+                                .color(Color::Muted),
+                        ),
+                )
+            })
             .child(
                 v_flex()
                     .p_1p5()
-                    .when(is_preview, |this| {
-                        this.pt_1().child(
-                            // Wrapping this label on a container with 24px height to avoid
-                            // layout shift when it changes from being a preview label
-                            // to the actual path where the command will run in
-                            h_flex().h_6().child(
-                                Label::new("Run Command")
-                                    .buffer_font(cx)
-                                    .size(LabelSize::XSmall)
-                                    .color(Color::Muted),
-                            ),
-                        )
-                    })
                     .children(command_source.lines().map(|line| {
                         let text: SharedString = if line.is_empty() {
                             " ".into()
@@ -4484,14 +4501,14 @@ impl AcpThreadView {
                         };
 
                         Label::new(text).buffer_font(cx).size(LabelSize::Small)
-                    }))
-                    .child(
-                        div().absolute().top_1().right_1().child(
-                            CopyButton::new("copy-command", command_source.to_string())
-                                .tooltip_label("Copy Command")
-                                .visible_on_hover(command_group),
-                        ),
-                    ),
+                    })),
+            )
+            .child(
+                div().absolute().top_0p5().right_1().child(
+                    CopyButton::new("copy-command", command_source.to_string())
+                        .tooltip_label("Copy Command")
+                        .visible_on_hover(command_group),
+                ),
             )
     }
 
@@ -4534,11 +4551,7 @@ impl AcpThreadView {
             "terminal-tool-header-group-{}",
             terminal.entity_id()
         ));
-        let header_bg = cx
-            .theme()
-            .colors()
-            .element_background
-            .blend(cx.theme().colors().editor_foreground.opacity(0.025));
+        let header_bg = cx.theme().colors().clean_chat_output_terminal_header;
         let border_color = cx.theme().colors().border.opacity(0.6);
 
         let working_dir = working_dir
@@ -4734,7 +4747,8 @@ impl AcpThreadView {
                         .border_t_1()
                         .when(tool_failed || command_failed, |card| card.border_dashed())
                         .border_color(border_color)
-                        .bg(cx.theme().colors().editor_background)
+                        .bg(cx.theme().colors().clean_chat_output_terminal_body)
+                        .text_color(cx.theme().colors().clean_chat_output_terminal_text)
                         .rounded_b_md()
                         .text_ui_sm(cx)
                         .h_full()
@@ -4814,6 +4828,7 @@ impl AcpThreadView {
         let mut is_open = self.expanded_tool_calls.contains(&tool_call.id);
 
         is_open |= needs_confirmation;
+        is_open |= is_edit;
 
         let should_show_raw_input = !is_terminal_tool && !is_edit && !has_image_content;
 
@@ -4990,7 +5005,7 @@ impl AcpThreadView {
                         .border_1()
                         .when(failed_or_canceled, |this| this.border_dashed())
                         .border_color(self.tool_card_border_color(cx))
-                        .bg(cx.theme().colors().editor_background)
+                        .bg(cx.theme().colors().clean_chat_output_edit_body)
                         .overflow_hidden()
                 } else {
                     this.my_1()
@@ -5010,59 +5025,62 @@ impl AcpThreadView {
                     this.child(self.render_collapsible_command(true, label_source, &tool_call.id, cx))
                 } else {
                     this.child(
-                        h_flex()
+                        v_flex()
                             .group(&card_header_id)
                             .relative()
                             .w_full()
-                            .gap_1()
-                            .justify_between()
                             .when(use_card_layout, |this| {
-                                this.p_0p5()
-                                    .rounded_t(rems_from_px(5.))
-                                    .bg(self.tool_card_header_bg(cx))
+                                this.rounded_t(rems_from_px(5.))
+                                    .bg(cx.theme().colors().clean_chat_output_edit_header)
                             })
-                            .child(self.render_tool_call_label(
-                                entry_ix,
-                                tool_call,
-                                is_edit,
-                                is_cancelled_edit,
-                                has_revealed_diff,
-                                use_card_layout,
-                                window,
-                                cx,
-                            ))
-                            .when(is_collapsible || failed_or_canceled, |this| {
-                                let diff_for_discard =
-                                    if has_revealed_diff && is_cancelled_edit && cx.has_flag::<AgentV2FeatureFlag>() {
-                                        tool_call.diffs().next().cloned()
-                                    } else {
-                                        None
-                                    };
-                                this.child(
-                                    h_flex()
-                                        .px_1()
-                                        .when_some(diff_for_discard.clone(), |this, _| this.pr_0p5())
-                                        .gap_1()
-                                        .when(is_collapsible, |this| {
-                                            this.child(
-                                            Disclosure::new(("expand-output", entry_ix), is_open)
-                                                .opened_icon(IconName::ChevronUp)
-                                                .closed_icon(IconName::ChevronDown)
-                                                .visible_on_hover(&card_header_id)
-                                                .on_click(cx.listener({
-                                                    let id = tool_call.id.clone();
-                                                    move |this: &mut Self, _, _, cx: &mut Context<Self>| {
-                                                                if is_open {
-                                                                    this
-                                                                        .expanded_tool_calls.remove(&id);
-                                                                } else {
-                                                                    this.expanded_tool_calls.insert(id.clone());
-                                                                }
-                                                            cx.notify();
-                                                    }
-                                                })),
-                                        )
-                                        })
+                            .child(
+                                h_flex()
+                                    .w_full()
+                                    .gap_1()
+                                    .justify_between()
+                                    .when(use_card_layout, |this| this.p_0p5())
+                                    .child(self.render_tool_call_label(
+                                        entry_ix,
+                                        tool_call,
+                                        is_edit,
+                                        is_cancelled_edit,
+                                        has_revealed_diff,
+                                        use_card_layout,
+                                        window,
+                                        cx,
+                                    ))
+                                    .when(is_collapsible || failed_or_canceled, |this| {
+                                        let diff_for_discard =
+                                            if has_revealed_diff && is_cancelled_edit && cx.has_flag::<AgentV2FeatureFlag>() {
+                                                tool_call.diffs().next().cloned()
+                                            } else {
+                                                None
+                                            };
+                                        this.child(
+                                            h_flex()
+                                                .px_1()
+                                                .when_some(diff_for_discard.clone(), |this, _| this.pr_0p5())
+                                                .gap_1()
+                                                .when(is_collapsible, |this| {
+                                                    this.child(
+                                                    Disclosure::new(("expand-output", entry_ix), is_open)
+                                                        .opened_icon(IconName::ChevronUp)
+                                                        .closed_icon(IconName::ChevronDown)
+                                                        .visible_on_hover(&card_header_id)
+                                                        .on_click(cx.listener({
+                                                            let id = tool_call.id.clone();
+                                                            move |this: &mut Self, _, _, cx: &mut Context<Self>| {
+                                                                        if is_open {
+                                                                            this
+                                                                                .expanded_tool_calls.remove(&id);
+                                                                        } else {
+                                                                            this.expanded_tool_calls.insert(id.clone());
+                                                                        }
+                                                                    cx.notify();
+                                                            }
+                                                        })),
+                                                )
+                                                })
                                         .when(failed_or_canceled, |this| {
                                             if is_cancelled_edit && !has_revealed_diff {
                                                 this.child(
@@ -5119,9 +5137,9 @@ impl AcpThreadView {
                                                 )
                                             })
                                         })
-
-                                )
-                            }),
+                                    )
+                                    }),
+                            ),
                     )
                 }
             })
@@ -6069,7 +6087,7 @@ impl AcpThreadView {
                     .w_full()
                     .gap_1()
                     .justify_between()
-                    .bg(self.tool_card_header_bg(cx))
+                    .bg(cx.theme().colors().clean_chat_output_edit_header)
                     .child(
                         h_flex()
                             .gap_1p5()
@@ -7297,8 +7315,15 @@ impl Render for AcpThreadView {
             });
             if has_messages {
                 let list_state = self.list_state.clone();
-                this.child(self.render_entries(cx))
-                    .vertical_scrollbar_for(&list_state, window, cx)
+                let colors = cx.theme().colors();
+                let scrollbars = Scrollbars::new(ScrollAxes::Vertical)
+                    .tracked_scroll_handle(&list_state)
+                    .with_thumb_color(colors.clean_chat_output_scrollbar_thumb)
+                    .with_thumb_hover_color(colors.clean_chat_output_scrollbar_thumb_hover)
+                    .with_thumb_active_color(colors.clean_chat_output_scrollbar_thumb_active);
+                this.bg(colors.clean_chat_output_background)
+                    .child(self.render_entries(cx))
+                    .custom_scrollbars(scrollbars, window, cx)
                     .into_any()
             } else {
                 this.child(self.render_recent_history(cx)).into_any()

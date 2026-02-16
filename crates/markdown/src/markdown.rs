@@ -163,8 +163,8 @@ impl MarkdownStyle {
             base_text_style: text_style.clone(),
             syntax: cx.theme().syntax().clone(),
             selection_background_color: match font {
-                MarkdownFont::Agent => colors.agent_selection_background,
-                MarkdownFont::UserAgent => colors.agent_user_message_selection_background,
+                MarkdownFont::Agent => colors.clean_chat_output_selection,
+                MarkdownFont::UserAgent => colors.clean_chat_output_selection,
                 MarkdownFont::Editor => colors.element_selection_background,
             },
             code_block_overflow_x_scroll: true,
@@ -938,6 +938,21 @@ impl MarkdownElement {
                     markdown.selection.set_head(source_index, &rendered_text);
                     markdown.autoscroll_request = Some(source_index);
                     cx.notify();
+                } else if event.pressed_button == Some(MouseButton::Left)
+                    && hitbox.is_hovered(window)
+                {
+                    let source_index = match rendered_text.source_index_for_position(event.position)
+                    {
+                        Ok(ix) | Err(ix) => ix,
+                    };
+                    markdown.selection = Selection {
+                        start: source_index,
+                        end: source_index,
+                        reversed: false,
+                        pending: true,
+                        mode: SelectMode::Character,
+                    };
+                    cx.notify();
                 } else {
                     let is_hovering_link = hitbox.is_hovered(window)
                         && rendered_text.link_for_position(event.position).is_some();
@@ -1181,21 +1196,27 @@ impl Element for MarkdownElement {
                                     }
 
                                     parent_container.style().refine(&self.style.code_block);
-                                    
-                                    // Add terminal header for agent code blocks
+
+                                    // Add language header for agent code blocks,
+                                    // moving padding from the parent to the code body
+                                    // so the header sits flush against the container edges.
                                     let mut parent_container = parent_container;
-                                    if matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent) {
+                                    let is_agent_block = matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent);
+                                    if is_agent_block {
                                         let colors = cx.theme().colors();
                                         let language_name = match kind {
                                             CodeBlockKind::FencedLang(name) => name.to_string(),
                                             _ => "code".to_string(),
                                         };
-                                        
+
+                                        parent_container.style().padding = Default::default();
+
                                         parent_container = parent_container.child(
                                             h_flex()
-                                                .bg(colors.clean_surface_background)
-                                                .px_3()
+                                                .w_full()
+                                                .px_2()
                                                 .py_1()
+                                                .bg(colors.clean_chat_output_code_header)
                                                 .border_b_1()
                                                 .border_color(colors.agent_code_block_border)
                                                 .child(
@@ -1211,6 +1232,10 @@ impl Element for MarkdownElement {
                                     let code_block = div()
                                         .id(("code-block", range.start))
                                         .rounded_none() // Square corners inside the container
+                                        .when(is_agent_block, |this| {
+                                            this.p_2()
+                                                .bg(cx.theme().colors().clean_chat_output_code_body)
+                                        })
                                         .map(|mut code_block| {
                                             if let Some(scroll_handle) = scroll_handle.as_ref() {
                                                 code_block.style().restrict_scroll_to_axis =
@@ -1401,12 +1426,13 @@ impl Element for MarkdownElement {
                                     code,
                                     self.markdown.clone(),
                                 );
+                                let is_agent = matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent);
                                 el.child(
                                     h_flex()
                                         .w_4()
                                         .absolute()
-                                        .top_1p5()
-                                        .right_1p5()
+                                        .when(is_agent, |this| this.top_0p5().right_1())
+                                        .when(!is_agent, |this| this.top_1p5().right_1p5())
                                         .justify_end()
                                         .child(codeblock),
                                 )
@@ -1604,8 +1630,8 @@ impl Element for MarkdownElement {
         });
 
         self.paint_mouse_listeners(hitbox, &rendered_markdown.text, window, cx);
-        self.paint_selection(bounds, &rendered_markdown.text, window, cx);
         rendered_markdown.element.paint(window, cx);
+        self.paint_selection(bounds, &rendered_markdown.text, window, cx);
     }
 }
 

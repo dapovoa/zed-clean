@@ -4254,7 +4254,7 @@ impl GitPanel {
         let head_commit = active_repository.read(cx).head_commit.clone();
 
         let footer_size = px(32.);
-        let input_height = rems(cx.theme().colors().clean_git_commit_input_height).to_pixels(window.rem_size());
+        let input_height = rems(cx.theme().colors().clean_git_input_height).to_pixels(window.rem_size());
 
         let git_panel = cx.entity();
         let display_name = SharedString::from(Arc::from(
@@ -5005,23 +5005,23 @@ impl GitPanel {
 
         let handle = cx.weak_entity();
 
-        let selected_bg_alpha = 0.08;
         let marked_bg_alpha = 0.12;
         let state_opacity_step = 0.04;
 
         let info_color = cx.theme().status().info;
+        let selection_color = cx.theme().colors().clean_git_selection;
 
         let base_bg = match (selected, marked) {
-            (true, true) => info_color.alpha(selected_bg_alpha + marked_bg_alpha),
-            (true, false) => info_color.alpha(selected_bg_alpha),
+            (true, true) => selection_color.blend(info_color.alpha(marked_bg_alpha)),
+            (true, false) => selection_color,
             (false, true) => info_color.alpha(marked_bg_alpha),
             _ => cx.theme().colors().ghost_element_background,
         };
 
         let (hover_bg, active_bg) = if selected {
             (
-                info_color.alpha(selected_bg_alpha + state_opacity_step),
-                info_color.alpha(selected_bg_alpha + state_opacity_step * 2.0),
+                selection_color.blend(info_color.alpha(state_opacity_step)),
+                selection_color.blend(info_color.alpha(state_opacity_step * 2.0)),
             )
         } else {
             (
@@ -5170,17 +5170,17 @@ impl GitPanel {
         let checkbox_wrapper_id: ElementId =
             ElementId::Name(format!("dir_checkbox_wrapper_{}_{}", entry.name, ix).into());
 
-        let selected_bg_alpha = 0.08;
         let state_opacity_step = 0.04;
 
         let info_color = cx.theme().status().info;
         let colors = cx.theme().colors();
+        let selection_color = colors.clean_git_selection;
 
         let (base_bg, hover_bg, active_bg) = if selected {
             (
-                info_color.alpha(selected_bg_alpha),
-                info_color.alpha(selected_bg_alpha + state_opacity_step),
-                info_color.alpha(selected_bg_alpha + state_opacity_step * 2.0),
+                selection_color,
+                selection_color.blend(info_color.alpha(state_opacity_step)),
+                selection_color.blend(info_color.alpha(state_opacity_step * 2.0)),
             )
         } else {
             (
@@ -5526,7 +5526,8 @@ impl Render for GitPanel {
             .on_action(cx.listener(Self::toggle_tree_view))
             .size_full()
             .overflow_hidden()
-            .bg(cx.theme().colors().panel_background)
+            .bg(cx.theme().colors().clean_git_background)
+            .text_color(cx.theme().colors().clean_git_text)
             .child(
                 v_flex()
                     .size_full()

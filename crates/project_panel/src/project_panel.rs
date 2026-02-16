@@ -593,12 +593,12 @@ fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
         default: if is_sticky {
             colors.panel_overlay_background
         } else {
-            colors.panel_background
+            colors.clean_project_panel_background
         },
         hover: if is_sticky {
             colors.panel_overlay_hover
         } else {
-            colors.element_hover
+            colors.clean_project_panel_hover_background
         },
         focused: colors.panel_focused_border,
         drag_over: colors.drop_target_background,
@@ -5027,9 +5027,19 @@ impl ProjectPanel {
             }
         }
 
-        let filename_text_color = details.filename_text_color;
         let diagnostic_severity = details.diagnostic_severity;
         let item_colors = get_item_color(is_sticky, cx);
+
+        let theme_colors = cx.theme().colors();
+        let clean_normal_text = theme_colors.clean_project_panel_text;
+        let clean_hover_text = theme_colors.clean_project_panel_hover_text;
+        let clean_active_text = theme_colors.clean_project_panel_active_text;
+        let clean_base_text = if is_active || is_marked {
+            clean_active_text
+        } else {
+            clean_normal_text
+        };
+        let clean_text_color = Color::Custom(clean_base_text);
 
         let canonical_path = details
             .canonical_path
@@ -5471,23 +5481,12 @@ impl ProjectPanel {
                                 .child(
                                     Icon::new(IconName::ArrowUpRight)
                                         .size(IconSize::Indicator)
-                                        .color(filename_text_color),
+                                        .color(clean_text_color),
                                 )
                                 .into_any_element(),
                         )
                     })
                     .child(if let Some(icon) = &icon {
-                        let item_colors = cx.theme().colors();
-                        let normal_color = item_colors.clean_project_panel_text;
-                        let hover_color = item_colors.clean_project_panel_hover_text;
-                        let active_color = item_colors.clean_project_panel_active_text;
-
-                        let icon_base_color = if is_active || is_marked {
-                            active_color
-                        } else {
-                            normal_color
-                        };
-
                         if let Some((_, decoration_color)) =
                             entry_diagnostic_aware_icon_decoration_and_color(diagnostic_severity)
                         {
@@ -5497,7 +5496,7 @@ impl ProjectPanel {
                             div().child(
                                 DecoratedIcon::new(
                                     Icon::from_path(icon.clone())
-                                        .color(ui::Color::Custom(icon_base_color)),
+                                        .color(ui::Color::Custom(clean_base_text)),
                                     Some(
                                         IconDecoration::new(
                                             if kind.is_file() {
@@ -5525,14 +5524,8 @@ impl ProjectPanel {
                             )
                         } else {
                             h_flex().child(
-                                div()
-                                    .group_hover(GROUP_NAME, |style| {
-                                        style.text_color(hover_color)
-                                    })
-                                    .child(
-                                        Icon::from_path(icon.to_string())
-                                            .color(ui::Color::Custom(icon_base_color))
-                                    )
+                                Icon::from_path(icon.to_string())
+                                    .color(ui::Color::Custom(clean_base_text)),
                             )
                         }
                     } else if let Some((icon_name, color)) =
@@ -5566,38 +5559,25 @@ impl ProjectPanel {
                                         settings.bold_folder_labels,
                                         item_colors.drag_over,
                                         folded_directory_drag_target,
-                                        filename_text_color,
+                                        clean_text_color,
                                         cx,
                                     ))
                                 }
 
                                 None => {
-                                    let item_colors = cx.theme().colors();
-                                    
-                                    let normal_color = item_colors.clean_project_panel_text;
-                                    let hover_color = item_colors.clean_project_panel_hover_text;
-                                    let active_color = item_colors.clean_project_panel_active_text;
-
-                                    let base_color = if is_active || is_marked {
-                                        active_color
-                                    } else {
-                                        normal_color
-                                    };
-
                                     this.child(
                                         div()
-                                            .group_hover(GROUP_NAME, |style| {
-                                                style.text_color(hover_color)
-                                            })
-                                            .child(
-                                                Label::new(file_name)
-                                                    .single_line()
-                                                    .color(ui::Color::Custom(base_color))
-                                                    .when(
-                                                        settings.bold_folder_labels && kind.is_dir(),
-                                                        |this| this.weight(FontWeight::SEMIBOLD),
-                                                    ),
+                                            .text_ui(cx)
+                                            .text_color(clean_base_text)
+                                            .whitespace_nowrap()
+                                            .when(
+                                                settings.bold_folder_labels && kind.is_dir(),
+                                                |this| this.font_weight(FontWeight::SEMIBOLD),
                                             )
+                                            .group_hover(GROUP_NAME, |style| {
+                                                style.text_color(clean_hover_text)
+                                            })
+                                            .child(file_name)
                                             .into_any_element(),
                                     )
                                 }
@@ -6322,6 +6302,7 @@ impl Render for ProjectPanel {
                 })
                 .size_full()
                 .relative()
+                .bg(cx.theme().colors().clean_project_panel_background)
                 .on_modifiers_changed(cx.listener(
                     |this, event: &ModifiersChangedEvent, window, cx| {
                         this.refresh_drag_cursor_style(&event.modifiers, window, cx);

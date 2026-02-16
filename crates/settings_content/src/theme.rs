@@ -1118,36 +1118,32 @@ pub struct ThemeColorsContent {
     #[serde(rename = "project_panel.item.active_foreground")]
     pub project_panel_item_active_foreground: Option<String>,
 
-    /// Clean mode background color.
-    #[serde(rename = "clean.background")]
-    pub clean_background: Option<String>,
+    /// Clean mode UI background color.
+    #[serde(rename = "clean.ui.background")]
+    pub clean_ui_background: Option<String>,
 
-    /// Clean mode surface background color.
-    #[serde(rename = "clean.surface_background")]
-    pub clean_surface_background: Option<String>,
+    /// Clean mode UI border color.
+    #[serde(rename = "clean.ui.border")]
+    pub clean_ui_border: Option<String>,
 
-    /// Clean mode elevated surface background color.
-    #[serde(rename = "clean.elevated_surface_background")]
-    pub clean_elevated_surface_background: Option<String>,
+    /// Clean mode UI scrollbar thumb color.
+    #[serde(rename = "clean.ui.scrollbar_thumb")]
+    pub clean_ui_scrollbar_thumb: Option<String>,
 
-    /// Clean mode border color.
-    #[serde(rename = "clean.border")]
-    pub clean_border: Option<String>,
+    /// Clean mode UI scrollbar thumb hover color.
+    #[serde(rename = "clean.ui.scrollbar_thumb_hover")]
+    pub clean_ui_scrollbar_thumb_hover: Option<String>,
+    
+    /// Clean mode project panel background color.
+    #[serde(rename = "clean.project_panel.background")]
+    pub clean_project_panel_background: Option<String>,
 
-    /// Clean mode editor background color.
-    #[serde(rename = "clean.editor_background")]
-    pub clean_editor_background: Option<String>,
-
-    /// Clean mode terminal background color.
-    #[serde(rename = "clean.terminal_background")]
-    pub clean_terminal_background: Option<String>,
-
-    /// Clean mode selection color.
-    #[serde(rename = "clean.selection")]
-    pub clean_selection: Option<String>,
+    /// Clean mode project panel item hover background color.
+    #[serde(rename = "clean.project_panel.hover_background")]
+    pub clean_project_panel_hover_background: Option<String>,
 
     /// Clean mode project panel item text color.
-    #[serde(rename = "clean.project_panel.item_text")]
+    #[serde(rename = "clean.project_panel.text")]
     pub clean_project_panel_text: Option<String>,
 
     /// Clean mode project panel hover text color.
@@ -1159,12 +1155,144 @@ pub struct ThemeColorsContent {
     pub clean_project_panel_active_text: Option<String>,
 
     /// Clean mode chat input height in rems.
-    #[serde(rename = "clean.chat_input_height")]
+    #[serde(rename = "clean.chat_input.height")]
     pub clean_chat_input_height: Option<f32>,
 
-    /// Clean mode git commit input height in rems.
-    #[serde(rename = "clean.git_commit_input_height")]
-    pub clean_git_commit_input_height: Option<f32>,
+    /// Clean mode chat input background color.
+    #[serde(rename = "clean.chat_input.background")]
+    pub clean_chat_input_background: Option<String>,
+
+    /// Clean mode chat input text color.
+    #[serde(rename = "clean.chat_input.text")]
+    pub clean_chat_input_text: Option<String>,
+
+    /// Clean mode chat input border color.
+    #[serde(rename = "clean.chat_input.border")]
+    pub clean_chat_input_border: Option<String>,
+    
+    /// Clean mode chat output text color.
+    #[serde(rename = "clean.chat_output.text")]
+    pub clean_chat_output_text: Option<String>,
+
+    /// Clean mode chat output selection background color.
+    #[serde(rename = "clean.chat_output.selection")]
+    pub clean_chat_output_selection: Option<String>,
+
+    /// Clean mode chat output user bubble background color.
+    #[serde(rename = "clean.chat_output.user_bubble_bg")]
+    pub clean_chat_output_user_bubble_bg: Option<String>,
+
+    /// Clean mode chat output user bubble text color.
+    #[serde(rename = "clean.chat_output.user_bubble_text")]
+    pub clean_chat_output_user_bubble_text: Option<String>,
+
+    /// Clean mode chat output user bubble border color.
+    #[serde(rename = "clean.chat_output.user_bubble_border")]
+    pub clean_chat_output_user_bubble_border: Option<String>,
+
+    /// Clean mode chat output run command header color.
+    #[serde(rename = "clean.chat_output.run_command_header")]
+    pub clean_chat_output_run_command_header: Option<String>,
+
+    /// Clean mode chat output run command body color.
+    #[serde(rename = "clean.chat_output.run_command_body")]
+    pub clean_chat_output_run_command_body: Option<String>,
+
+    /// Clean mode chat output run command text color.
+    #[serde(rename = "clean.chat_output.run_command_text")]
+    pub clean_chat_output_run_command_text: Option<String>,
+
+    /// Clean mode chat output terminal header color.
+    #[serde(rename = "clean.chat_output.terminal_header")]
+    pub clean_chat_output_terminal_header: Option<String>,
+
+    /// Clean mode chat output terminal body color.
+    #[serde(rename = "clean.chat_output.terminal_body")]
+    pub clean_chat_output_terminal_body: Option<String>,
+
+    /// Clean mode chat output terminal text color.
+    #[serde(rename = "clean.chat_output.terminal_text")]
+    pub clean_chat_output_terminal_text: Option<String>,
+
+    /// Clean mode chat output edit header color.
+    #[serde(rename = "clean.chat_output.edit_header")]
+    pub clean_chat_output_edit_header: Option<String>,
+
+    /// Clean mode chat output edit body color.
+    #[serde(rename = "clean.chat_output.edit_body")]
+    pub clean_chat_output_edit_body: Option<String>,
+
+    /// Clean mode chat output code header color.
+    #[serde(rename = "clean.chat_output.code_header")]
+    pub clean_chat_output_code_header: Option<String>,
+
+    /// Clean mode chat output code body color.
+    #[serde(rename = "clean.chat_output.code_body")]
+    pub clean_chat_output_code_body: Option<String>,
+
+    /// Clean mode chat output thinking header color.
+    #[serde(rename = "clean.chat_output.thinking_header")]
+    pub clean_chat_output_thinking_header: Option<String>,
+
+    /// Clean mode chat output thinking body color.
+    #[serde(rename = "clean.chat_output.thinking_body")]
+    pub clean_chat_output_thinking_body: Option<String>,
+
+    /// Clean mode chat output indent guide color.
+    #[serde(rename = "clean.chat_output.indent_guide")]
+    pub clean_chat_output_indent_guide: Option<String>,
+
+    /// Clean mode chat output background color.
+    #[serde(rename = "clean.chat_output.background")]
+    pub clean_chat_output_background: Option<String>,
+
+    /// Clean mode chat output scrollbar thumb color.
+    #[serde(rename = "clean.chat_output.scrollbar_thumb")]
+    pub clean_chat_output_scrollbar_thumb: Option<String>,
+
+    /// Clean mode chat output scrollbar thumb hover color.
+    #[serde(rename = "clean.chat_output.scrollbar_thumb_hover")]
+    pub clean_chat_output_scrollbar_thumb_hover: Option<String>,
+
+    /// Clean mode chat output scrollbar thumb active/dragging color.
+    #[serde(rename = "clean.chat_output.scrollbar_thumb_active")]
+    pub clean_chat_output_scrollbar_thumb_active: Option<String>,
+
+    /// Clean mode git input height in rems.
+    #[serde(rename = "clean.git.input_height")]
+    pub clean_git_input_height: Option<f32>,
+
+    /// Clean mode git background color.
+    #[serde(rename = "clean.git.background")]
+    pub clean_git_background: Option<String>,
+
+    /// Clean mode git text color.
+    #[serde(rename = "clean.git.text")]
+    pub clean_git_text: Option<String>,
+
+    /// Clean mode git selection background color.
+    #[serde(rename = "clean.git.selection")]
+    pub clean_git_selection: Option<String>,
+    
+    /// Clean mode editor background color.
+    #[serde(rename = "clean.editor.background")]
+    pub clean_editor_background: Option<String>,
+
+    /// Clean mode editor selection background color.
+    #[serde(rename = "clean.editor.selection")]
+    pub clean_editor_selection: Option<String>,
+    
+    /// Clean mode terminal background color.
+    #[serde(rename = "clean.terminal.background")]
+    pub clean_terminal_background: Option<String>,
+    
+    /// Clean mode terminal foreground color.
+    #[serde(rename = "clean.terminal.foreground")]
+    pub clean_terminal_foreground: Option<String>,
+    
+    /// Clean mode terminal selection color.
+    #[serde(rename = "clean.terminal.selection")]
+    pub clean_terminal_selection: Option<String>,
 
     /// Agent user message bubble font size in rems. Default: 0.75 (text_xs).
     #[serde(rename = "agent.user_message.font_size")]
