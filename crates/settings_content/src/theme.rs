@@ -1178,6 +1178,10 @@ pub struct ThemeColorsContent {
     #[serde(rename = "clean.chat_output.selection")]
     pub clean_chat_output_selection: Option<String>,
 
+    /// Clean mode chat output user selection background color.
+    #[serde(rename = "clean.chat_output.user_selection")]
+    pub clean_chat_output_user_selection: Option<String>,
+
     /// Clean mode chat output user bubble background color.
     #[serde(rename = "clean.chat_output.user_bubble_bg")]
     pub clean_chat_output_user_bubble_bg: Option<String>,

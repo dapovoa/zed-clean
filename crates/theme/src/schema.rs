@@ -933,6 +933,10 @@ pub fn theme_colors_refinement(
             .clean_chat_output_selection
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
+        clean_chat_output_user_selection: this
+            .clean_chat_output_user_selection
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
         clean_chat_output_user_bubble_bg: this
             .clean_chat_output_user_bubble_bg
             .as_ref()

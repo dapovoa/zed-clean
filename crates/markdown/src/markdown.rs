@@ -164,7 +164,7 @@ impl MarkdownStyle {
             syntax: cx.theme().syntax().clone(),
             selection_background_color: match font {
                 MarkdownFont::Agent => colors.clean_chat_output_selection,
-                MarkdownFont::UserAgent => colors.clean_chat_output_selection,
+                MarkdownFont::UserAgent => colors.clean_chat_output_user_selection,
                 MarkdownFont::Editor => colors.element_selection_background,
             },
             code_block_overflow_x_scroll: true,

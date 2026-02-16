@@ -26,7 +26,7 @@ use gpui::{
     AppContext, ClipboardEntry, Context, Entity, EventEmitter, FocusHandle, Focusable, Hsla,
     ImageFormat, KeyContext, SharedString, Subscription, Task, TextStyle, WeakEntity,
 };
-use language::{Buffer, Language, language_settings::InlayHintKind};
+use language::{Buffer, Language, Selection, SelectionGoal, language_settings::InlayHintKind};
 use project::{CompletionIntent, InlayHint, InlayHintLabel, InlayId, Project, Worktree};
 use prompt_store::PromptStore;
 use rope::Point;
@@ -179,7 +179,19 @@ impl MessageEditor {
             cx.emit(MessageEditorEvent::Focus)
         })
         .detach();
-        cx.on_focus_out(&editor.focus_handle(cx), window, |_, _, _, cx| {
+        cx.on_focus_out(&editor.focus_handle(cx), window, |this, _, window, cx| {
+            this.editor.update(cx, |editor, cx| {
+                editor.change_selections(Default::default(), window, cx, |s| {
+                    let newest = s.newest_anchor().clone();
+                    s.select_anchors(vec![Selection {
+                        id: newest.id,
+                        start: newest.end,
+                        end: newest.end,
+                        reversed: false,
+                        goal: SelectionGoal::None,
+                    }]);
+                });
+            });
             cx.emit(MessageEditorEvent::LostFocus)
         })
         .detach();
@@ -1344,7 +1356,7 @@ impl Render for MessageEditor {
                 };
 
                 let mut local_player = cx.theme().players().local();
-                local_player.selection = cx.theme().colors().agent_user_message_selection_background;
+                local_player.selection = cx.theme().colors().clean_chat_output_user_selection;
 
                 v_flex().size_full().flex_1().child(
                     EditorElement::new(

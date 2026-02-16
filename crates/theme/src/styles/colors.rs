@@ -384,6 +384,8 @@ pub struct ThemeColors {
     pub clean_chat_output_text: Hsla,
     /// Chat output selection background color for the 'clean' theme.
     pub clean_chat_output_selection: Hsla,
+    /// Chat output user selection background color for the 'clean' theme.
+    pub clean_chat_output_user_selection: Hsla,
     /// Chat output user bubble background color for the 'clean' theme.
     pub clean_chat_output_user_bubble_bg: Hsla,
     /// Chat output user bubble text color for the 'clean' theme.
@@ -594,6 +596,7 @@ pub enum ThemeColorField {
     CleanChatInputBorder,
     CleanChatOutputText,
     CleanChatOutputSelection,
+    CleanChatOutputUserSelection,
     CleanChatOutputUserBubbleBg,
     CleanChatOutputUserBubbleText,
     CleanChatOutputUserBubbleBorder,
@@ -774,6 +777,7 @@ impl ThemeColors {
             ThemeColorField::CleanChatInputBorder => self.clean_chat_input_border,
             ThemeColorField::CleanChatOutputText => self.clean_chat_output_text,
             ThemeColorField::CleanChatOutputSelection => self.clean_chat_output_selection,
+            ThemeColorField::CleanChatOutputUserSelection => self.clean_chat_output_user_selection,
             ThemeColorField::CleanChatOutputUserBubbleBg => self.clean_chat_output_user_bubble_bg,
             ThemeColorField::CleanChatOutputUserBubbleText => self.clean_chat_output_user_bubble_text,
             ThemeColorField::CleanChatOutputUserBubbleBorder => self.clean_chat_output_user_bubble_border,

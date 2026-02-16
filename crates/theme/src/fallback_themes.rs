@@ -289,8 +289,10 @@ pub(crate) fn zed_default_dark() -> Theme {
                 clean_chat_input_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 clean_chat_input_border: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
                 clean_chat_output_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
-                clean_chat_output_selection: player.local().selection.alpha(0.25),
-                clean_chat_output_user_bubble_bg: editor,
+                        clean_chat_output_selection: player.local().selection.alpha(0.25),
+                        clean_chat_output_user_selection: player.local().selection.alpha(0.25),
+                        clean_chat_output_user_bubble_bg: editor,
+                
                 clean_chat_output_user_bubble_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 clean_chat_output_user_bubble_border: hsla(225. / 360., 13. / 100., 12. / 100., 1.),
                 clean_chat_output_run_command_header: bg,
