@@ -56,10 +56,10 @@ pub(crate) fn apply_theme_color_defaults(
 }
 
 pub(crate) fn zed_default_dark() -> Theme {
-    let bg = hsla(215. / 360., 12. / 100., 15. / 100., 1.);
-    let editor = hsla(220. / 360., 12. / 100., 18. / 100., 1.);
-    let elevated_surface = hsla(225. / 360., 12. / 100., 17. / 100., 1.);
-    let hover = hsla(225.0 / 360., 11.8 / 100., 26.7 / 100., 1.0);
+    let bg = hsla(230. / 360., 18. / 100., 13. / 100., 1.); // Tokyo Night Night
+    let editor = hsla(230. / 360., 18. / 100., 13. / 100., 1.);
+    let elevated_surface = hsla(230. / 360., 18. / 100., 15. / 100., 1.);
+    let hover = hsla(230. / 360., 18. / 100., 20. / 100., 1.);
 
     let blue = hsla(207.8 / 360., 81. / 100., 66. / 100., 1.0);
     let gray = hsla(218.8 / 360., 10. / 100., 40. / 100., 1.0);
@@ -111,7 +111,7 @@ pub(crate) fn zed_default_dark() -> Theme {
             system: SystemColors::default(),
             accents: AccentColors(vec![blue, orange, purple, teal, red, green, yellow]),
             colors: ThemeColors {
-                border: hsla(225. / 360., 13. / 100., 12. / 100., 1.),
+                border: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
                 border_variant: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
                 border_focused: hsla(223. / 360., 78. / 100., 65. / 100., 1.),
                 border_selected: hsla(222.6 / 360., 77.5 / 100., 65.1 / 100., 1.0),
@@ -120,18 +120,18 @@ pub(crate) fn zed_default_dark() -> Theme {
                 elevated_surface_background: elevated_surface,
                 surface_background: bg,
                 background: bg,
-                element_background: hsla(223.0 / 360., 13. / 100., 21. / 100., 1.0),
+                element_background: bg,
                 element_hover: hover,
                 element_active: hsla(220.0 / 360., 11.8 / 100., 20.0 / 100., 1.0),
-                element_selected: hsla(224.0 / 360., 11.3 / 100., 26.1 / 100., 1.0),
+                element_selected: bg,
                 element_disabled: SystemColors::default().transparent,
                 element_selection_background: player.local().selection.alpha(0.25),
                 drop_target_background: hsla(220.0 / 360., 8.3 / 100., 21.4 / 100., 1.0),
-                drop_target_border: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
+                drop_target_border: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
                 ghost_element_background: SystemColors::default().transparent,
                 ghost_element_hover: hover,
                 ghost_element_active: hsla(220.0 / 360., 11.8 / 100., 20.0 / 100., 1.0),
-                ghost_element_selected: hsla(224.0 / 360., 11.3 / 100., 26.1 / 100., 1.0),
+                ghost_element_selected: bg,
                 ghost_element_disabled: SystemColors::default().transparent,
                 text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 text_muted: hsla(218.0 / 360., 7. / 100., 46. / 100., 1.0),
@@ -148,10 +148,10 @@ pub(crate) fn zed_default_dark() -> Theme {
                 status_bar_background: bg,
                 title_bar_background: bg,
                 title_bar_inactive_background: bg,
-                toolbar_background: editor,
+                toolbar_background: bg,
                 tab_bar_background: bg,
                 tab_inactive_background: bg,
-                tab_active_background: editor,
+                tab_active_background: bg,
                 search_match_background: bg,
                 search_active_match_background: bg,
 
@@ -275,15 +275,13 @@ pub(crate) fn zed_default_dark() -> Theme {
                 agent_code_block_border: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
                 agent_user_message_foreground: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 agent_user_message_selection_background: player.local().selection.alpha(0.25),
-                clean_ui_background: bg,
-                clean_ui_border: hsla(228. / 360., 8. / 100., 25. / 100., 1.),
-                clean_ui_scrollbar_thumb: hsla(225.0 / 360., 11.8 / 100., 26.7 / 100., 1.0),
-                clean_ui_scrollbar_thumb_hover: hover,
                 clean_project_panel_background: bg,
                 clean_project_panel_hover_background: hsla(0., 0., 0., 0.0),
                 clean_project_panel_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 clean_project_panel_hover_text: blue,
                 clean_project_panel_active_text: blue,
+                clean_project_panel_edited_text: hsla(46. / 360., 50. / 100., 60. / 100., 1.0),
+                clean_project_panel_active_background: hsla(225.0 / 360., 11.8 / 100., 26.7 / 100., 1.0),
                 clean_chat_input_height: 10.0,
                 clean_chat_input_background: editor,
                 clean_chat_input_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
@@ -316,11 +314,6 @@ pub(crate) fn zed_default_dark() -> Theme {
                 clean_git_background: bg,
                 clean_git_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 clean_git_selection: player.local().selection.alpha(0.25),
-                clean_editor_background: editor,
-                clean_editor_selection: player.local().selection.alpha(0.25),
-                clean_terminal_background: bg,
-                clean_terminal_foreground: crate::white().dark().step_12(),
-                clean_terminal_selection: player.local().selection.alpha(0.25),
                 agent_user_message_font_size: 0.75,
                 agent_user_message_padding_y: 0.75,
                 agent_user_message_padding_x: 0.5,

@@ -141,8 +141,15 @@ impl RenderOnce for Tab {
             }
         };
 
+        let active_border_color = cx.theme().colors().tab_active_background;
+        let tab_bg = if self.selected {
+            cx.theme().colors().tab_bar_background
+        } else {
+            tab_bg
+        };
         self.div
             .h(Tab::container_height(cx))
+            .relative()
             .bg(tab_bg)
             .border_color(cx.theme().colors().border)
             .map(|this| match self.position {
@@ -163,6 +170,17 @@ impl RenderOnce for Tab {
                 TabPosition::Middle(Ordering::Equal) => this.border_l_1().border_r_1().pb_px(),
                 TabPosition::Middle(Ordering::Less) => this.border_l_1().pr_px().border_b_1(),
                 TabPosition::Middle(Ordering::Greater) => this.border_r_1().pl_px().border_b_1(),
+            })
+            .when(self.selected, |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .bottom_0()
+                        .left_0()
+                        .right_0()
+                        .h(px(2.))
+                        .bg(active_border_color)
+                )
             })
             .cursor_pointer()
             .child(

@@ -351,15 +351,6 @@ pub struct ThemeColors {
     // ===
     // Clean (Custom project namespace - Hierarchical)
     // ===
-    /// UI background color for the 'clean' theme.
-    pub clean_ui_background: Hsla,
-    /// UI border color for the 'clean' theme.
-    pub clean_ui_border: Hsla,
-    /// Scrollbar thumb color for the 'clean' theme.
-    pub clean_ui_scrollbar_thumb: Hsla,
-    /// Scrollbar thumb hover color for the 'clean' theme.
-    pub clean_ui_scrollbar_thumb_hover: Hsla,
-    
     /// Project panel background color for the 'clean' theme.
     pub clean_project_panel_background: Hsla,
     /// Project panel item hover background color for the 'clean' theme.
@@ -370,6 +361,10 @@ pub struct ThemeColors {
     pub clean_project_panel_hover_text: Hsla,
     /// Project panel item active text color for the 'clean' theme.
     pub clean_project_panel_active_text: Hsla,
+    /// Project panel item edited (git modified) text color for the 'clean' theme.
+    pub clean_project_panel_edited_text: Hsla,
+    /// Project panel item active background color for the 'clean' theme.
+    pub clean_project_panel_active_background: Hsla,
     
     /// Height of the chat input area in rems.
     pub clean_chat_input_height: f32,
@@ -435,21 +430,7 @@ pub struct ThemeColors {
     pub clean_git_text: Hsla,
     /// Git selection background color for the 'clean' theme.
     pub clean_git_selection: Hsla,
-    
-    /// Editor background color for the 'clean' theme.
-    pub clean_editor_background: Hsla,
-    /// Editor selection background color for the 'clean' theme.
-    pub clean_editor_selection: Hsla,
-    
-    /// Terminal background color for the 'clean' theme.
-    pub clean_terminal_background: Hsla,
-    
-    /// Terminal foreground color for the 'clean' theme.
-    pub clean_terminal_foreground: Hsla,
-    
-    /// Terminal selection color for the 'clean' theme.
-    pub clean_terminal_selection: Hsla,
-    
+
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
     /// Vertical padding for user message bubbles in the agent chat, in rems.
@@ -582,15 +563,13 @@ pub enum ThemeColorField {
     AgentCodeBlockBorder,
     AgentUserMessageForeground,
     AgentUserMessageSelectionBackground,
-    CleanUiBackground,
-    CleanUiBorder,
-    CleanUiScrollbarThumb,
-    CleanUiScrollbarThumbHover,
     CleanProjectPanelBackground,
     CleanProjectPanelHoverBackground,
     CleanProjectPanelText,
     CleanProjectPanelHoverText,
     CleanProjectPanelActiveText,
+    CleanProjectPanelEditedText,
+    CleanProjectPanelActiveBackground,
     CleanChatInputBackground,
     CleanChatInputText,
     CleanChatInputBorder,
@@ -620,11 +599,6 @@ pub enum ThemeColorField {
     CleanGitBackground,
     CleanGitText,
     CleanGitSelection,
-    CleanEditorBackground,
-    CleanEditorSelection,
-    CleanTerminalBackground,
-    CleanTerminalForeground,
-    CleanTerminalSelection,
 }
 
 impl ThemeColors {
@@ -763,15 +737,13 @@ impl ThemeColors {
             ThemeColorField::AgentUserMessageSelectionBackground => {
                 self.agent_user_message_selection_background
             }
-            ThemeColorField::CleanUiBackground => self.clean_ui_background,
-            ThemeColorField::CleanUiBorder => self.clean_ui_border,
-            ThemeColorField::CleanUiScrollbarThumb => self.clean_ui_scrollbar_thumb,
-            ThemeColorField::CleanUiScrollbarThumbHover => self.clean_ui_scrollbar_thumb_hover,
             ThemeColorField::CleanProjectPanelBackground => self.clean_project_panel_background,
             ThemeColorField::CleanProjectPanelHoverBackground => self.clean_project_panel_hover_background,
             ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,
             ThemeColorField::CleanProjectPanelHoverText => self.clean_project_panel_hover_text,
             ThemeColorField::CleanProjectPanelActiveText => self.clean_project_panel_active_text,
+            ThemeColorField::CleanProjectPanelEditedText => self.clean_project_panel_edited_text,
+            ThemeColorField::CleanProjectPanelActiveBackground => self.clean_project_panel_active_background,
             ThemeColorField::CleanChatInputBackground => self.clean_chat_input_background,
             ThemeColorField::CleanChatInputText => self.clean_chat_input_text,
             ThemeColorField::CleanChatInputBorder => self.clean_chat_input_border,
@@ -807,11 +779,6 @@ impl ThemeColors {
             ThemeColorField::CleanGitBackground => self.clean_git_background,
             ThemeColorField::CleanGitText => self.clean_git_text,
             ThemeColorField::CleanGitSelection => self.clean_git_selection,
-            ThemeColorField::CleanEditorBackground => self.clean_editor_background,
-            ThemeColorField::CleanEditorSelection => self.clean_editor_selection,
-            ThemeColorField::CleanTerminalBackground => self.clean_terminal_background,
-            ThemeColorField::CleanTerminalForeground => self.clean_terminal_foreground,
-            ThemeColorField::CleanTerminalSelection => self.clean_terminal_selection,
         }
     }
 

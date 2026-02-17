@@ -458,7 +458,10 @@ pub fn theme_colors_refinement(
             .and_then(|color| try_parse_color(color).ok()),
         search_match_background: search_match_background,
         search_active_match_background: search_active_match_background,
-        panel_background,
+        panel_background: this
+            .panel_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
         panel_focused_border: this
             .panel_focused_border
             .as_ref()
@@ -876,22 +879,6 @@ pub fn theme_colors_refinement(
             .agent_user_message_selection_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        clean_ui_background: this
-            .clean_ui_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_ui_border: this
-            .clean_ui_border
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_ui_scrollbar_thumb: this
-            .clean_ui_scrollbar_thumb
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_ui_scrollbar_thumb_hover: this
-            .clean_ui_scrollbar_thumb_hover
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
         clean_project_panel_background: this
             .clean_project_panel_background
             .as_ref()
@@ -910,6 +897,14 @@ pub fn theme_colors_refinement(
             .and_then(|color| try_parse_color(color).ok()),
         clean_project_panel_active_text: this
             .clean_project_panel_active_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_project_panel_edited_text: this
+            .clean_project_panel_edited_text
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok()),
+        clean_project_panel_active_background: this
+            .clean_project_panel_active_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
         clean_chat_input_height: Some(this.clean_chat_input_height.unwrap_or(10.0)),
@@ -1028,26 +1023,6 @@ pub fn theme_colors_refinement(
             .and_then(|color| try_parse_color(color).ok()),
         clean_git_selection: this
             .clean_git_selection
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_editor_background: this
-            .clean_editor_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_editor_selection: this
-            .clean_editor_selection
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_terminal_background: this
-            .clean_terminal_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_terminal_foreground: this
-            .clean_terminal_foreground
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_terminal_selection: this
-            .clean_terminal_selection
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
         agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),

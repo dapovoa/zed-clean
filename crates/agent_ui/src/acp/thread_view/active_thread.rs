@@ -3709,7 +3709,6 @@ impl AcpThreadView {
                 .relative()
                 .w_full()
                 .pl_5()
-                .bg(cx.theme().colors().panel_background.opacity(0.2))
                 .child(
                     div()
                         .absolute()
@@ -3766,7 +3765,7 @@ impl AcpThreadView {
                 .size_full()
                 .absolute()
                 .inset_0()
-                .bg(cx.theme().colors().panel_background)
+                .bg(cx.theme().colors().background)
                 .opacity(0.8)
                 .block_mouse_except_scroll()
                 .on_click(cx.listener(Self::cancel_editing));

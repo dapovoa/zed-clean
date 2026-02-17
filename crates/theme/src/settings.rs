@@ -578,40 +578,7 @@ impl ThemeSettings {
             &status_color_refinement,
         );
 
-        let mut final_colors = colors_refinement.clone();
-
-        // Semantic mappings for component-specific global colors (these don't pollute unrelated UI)
-        if let Some(clean_ui_bg) = colors_refinement.clean_ui_background {
-            final_colors.background = final_colors.background.or(Some(clean_ui_bg));
-        }
-        if let Some(clean_ui_border) = colors_refinement.clean_ui_border {
-            final_colors.border = final_colors.border.or(Some(clean_ui_border));
-            final_colors.border_variant = final_colors.border_variant.or(Some(clean_ui_border));
-        }
-        if let Some(clean_editor_bg) = colors_refinement.clean_editor_background {
-            final_colors.editor_background = final_colors.editor_background.or(Some(clean_editor_bg));
-            final_colors.editor_gutter_background = final_colors.editor_gutter_background.or(Some(clean_editor_bg));
-        }
-        if let Some(clean_selection) = colors_refinement.clean_editor_selection {
-            final_colors.element_selection_background = final_colors.element_selection_background.or(Some(clean_selection));
-        }
-        if let Some(clean_terminal_bg) = colors_refinement.clean_terminal_background {
-            final_colors.terminal_background = final_colors.terminal_background.or(Some(clean_terminal_bg));
-        }
-        if let Some(clean_terminal_fg) = colors_refinement.clean_terminal_foreground {
-            final_colors.terminal_foreground = final_colors.terminal_foreground.or(Some(clean_terminal_fg));
-        }
-        if let Some(clean_terminal_selection) = colors_refinement.clean_terminal_selection {
-            final_colors.terminal_ansi_blue = final_colors.terminal_ansi_blue.or(Some(clean_terminal_selection));
-        }
-        if let Some(clean_ui_scrollbar) = colors_refinement.clean_ui_scrollbar_thumb {
-            final_colors.scrollbar_thumb_background = final_colors.scrollbar_thumb_background.or(Some(clean_ui_scrollbar));
-        }
-        if let Some(clean_ui_scrollbar_hover) = colors_refinement.clean_ui_scrollbar_thumb_hover {
-            final_colors.scrollbar_thumb_hover_background = final_colors.scrollbar_thumb_hover_background.or(Some(clean_ui_scrollbar_hover));
-        }
-
-        base_theme.styles.colors.refine(&final_colors);
+        base_theme.styles.colors.refine(&colors_refinement);
         base_theme.styles.status.refine(&status_color_refinement);
         base_theme.styles.player.merge(&theme_overrides.players);
         base_theme.styles.accents.merge(&theme_overrides.accents);

@@ -583,7 +583,6 @@ struct ItemColors {
     default: Hsla,
     hover: Hsla,
     drag_over: Hsla,
-    focused: Hsla,
 }
 
 fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
@@ -600,7 +599,6 @@ fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
         } else {
             colors.clean_project_panel_hover_background
         },
-        focused: colors.panel_focused_border,
         drag_over: colors.drop_target_background,
     }
 }
@@ -5034,12 +5032,20 @@ impl ProjectPanel {
         let clean_normal_text = theme_colors.clean_project_panel_text;
         let clean_hover_text = theme_colors.clean_project_panel_hover_text;
         let clean_active_text = theme_colors.clean_project_panel_active_text;
+        let clean_edited_text = theme_colors.clean_project_panel_edited_text;
+        let clean_active_bg = theme_colors.clean_project_panel_active_background;
+
+        let has_git_changes = !matches!(details.filename_text_color, ui::Color::Default | ui::Color::Muted);
+
         let clean_base_text = if is_active || is_marked {
             clean_active_text
+        } else if has_git_changes {
+            clean_edited_text
         } else {
             clean_normal_text
         };
-        let clean_text_color = Color::Custom(clean_base_text);
+
+        let filename_text_color = clean_base_text;
 
         let canonical_path = details
             .canonical_path
@@ -5076,24 +5082,6 @@ impl ProjectPanel {
             }
         } else {
             None
-        };
-
-        let border_color = if show_editor {
-            match validation_color_and_message {
-                Some((color, _)) => color,
-                None => item_colors.focused,
-            }
-        } else {
-            bg_color
-        };
-
-        let border_hover_color = if show_editor {
-            match validation_color_and_message {
-                Some((color, _)) => color,
-                None => item_colors.focused,
-            }
-        } else {
-            bg_hover_color
         };
 
         let folded_directory_drag_target = self.folded_directory_drag_target;
@@ -5136,14 +5124,18 @@ impl ProjectPanel {
             .group(GROUP_NAME)
             .cursor_pointer()
             .rounded_none()
-            .bg(bg_color)
-            .border_1()
-            .border_r_2()
-            .border_color(border_color)
+            .text_color(clean_base_text)
+            .map(|this| {
+                if is_active {
+                    this.bg(clean_active_bg)
+                } else {
+                    this.bg(cx.theme().colors().clean_project_panel_background)
+                }
+            })
             .hover(|style| {
                 style
-                    .bg(bg_hover_color)
-                    .border_color(border_hover_color)
+                    .bg(cx.theme().colors().clean_project_panel_hover_background)
+                    .text_color(clean_hover_text)
             })
             .when(is_sticky, |this| this.block_mouse_except_scroll())
             .when(!is_sticky, |this| {
@@ -5463,6 +5455,7 @@ impl ProjectPanel {
             )
             .child(
                 ListItem::new(id)
+                    .group_name(GROUP_NAME)
                     .indent_level(depth)
                     .indent_step_size(px(settings.indent_size))
                     .spacing(match settings.entry_spacing {
@@ -5470,6 +5463,7 @@ impl ProjectPanel {
                         ProjectPanelEntrySpacing::Standard => ListItemSpacing::ExtraDense,
                     })
                     .selectable(false)
+                    .toggle_state(false) // Disable built-in selection visuals
                     .when_some(canonical_path, |this, path| {
                         this.end_slot::<AnyElement>(
                             div()
@@ -5481,7 +5475,7 @@ impl ProjectPanel {
                                 .child(
                                     Icon::new(IconName::ArrowUpRight)
                                         .size(IconSize::Indicator)
-                                        .color(clean_text_color),
+                                        .color(ui::Color::Custom(filename_text_color)),
                                 )
                                 .into_any_element(),
                         )
@@ -5559,7 +5553,6 @@ impl ProjectPanel {
                                         settings.bold_folder_labels,
                                         item_colors.drag_over,
                                         folded_directory_drag_target,
-                                        clean_text_color,
                                         cx,
                                     ))
                                 }
@@ -5567,18 +5560,12 @@ impl ProjectPanel {
                                 None => {
                                     this.child(
                                         div()
-                                            .text_ui(cx)
-                                            .text_color(clean_base_text)
                                             .whitespace_nowrap()
                                             .when(
                                                 settings.bold_folder_labels && kind.is_dir(),
                                                 |this| this.font_weight(FontWeight::SEMIBOLD),
                                             )
-                                            .group_hover(GROUP_NAME, |style| {
-                                                style.text_color(clean_hover_text)
-                                            })
                                             .child(file_name)
-                                            .into_any_element(),
                                     )
                                 }
                             })
@@ -5635,7 +5622,6 @@ impl ProjectPanel {
         bold_folder_labels: bool,
         drag_over_color: Hsla,
         folded_directory_drag_target: Option<FoldedDirectoryDragTarget>,
-        filename_text_color: Color,
         cx: &Context<Self>,
     ) -> impl Iterator<Item = AnyElement> {
         let components = Path::new(&file_name)
@@ -5740,15 +5726,15 @@ impl ProjectPanel {
                             }),
                         )
                         .child(
-                            Label::new(component)
-                                .single_line()
-                                .color(filename_text_color)
+                            div()
+                                .whitespace_nowrap()
                                 .when(bold_folder_labels && !is_file, |this| {
-                                    this.weight(FontWeight::SEMIBOLD)
+                                    this.font_weight(FontWeight::SEMIBOLD)
                                 })
                                 .when(index == active_index && is_active_or_marked, |this| {
-                                    this.underline()
-                                }),
+                                    this.text_decoration_1().underline()
+                                })
+                                .child(component)
                         )
                         .into_any()
                 });
@@ -5763,7 +5749,6 @@ impl ProjectPanel {
                 is_sticky,
                 is_file,
                 drag_and_drop_enabled,
-                filename_text_color,
                 &delimiter,
                 folded_ancestors,
                 cx,
@@ -5780,7 +5765,6 @@ impl ProjectPanel {
         is_sticky: bool,
         is_file: bool,
         drag_and_drop_enabled: bool,
-        filename_text_color: Color,
         delimiter: &SharedString,
         folded_ancestors: &FoldedAncestors,
         cx: &Context<Self>,
@@ -5828,9 +5812,9 @@ impl ProjectPanel {
                 })
             })
             .child(
-                Label::new(delimiter.clone())
-                    .single_line()
-                    .color(filename_text_color),
+                div()
+                    .whitespace_nowrap()
+                    .child(delimiter.clone()),
             )
     }
 
