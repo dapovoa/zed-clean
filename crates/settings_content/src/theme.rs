@@ -1170,22 +1170,6 @@ pub struct ThemeColorsContent {
     #[serde(rename = "clean.chat_output.selection")]
     pub clean_chat_output_selection: Option<String>,
 
-    /// Clean mode chat output user selection background color.
-    #[serde(rename = "clean.chat_output.user_selection")]
-    pub clean_chat_output_user_selection: Option<String>,
-
-    /// Clean mode chat output user bubble background color.
-    #[serde(rename = "clean.chat_output.user_bubble_bg")]
-    pub clean_chat_output_user_bubble_bg: Option<String>,
-
-    /// Clean mode chat output user bubble text color.
-    #[serde(rename = "clean.chat_output.user_bubble_text")]
-    pub clean_chat_output_user_bubble_text: Option<String>,
-
-    /// Clean mode chat output user bubble border color.
-    #[serde(rename = "clean.chat_output.user_bubble_border")]
-    pub clean_chat_output_user_bubble_border: Option<String>,
-
     /// Clean mode chat output run command header color.
     #[serde(rename = "clean.chat_output.run_command_header")]
     pub clean_chat_output_run_command_header: Option<String>,
@@ -1221,10 +1205,6 @@ pub struct ThemeColorsContent {
     /// Clean mode chat output code header color.
     #[serde(rename = "clean.chat_output.code_header")]
     pub clean_chat_output_code_header: Option<String>,
-
-    /// Clean mode chat output code body color.
-    #[serde(rename = "clean.chat_output.code_body")]
-    pub clean_chat_output_code_body: Option<String>,
 
     /// Clean mode chat output thinking header color.
     #[serde(rename = "clean.chat_output.thinking_header")]

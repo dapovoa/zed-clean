@@ -1356,7 +1356,7 @@ impl Render for MessageEditor {
                 };
 
                 let mut local_player = cx.theme().players().local();
-                local_player.selection = cx.theme().colors().clean_chat_output_user_selection;
+                local_player.selection = cx.theme().colors().agent_user_message_selection_background;
 
                 v_flex().size_full().flex_1().child(
                     EditorElement::new(

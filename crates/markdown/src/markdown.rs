@@ -164,7 +164,7 @@ impl MarkdownStyle {
             syntax: cx.theme().syntax().clone(),
             selection_background_color: match font {
                 MarkdownFont::Agent => colors.clean_chat_output_selection,
-                MarkdownFont::UserAgent => colors.clean_chat_output_user_selection,
+                MarkdownFont::UserAgent => colors.agent_user_message_selection_background,
                 MarkdownFont::Editor => colors.element_selection_background,
             },
             code_block_overflow_x_scroll: true,
@@ -1234,7 +1234,7 @@ impl Element for MarkdownElement {
                                         .rounded_none() // Square corners inside the container
                                         .when(is_agent_block, |this| {
                                             this.p_2()
-                                                .bg(cx.theme().colors().clean_chat_output_code_body)
+                                                .bg(cx.theme().colors().agent_code_block_background)
                                         })
                                         .map(|mut code_block| {
                                             if let Some(scroll_handle) = scroll_handle.as_ref() {

@@ -3496,13 +3496,13 @@ impl AcpThreadView {
                                     .px(rems(cx.theme().colors().agent_user_message_padding_x))
                                     .rounded_md()
                                     .shadow_md()
-                                    .bg(cx.theme().colors().clean_chat_output_user_bubble_bg)
-                                    .text_color(cx.theme().colors().clean_chat_output_user_bubble_text)
+                                    .bg(cx.theme().colors().agent_user_message_background)
+                                    .text_color(cx.theme().colors().agent_user_message_foreground)
                                     .border_1()
                                     .when(is_indented, |this| {
                                         this.py_2().px_2().shadow_sm()
                                     })
-                                    .border_color(cx.theme().colors().clean_chat_output_user_bubble_border)
+                                    .border_color(cx.theme().colors().agent_user_message_border)
                                     .map(|this| {
                                         if is_subagent {
                                             return this.border_dashed();
