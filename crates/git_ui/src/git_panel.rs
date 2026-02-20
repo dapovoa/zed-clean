@@ -5664,7 +5664,7 @@ pub fn panel_editor_container(_window: &mut Window, cx: &mut App) -> Div {
 pub(crate) fn panel_editor_style(monospace: bool, window: &Window, cx: &App) -> EditorStyle {
     let settings = ThemeSettings::get_global(cx);
 
-    let font_size = TextSize::Small.rems(cx).to_pixels(window.rem_size());
+    let font_size = rems(cx.theme().colors().clean_git_font_size).to_pixels(window.rem_size());
 
     let (font_family, font_fallbacks, font_features, font_weight, line_height) = if monospace {
         (
@@ -5692,7 +5692,7 @@ pub(crate) fn panel_editor_style(monospace: bool, window: &Window, cx: &App) -> 
             font_family,
             font_fallbacks,
             font_features,
-            font_size: TextSize::Small.rems(cx).into(),
+            font_size: rems(cx.theme().colors().clean_git_font_size).into(),
             font_weight,
             line_height: line_height.into(),
             ..Default::default()

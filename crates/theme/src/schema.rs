@@ -1005,6 +1005,7 @@ pub fn theme_colors_refinement(
             .clean_git_selection
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
+        clean_git_font_size: Some(this.clean_git_font_size.unwrap_or(0.875)),
         agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),
         agent_user_message_padding_y: Some(this.agent_user_message_padding_y.unwrap_or(0.75)),
         agent_user_message_padding_x: Some(this.agent_user_message_padding_x.unwrap_or(0.5)),

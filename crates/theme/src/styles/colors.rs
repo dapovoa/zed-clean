@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use gpui::{App, Hsla, SharedString, WindowBackgroundAppearance};
+use gpui::{hsla, App, Hsla, SharedString, WindowBackgroundAppearance};
 use refineable::Refineable;
 use std::sync::Arc;
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
@@ -420,6 +420,8 @@ pub struct ThemeColors {
     pub clean_git_text: Hsla,
     /// Git selection background color for the 'clean' theme.
     pub clean_git_selection: Hsla,
+    /// Git input font size for the 'clean' theme, in rems.
+    pub clean_git_font_size: f32,
 
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
@@ -584,6 +586,7 @@ pub enum ThemeColorField {
     CleanGitBackground,
     CleanGitText,
     CleanGitSelection,
+    CleanGitFontSize,
 }
 
 impl ThemeColors {
@@ -759,6 +762,7 @@ impl ThemeColors {
             ThemeColorField::CleanGitBackground => self.clean_git_background,
             ThemeColorField::CleanGitText => self.clean_git_text,
             ThemeColorField::CleanGitSelection => self.clean_git_selection,
+            ThemeColorField::CleanGitFontSize => hsla(0., 0., 0., self.clean_git_font_size),
         }
     }
 

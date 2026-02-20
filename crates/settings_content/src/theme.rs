@@ -1250,6 +1250,10 @@ pub struct ThemeColorsContent {
     #[serde(rename = "clean.git.selection")]
     pub clean_git_selection: Option<String>,
 
+    /// Clean mode git input font size in rems. Default: 0.875 (text_sm).
+    #[serde(rename = "clean.git.font_size")]
+    pub clean_git_font_size: Option<f32>,
+
     /// Agent user message bubble font size in rems. Default: 0.75 (text_xs).
     #[serde(rename = "agent.user_message.font_size")]
     pub agent_user_message_font_size: Option<f32>,
