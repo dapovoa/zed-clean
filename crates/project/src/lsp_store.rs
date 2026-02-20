@@ -5599,7 +5599,7 @@ impl LspStore {
 
                 buffer
                     .update(cx, |buffer, _| {
-                        buffer.wait_for_edits(Some(position.timestamp))
+                        buffer.wait_for_edits(Some(position.timestamp()))
                     })
                     .await?;
                 this.update(cx, |this, cx| {
