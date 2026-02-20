@@ -1258,6 +1258,14 @@ pub struct ThemeColorsContent {
     #[serde(rename = "agent.user_message.font_size")]
     pub agent_user_message_font_size: Option<f32>,
 
+    /// Agent response font size in rems. Default: 1.0.
+    #[serde(rename = "agent.response.font_size")]
+    pub agent_response_font_size: Option<f32>,
+
+    /// Agent code block font size in rems. Default: 0.85.
+    #[serde(rename = "agent.code_block.font_size")]
+    pub agent_code_block_font_size: Option<f32>,
+
     /// Agent user message bubble vertical padding in rems. Default: 0.75.
     #[serde(rename = "agent.user_message.padding_y")]
     pub agent_user_message_padding_y: Option<f32>,

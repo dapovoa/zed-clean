@@ -493,6 +493,7 @@ impl CodegenAlternative {
             .context("generating content prompt")?;
 
         let temperature = AgentSettings::temperature_for_model(model, cx);
+        let top_p = AgentSettings::top_p_for_model(model, cx);
 
         let tool_input_format = model.tool_input_format();
         let tool_choice = model
@@ -542,6 +543,7 @@ impl CodegenAlternative {
                 tool_choice,
                 stop: Vec::new(),
                 temperature,
+                top_p,
                 messages,
                 thinking_allowed: false,
                 thinking_effort: None,
@@ -598,6 +600,7 @@ impl CodegenAlternative {
             .context("generating content prompt")?;
 
         let temperature = AgentSettings::temperature_for_model(model, cx);
+        let top_p = AgentSettings::top_p_for_model(model, cx);
 
         Ok(cx.spawn(async move |_cx| {
             let mut request_message = LanguageModelRequestMessage {
@@ -621,6 +624,7 @@ impl CodegenAlternative {
                 tool_choice: None,
                 stop: Vec::new(),
                 temperature,
+                top_p,
                 messages: vec![request_message],
                 thinking_allowed: false,
                 thinking_effort: None,

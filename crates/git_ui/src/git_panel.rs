@@ -2636,6 +2636,7 @@ impl GitPanel {
         });
 
         let temperature = AgentSettings::temperature_for_model(&model, cx);
+        let top_p = AgentSettings::top_p_for_model(&model, cx);
         let project = self.project.clone();
         let repo_work_dir = repo.read(cx).work_directory_abs_path.clone();
 
@@ -2719,6 +2720,7 @@ impl GitPanel {
                     tool_choice: None,
                     stop: Vec::new(),
                     temperature,
+                    top_p,
                     thinking_allowed: false,
                     thinking_effort: None,
                 };

@@ -559,6 +559,7 @@ impl ExampleInstance {
                     reasoning_details: None,
                 }],
                 temperature: None,
+                top_p: None,
                 tools: Vec::new(),
                 tool_choice: None,
                 stop: Vec::new(),

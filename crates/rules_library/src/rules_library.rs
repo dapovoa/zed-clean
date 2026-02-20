@@ -1104,6 +1104,7 @@ impl RulesLibrary {
                                     tool_choice: None,
                                     stop: Vec::new(),
                                     temperature: None,
+                                    top_p: None,
                                     thinking_allowed: true,
                                     thinking_effort: None,
                                 },

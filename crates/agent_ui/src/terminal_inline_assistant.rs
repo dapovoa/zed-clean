@@ -247,6 +247,7 @@ impl TerminalInlineAssistant {
         )?;
 
         let temperature = AgentSettings::temperature_for_model(&model, cx);
+        let top_p = AgentSettings::top_p_for_model(&model, cx);
 
         let mention_set = prompt_editor.read(cx).mention_set().clone();
         let load_context_task = load_context(&mention_set, cx);
@@ -274,6 +275,7 @@ impl TerminalInlineAssistant {
                 tool_choice: None,
                 stop: Vec::new(),
                 temperature,
+                top_p,
                 thinking_allowed: false,
                 thinking_effort: None,
             }

@@ -2272,6 +2272,7 @@ impl TextThread {
             tool_choice: None,
             stop: Vec::new(),
             temperature: model.and_then(|model| AgentSettings::temperature_for_model(model, cx)),
+            top_p: model.and_then(|model| AgentSettings::top_p_for_model(model, cx)),
             thinking_allowed: true,
             thinking_effort: None,
         };

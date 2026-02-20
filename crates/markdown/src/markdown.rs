@@ -126,10 +126,21 @@ impl MarkdownStyle {
         let colors = cx.theme().colors();
 
         let (buffer_font_size, ui_font_size) = match font {
-            MarkdownFont::Agent | MarkdownFont::UserAgent => (
-                theme_settings.agent_buffer_font_size(cx),
-                theme_settings.agent_ui_font_size(cx),
-            ),
+            MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                let mut ui_font_size = theme_settings.agent_ui_font_size(cx);
+                if matches!(font, MarkdownFont::Agent) {
+                    if colors.agent_response_font_size != 1.0 {
+                        ui_font_size = rems(colors.agent_response_font_size)
+                            .to_pixels(window.rem_size());
+                    }
+                } else if matches!(font, MarkdownFont::UserAgent) {
+                    if colors.agent_user_message_font_size != 0.75 {
+                        ui_font_size = rems(colors.agent_user_message_font_size)
+                            .to_pixels(window.rem_size());
+                    }
+                }
+                (theme_settings.agent_buffer_font_size(cx), ui_font_size)
+            }
             MarkdownFont::Editor => (
                 theme_settings.buffer_font_size(cx),
                 theme_settings.ui_font_size(cx),
@@ -228,7 +239,16 @@ impl MarkdownStyle {
                     font_family: Some(theme_settings.buffer_font.family.clone()),
                     font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
                     font_features: Some(theme_settings.buffer_font.features.clone()),
-                    font_size: Some(buffer_font_size.into()),
+                    font_size: Some(match font {
+                        MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                            if colors.agent_code_block_font_size != 0.85 {
+                                rems(colors.agent_code_block_font_size).into()
+                            } else {
+                                buffer_font_size.into()
+                            }
+                        }
+                        MarkdownFont::Editor => buffer_font_size.into(),
+                    }),
                     ..Default::default()
                 },
                 ..Default::default()

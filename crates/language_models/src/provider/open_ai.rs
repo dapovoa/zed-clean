@@ -552,6 +552,7 @@ pub fn into_open_ai_response(
         tool_choice,
         stop: _,
         temperature,
+        top_p,
         thinking_allowed: _,
         thinking_effort: _,
     } = request;
@@ -576,7 +577,7 @@ pub fn into_open_ai_response(
         input: input_items,
         stream,
         temperature,
-        top_p: None,
+        top_p,
         max_output_tokens,
         parallel_tool_calls: if tools.is_empty() {
             None
@@ -1429,6 +1430,7 @@ mod tests {
             tool_choice: None,
             stop: vec![],
             temperature: None,
+            top_p: None,
             thinking_allowed: true,
             thinking_effort: None,
         };
@@ -1566,6 +1568,7 @@ mod tests {
             tool_choice: Some(LanguageModelToolChoice::Any),
             stop: vec!["<STOP>".into()],
             temperature: None,
+            top_p: None,
             thinking_allowed: false,
             thinking_effort: None,
         };

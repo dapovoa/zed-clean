@@ -2327,6 +2327,35 @@ impl AgentPanel {
             | ActiveView::Configuration => None,
         };
 
+        let continue_chat_button = active_thread.as_ref().and_then(|active_thread| {
+            let thread = active_thread.read(cx);
+            if !thread.is_empty() {
+                let session_id = thread.id().clone();
+                Some(
+                    IconButton::new("continue-chat", IconName::ThreadFromSummary)
+                        .icon_size(IconSize::Small)
+                        .on_click(move |_, window, cx| {
+                            window.dispatch_action(
+                                Box::new(NewNativeAgentThreadFromSummary {
+                                    from_session_id: session_id.clone(),
+                                }),
+                                cx,
+                            );
+                        })
+                        .tooltip(move |window, cx| Tooltip::text("Continue Chat")(window, cx)),
+                )
+            } else {
+                None
+            }
+        });
+
+        let new_chat_button = IconButton::new("new-chat", IconName::ZedAgent)
+            .icon_size(IconSize::Small)
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.new_thread(&NewThread, window, cx);
+            }))
+            .tooltip(move |window, cx| Tooltip::text("New Chat")(window, cx));
+
         let new_thread_menu = PopoverMenu::new("new_thread_menu")
             .trigger_with_tooltip(
                 IconButton::new("new_thread_menu_btn", IconName::Plus).icon_size(IconSize::Small),
@@ -2358,65 +2387,8 @@ impl AgentPanel {
                 move |window, cx| {
                     telemetry::event!("New Thread Clicked");
 
-                    let active_thread = active_thread.clone();
                     Some(ContextMenu::build(window, cx, |menu, _window, cx| {
                         menu.context(focus_handle.clone())
-                            .when_some(active_thread, |this, active_thread| {
-                                let thread = active_thread.read(cx);
-
-                                if !thread.is_empty() {
-                                    let session_id = thread.id().clone();
-                                    this.item(
-                                        ContextMenuEntry::new("Continue Chat")
-                                            .icon(IconName::ThreadFromSummary)
-                                            .icon_color(Color::Muted)
-                                            .handler(move |window, cx| {
-                                                window.dispatch_action(
-                                                    Box::new(NewNativeAgentThreadFromSummary {
-                                                        from_session_id: session_id.clone(),
-                                                    }),
-                                                    cx,
-                                                );
-                                            }),
-                                    )
-                                } else {
-                                    this
-                                }
-                            })
-                            .item(
-                                ContextMenuEntry::new("New Chat")
-                                    .when(
-                                        is_agent_selected(AgentType::NativeAgent)
-                                            | is_agent_selected(AgentType::TextThread),
-                                        |this| {
-                                            this.action(Box::new(NewExternalAgentThread {
-                                                agent: None,
-                                            }))
-                                        },
-                                    )
-                                    .icon(IconName::ZedAgent)
-                                    .icon_color(Color::Muted)
-                                    .handler({
-                                        let workspace = workspace.clone();
-                                        move |window, cx| {
-                                            if let Some(workspace) = workspace.upgrade() {
-                                                workspace.update(cx, |workspace, cx| {
-                                                    if let Some(panel) =
-                                                        workspace.panel::<AgentPanel>(cx)
-                                                    {
-                                                        panel.update(cx, |panel, cx| {
-                                                            panel.new_agent_thread(
-                                                                AgentType::NativeAgent,
-                                                                window,
-                                                                cx,
-                                                            );
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }),
-                            )
                             // Text Thread hidden in this build
                             // Only show External Agents that are actively configured
                             .map(|mut menu| {
@@ -2593,6 +2565,8 @@ impl AgentPanel {
                     .gap(DynamicSpacing::Base02.rems(cx))
                     .pl(DynamicSpacing::Base04.rems(cx))
                     .pr(DynamicSpacing::Base06.rems(cx))
+                    .child(new_chat_button)
+                    .when_some(continue_chat_button, |this, button| this.child(button))
                     .child(new_thread_menu)
                     .when(show_history_menu, |this| {
                         this.child(self.render_recent_entries_menu(

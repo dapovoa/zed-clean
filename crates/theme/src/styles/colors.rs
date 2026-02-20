@@ -347,6 +347,10 @@ pub struct ThemeColors {
     pub agent_user_message_foreground: Hsla,
     /// Agent panel user message selection background.
     pub agent_user_message_selection_background: Hsla,
+    /// Agent response font size for the 'clean' theme, in rems.
+    pub agent_response_font_size: f32,
+    /// Agent code block font size for the 'clean' theme, in rems.
+    pub agent_code_block_font_size: f32,
 
     // ===
     // Clean (Custom project namespace - Hierarchical)
@@ -555,6 +559,8 @@ pub enum ThemeColorField {
     AgentCodeBlockBorder,
     AgentUserMessageForeground,
     AgentUserMessageSelectionBackground,
+    AgentResponseFontSize,
+    AgentCodeBlockFontSize,
     CleanProjectPanelBackground,
     CleanProjectPanelHoverBackground,
     CleanProjectPanelText,
@@ -725,6 +731,8 @@ impl ThemeColors {
             ThemeColorField::AgentUserMessageSelectionBackground => {
                 self.agent_user_message_selection_background
             }
+            ThemeColorField::AgentResponseFontSize => hsla(0., 0., 0., self.agent_response_font_size),
+            ThemeColorField::AgentCodeBlockFontSize => hsla(0., 0., 0., self.agent_code_block_font_size),
             ThemeColorField::CleanProjectPanelBackground => self.clean_project_panel_background,
             ThemeColorField::CleanProjectPanelHoverBackground => self.clean_project_panel_hover_background,
             ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,

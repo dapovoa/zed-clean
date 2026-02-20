@@ -1,6 +1,7 @@
-Generate a detailed summary of this conversation. Include:
-1. A brief overview of what was discussed
-2. Key facts or information discovered
-3. Outcomes or conclusions reached
-4. Any action items or next steps if any
-Format it in Markdown with headings and bullet points.
+Generate a detailed technical summary of this software development session. Focus on:
+1. **Technical Overview**: Brief context of the objective and logic discussed.
+2. **Files & Architecture**: Specific files affected and key architectural decisions made.
+3. **Implementation State**: What is currently working, what was fixed, and what remains broken or incomplete.
+4. **Direct Next Steps**: Technical action items to resume implementation seamlessly.
+
+Format the output in clear Markdown with headers and bullet points. Ensure no critical technical context is lost.

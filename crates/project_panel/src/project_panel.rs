@@ -5118,8 +5118,11 @@ impl ProjectPanel {
             (entry_id.to_proto() as usize).into()
         };
 
+        let wrapper_id = ElementId::from(("clean_wrapper", entry_id.to_proto() as usize));
+
         div()
-            .id(id.clone())
+            .id(wrapper_id)
+            .w_full()
             .relative()
             .group(GROUP_NAME)
             .cursor_pointer()

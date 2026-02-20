@@ -2191,6 +2191,7 @@ impl Thread {
         let mut request = LanguageModelRequest {
             intent: Some(CompletionIntent::ThreadContextSummarization),
             temperature: AgentSettings::temperature_for_model(&model, cx),
+            top_p: AgentSettings::top_p_for_model(&model, cx),
             ..Default::default()
         };
 
@@ -2249,6 +2250,7 @@ impl Thread {
         let mut request = LanguageModelRequest {
             intent: Some(CompletionIntent::ThreadSummarization),
             temperature: AgentSettings::temperature_for_model(&model, cx),
+            top_p: AgentSettings::top_p_for_model(&model, cx),
             ..Default::default()
         };
 
@@ -2399,6 +2401,7 @@ impl Thread {
             tool_choice: None,
             stop: Vec::new(),
             temperature: AgentSettings::temperature_for_model(model, cx),
+            top_p: AgentSettings::top_p_for_model(model, cx),
             thinking_allowed: self.thinking_enabled,
             thinking_effort: self.thinking_effort.clone(),
         };
@@ -2907,9 +2910,12 @@ where
         event_stream: ToolCallEventStream,
         cx: &mut App,
     ) -> Result<()> {
-        let input = serde_json::from_value(input)?;
-        let output = serde_json::from_value(output)?;
-        self.0.replay(input, output, event_stream, cx)
+        let input = serde_json::from_value(input).ok();
+        let output = serde_json::from_value(output).ok();
+        if let (Some(input), Some(output)) = (input, output) {
+            self.0.replay(input, output, event_stream, cx)?;
+        }
+        Ok(())
     }
 }
 

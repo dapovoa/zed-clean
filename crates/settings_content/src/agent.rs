@@ -262,6 +262,8 @@ pub struct LanguageModelParameters {
     pub model: Option<String>,
     #[serde(serialize_with = "crate::serialize_optional_f32_with_two_decimal_places")]
     pub temperature: Option<f32>,
+    #[serde(serialize_with = "crate::serialize_optional_f32_with_two_decimal_places")]
+    pub top_p: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, MergeFrom)]

@@ -450,6 +450,7 @@ pub struct LanguageModelRequest {
     pub tool_choice: Option<LanguageModelToolChoice>,
     pub stop: Vec<String>,
     pub temperature: Option<f32>,
+    pub top_p: Option<f32>,
     pub thinking_allowed: bool,
     pub thinking_effort: Option<String>,
 }

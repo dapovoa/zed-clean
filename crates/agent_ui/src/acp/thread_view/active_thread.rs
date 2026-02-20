@@ -2785,12 +2785,14 @@ impl AcpThreadView {
                                         .color(Color::Muted),
                                 )
                                 .child(token_label(cache_read, "cache-read-label"))
-                                .child(
-                                    Label::new("/")
-                                        .size(LabelSize::Small)
-                                        .color(separator_color),
-                                )
-                                .child(token_label(cache_write, "cache-write-label"))
+                                .when(usage.cache_creation_input_tokens > 0, |this| {
+                                    this.child(
+                                        Label::new("/")
+                                            .size(LabelSize::Small)
+                                            .color(separator_color),
+                                    )
+                                    .child(token_label(cache_write, "cache-write-label"))
+                                }),
                         )
                     })
                     .into_any_element(),
@@ -4492,6 +4494,8 @@ impl AcpThreadView {
             .child(
                 v_flex()
                     .p_1p5()
+                    .text_size(rems(cx.theme().colors().agent_code_block_font_size))
+                    .font(ThemeSettings::get_global(cx).buffer_font.clone())
                     .children(command_source.lines().map(|line| {
                         let text: SharedString = if line.is_empty() {
                             " ".into()
@@ -4499,7 +4503,7 @@ impl AcpThreadView {
                             line.to_string().into()
                         };
 
-                        Label::new(text).buffer_font(cx).size(LabelSize::Small)
+                        div().child(text)
                     })),
             )
             .child(
@@ -4749,7 +4753,7 @@ impl AcpThreadView {
                         .bg(cx.theme().colors().clean_chat_output_terminal_body)
                         .text_color(cx.theme().colors().clean_chat_output_terminal_text)
                         .rounded_b_md()
-                        .text_ui_sm(cx)
+                        .text_size(rems(cx.theme().colors().agent_code_block_font_size))
                         .h_full()
                         .children(terminal_view.map(|terminal_view| {
                             let element = if terminal_view
@@ -4827,7 +4831,6 @@ impl AcpThreadView {
         let mut is_open = self.expanded_tool_calls.contains(&tool_call.id);
 
         is_open |= needs_confirmation;
-        is_open |= is_edit;
 
         let should_show_raw_input = !is_terminal_tool && !is_edit && !has_image_content;
 

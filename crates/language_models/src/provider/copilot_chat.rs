@@ -921,6 +921,7 @@ fn into_copilot_responses(
         tool_choice,
         stop: _,
         temperature,
+        top_p,
         thinking_allowed: _,
         thinking_effort: _,
     } = request;
@@ -1097,6 +1098,7 @@ fn into_copilot_responses(
         input: input_items,
         stream: model.uses_streaming(),
         temperature,
+        top_p,
         tools: converted_tools,
         tool_choice: mapped_tool_choice,
         reasoning: None, // We would need to add support for setting from user settings.

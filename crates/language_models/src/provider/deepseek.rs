@@ -395,6 +395,7 @@ pub fn into_deepseek(
         } else {
             request.temperature
         },
+        top_p: if is_reasoner { None } else { request.top_p },
         response_format: None,
         tools: request
             .tools
