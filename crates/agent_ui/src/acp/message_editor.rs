@@ -1344,13 +1344,18 @@ impl Render for MessageEditor {
             .size_full()
             .flex_1()
             .child({
-                let font_size_rems = cx.theme().colors().agent_user_message_font_size;
+                let font_size = if settings.agent_buffer_font_size_settings().is_some() {
+                    settings.agent_buffer_font_size(cx).into()
+                } else {
+                    rems(cx.theme().colors().agent_user_message_font_size).into()
+                };
+
                 let text_style = TextStyle {
                     color: cx.theme().colors().agent_user_message_foreground,
                     font_family: settings.buffer_font.family.clone(),
                     font_fallbacks: settings.buffer_font.fallbacks.clone(),
                     font_features: settings.buffer_font.features.clone(),
-                    font_size: rems(font_size_rems).into(),
+                    font_size,
                     line_height: relative(settings.buffer_line_height.value()),
                     ..Default::default()
                 };

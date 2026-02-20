@@ -294,6 +294,7 @@ impl AcpThreadView {
         });
 
         let message_editor = cx.new(|cx| {
+            let agent_settings = AgentSettings::get_global(cx);
             let mut editor = MessageEditor::new(
                 workspace.clone(),
                 project.clone(),
@@ -304,10 +305,9 @@ impl AcpThreadView {
                 available_commands.clone(),
                 agent_name.clone(),
                 &placeholder,
-                editor::EditorMode::Full {
-                    scale_ui_elements_with_buffer_font_size: false,
-                    show_active_line_background: false,
-                    sizing_behavior: editor::SizingBehavior::Default,
+                editor::EditorMode::AutoHeight {
+                    min_lines: agent_settings.message_editor_min_lines,
+                    max_lines: Some(agent_settings.set_message_editor_max_lines()),
                 },
                 window,
                 cx,
@@ -2396,7 +2396,7 @@ impl AcpThreadView {
             .child(
                 v_flex()
                     .relative()
-                    .h(rems(min_height))
+                    .min_h(rems(min_height))
                     .w_full()
                     .px_4()
                     .py_3()
