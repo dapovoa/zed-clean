@@ -125,6 +125,7 @@ impl Mercury {
                 max_completion_tokens: None,
                 stop: vec![],
                 temperature: None,
+                top_p: None,
                 tool_choice: None,
                 parallel_tool_calls: None,
                 tools: vec![],
