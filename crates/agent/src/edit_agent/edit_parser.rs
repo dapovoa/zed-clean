@@ -85,7 +85,13 @@ impl FromStr for EditFormat {
 impl EditFormat {
     /// Return an optimal edit format for the language model
     pub fn from_model(model: Arc<dyn LanguageModel>) -> anyhow::Result<Self> {
-        if model.provider_id().0 == "google" || model.id().0.to_lowercase().contains("gemini") {
+        let provider = model.provider_id().0.to_lowercase();
+        let model_id = model.id().0.to_lowercase();
+        if provider == "google"
+            || provider == "x_ai"
+            || model_id.contains("gemini")
+            || model_id.contains("grok")
+        {
             Ok(EditFormat::DiffFenced)
         } else {
             Ok(EditFormat::XmlTags)
@@ -95,7 +101,6 @@ impl EditFormat {
     /// Return an optimal edit format for the language model,
     /// with the ability to override it by setting the
     /// `ZED_EDIT_FORMAT` environment variable
-    #[allow(dead_code)]
     pub fn from_env(model: Arc<dyn LanguageModel>) -> anyhow::Result<Self> {
         let default = EditFormat::from_model(model)?;
         std::env::var("ZED_EDIT_FORMAT").map_or(Ok(default), |s| EditFormat::from_str(&s))
