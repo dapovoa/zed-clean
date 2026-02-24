@@ -2302,6 +2302,84 @@ impl AgentPanel {
             })
     }
 
+    fn render_agent_shortcuts(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let agent_server_store = self.project.read(cx).agent_server_store();
+        let store = agent_server_store.read(cx);
+        let workspace = self.workspace.clone();
+        let selected_name = match &self.selected_agent {
+            AgentType::Custom { name } => Some(name.clone()),
+            _ => None,
+        };
+
+        let agents: Vec<(SharedString, Option<SharedString>, SharedString)> = store
+            .external_agents()
+            .filter(|name| {
+                !matches!(store.agent_source(name), Some(ExternalAgentSource::Builtin))
+            })
+            .map(|name| {
+                let icon_path = store.agent_icon(name);
+                let display_name = store
+                    .agent_display_name(name)
+                    .unwrap_or_else(|| name.0.clone());
+                (name.0.clone(), icon_path, display_name)
+            })
+            .collect();
+
+        agents
+            .into_iter()
+            .map(move |(name, icon_path, display_name)| {
+                let is_selected = selected_name.as_ref() == Some(&name);
+                let color = if is_selected {
+                    Color::Default
+                } else {
+                    Color::Muted
+                };
+                let agent_type = AgentType::Custom { name: name.clone() };
+
+                let icon: AnyElement = match icon_path {
+                    Some(path) => Icon::from_external_svg(path)
+                        .size(IconSize::Small)
+                        .color(color)
+                        .into_any_element(),
+                    None => Icon::new(IconName::Sparkle)
+                        .size(IconSize::Small)
+                        .color(color)
+                        .into_any_element(),
+                };
+
+                div()
+                    .id(SharedString::from(format!("agent-shortcut-{}", name)))
+                    .px_1()
+                    .cursor_pointer()
+                    .child(icon)
+                    .tooltip({
+                        let display_name = display_name.clone();
+                        move |window, cx| Tooltip::text(display_name.clone())(window, cx)
+                    })
+                    .on_click({
+                        let workspace = workspace.clone();
+                        let agent_type = agent_type.clone();
+                        move |_, window, cx| {
+                            if let Some(workspace) = workspace.upgrade() {
+                                workspace.update(cx, |workspace, cx| {
+                                    if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
+                                        panel.update(cx, |panel, cx| {
+                                            panel.new_agent_thread(
+                                                agent_type.clone(),
+                                                window,
+                                                cx,
+                                            );
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    })
+                    .into_any_element()
+            })
+            .collect()
+    }
+
     fn render_toolbar(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let agent_server_store = self.project.read(cx).agent_server_store().clone();
         let focus_handle = self.focus_handle(cx);
@@ -2567,6 +2645,7 @@ impl AgentPanel {
                     .pr(DynamicSpacing::Base06.rems(cx))
                     .child(new_chat_button)
                     .when_some(continue_chat_button, |this, button| this.child(button))
+                    .children(self.render_agent_shortcuts(cx))
                     .child(new_thread_menu)
                     .when(show_history_menu, |this| {
                         this.child(self.render_recent_entries_menu(
