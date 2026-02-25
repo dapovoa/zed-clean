@@ -427,6 +427,9 @@ pub struct ThemeColors {
     /// Git input font size for the 'clean' theme, in rems.
     pub clean_git_font_size: f32,
 
+    /// Project panel entry font size in rems. Default: 1.0.
+    pub project_panel_font_size: f32,
+
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
     /// Vertical padding for user message bubbles in the agent chat, in rems.

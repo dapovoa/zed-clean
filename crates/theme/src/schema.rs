@@ -1006,6 +1006,7 @@ pub fn theme_colors_refinement(
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
         clean_git_font_size: Some(this.clean_git_font_size.unwrap_or(0.875)),
+        project_panel_font_size: Some(this.project_panel_font_size.unwrap_or(1.0)),
         agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),
         agent_response_font_size: Some(this.agent_response_font_size.unwrap_or(1.0)),
         agent_code_block_font_size: Some(this.agent_code_block_font_size.unwrap_or(0.85)),

@@ -309,6 +309,7 @@ pub(crate) fn zed_default_dark() -> Theme {
                 clean_git_text: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 clean_git_selection: player.local().selection.alpha(0.25),
                 clean_git_font_size: 0.875,
+                project_panel_font_size: 1.0,
                 agent_user_message_font_size: 0.75,
                 agent_response_font_size: 1.0,
                 agent_code_block_font_size: 0.85,

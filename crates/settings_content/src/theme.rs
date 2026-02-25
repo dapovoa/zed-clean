@@ -1273,6 +1273,10 @@ pub struct ThemeColorsContent {
     /// Agent user message bubble horizontal padding in rems. Default: 0.5.
     #[serde(rename = "agent.user_message.padding_x")]
     pub agent_user_message_padding_x: Option<f32>,
+
+    /// Project panel entry font size in rems. Default: 1.0 (inherits UI font size).
+    #[serde(rename = "project_panel.font_size")]
+    pub project_panel_font_size: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
