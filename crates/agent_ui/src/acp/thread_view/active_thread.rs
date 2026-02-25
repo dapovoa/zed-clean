@@ -2715,9 +2715,8 @@ impl AcpThreadView {
                 .unwrap_or(0);
 
             let input = crate::text_thread_editor::humanize_token_count(usage.input_tokens);
-            let input_max = crate::text_thread_editor::humanize_token_count(
-                usage.max_tokens.saturating_sub(max_output_tokens),
-            );
+            let input_max =
+                crate::text_thread_editor::humanize_token_count(usage.max_tokens);
             let output = crate::text_thread_editor::humanize_token_count(usage.output_tokens);
             let output_max = crate::text_thread_editor::humanize_token_count(max_output_tokens);
 
