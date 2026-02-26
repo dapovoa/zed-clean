@@ -800,9 +800,13 @@ pub async fn stream_completion_with_rate_limit_info(
                 match line {
                     Ok(line) => {
                         let line = line.strip_prefix("data: ")?;
+                        log::trace!("SSE line: {line}");
                         match serde_json::from_str(line) {
                             Ok(response) => Some(Ok(response)),
-                            Err(error) => Some(Err(AnthropicError::DeserializeResponse(error))),
+                            Err(error) => {
+                                log::warn!("Failed to deserialize SSE event: {error}\nRaw: {line}");
+                                Some(Err(AnthropicError::DeserializeResponse(error)))
+                            }
                         }
                     }
                     Err(error) => Some(Err(AnthropicError::ReadResponse(error))),

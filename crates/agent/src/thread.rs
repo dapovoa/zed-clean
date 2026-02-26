@@ -2388,7 +2388,7 @@ impl Thread {
             .map(|turn| turn.tools.keys().cloned().collect())
             .unwrap_or_default();
 
-        log::debug!("Request includes {} tools", available_tools.len());
+        log::debug!("Request includes {} tools: {:?}", available_tools.len(), available_tools);
         let messages = self.build_request_messages(available_tools, cx);
         log::debug!("Request will include {} messages", messages.len());
 

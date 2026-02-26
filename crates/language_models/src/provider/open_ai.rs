@@ -417,7 +417,8 @@ pub fn into_open_ai(
     for message in request.messages {
         for content in message.content {
             match content {
-                MessageContent::Text(text) | MessageContent::Thinking { text, .. } => {
+                MessageContent::Thinking { .. } => {}
+                MessageContent::Text(text) => {
                     let should_add = if message.role == Role::User {
                         // Including whitespace-only user messages can cause error with OpenAI compatible APIs
                         // See https://github.com/zed-industries/zed/issues/40097
@@ -612,9 +613,7 @@ fn append_message_to_response_items(
             MessageContent::Text(text) => {
                 push_response_text_part(&message.role, text, &mut content_parts);
             }
-            MessageContent::Thinking { text, .. } => {
-                push_response_text_part(&message.role, text, &mut content_parts);
-            }
+            MessageContent::Thinking { .. } => {}
             MessageContent::RedactedThinking(_) => {}
             MessageContent::Image(image) => {
                 push_response_image_part(&message.role, image, &mut content_parts);
@@ -812,12 +811,16 @@ impl OpenAiEventMapper {
                     let entry = self.tool_calls_by_index.entry(tool_call.index).or_default();
 
                     if let Some(tool_id) = tool_call.id.clone() {
-                        entry.id = tool_id;
+                        if !tool_id.is_empty() {
+                            entry.id = tool_id;
+                        }
                     }
 
                     if let Some(function) = tool_call.function.as_ref() {
                         if let Some(name) = function.name.clone() {
-                            entry.name = name;
+                            if !name.is_empty() {
+                                entry.name = name;
+                            }
                         }
 
                         if let Some(arguments) = function.arguments.clone() {

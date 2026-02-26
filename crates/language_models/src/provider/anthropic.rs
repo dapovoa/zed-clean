@@ -131,15 +131,24 @@ impl LanguageModelProvider for AnthropicLanguageModelProvider {
         IconOrSvg::Icon(IconName::AiAnthropic)
     }
 
-    fn default_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
+    fn default_model(&self, cx: &App) -> Option<Arc<dyn LanguageModel>> {
+        if AnthropicLanguageModelProvider::api_url(cx) != ANTHROPIC_API_URL {
+            return None;
+        }
         Some(self.create_language_model(anthropic::Model::default()))
     }
 
-    fn default_fast_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
+    fn default_fast_model(&self, cx: &App) -> Option<Arc<dyn LanguageModel>> {
+        if AnthropicLanguageModelProvider::api_url(cx) != ANTHROPIC_API_URL {
+            return None;
+        }
         Some(self.create_language_model(anthropic::Model::default_fast()))
     }
 
-    fn recommended_models(&self, _cx: &App) -> Vec<Arc<dyn LanguageModel>> {
+    fn recommended_models(&self, cx: &App) -> Vec<Arc<dyn LanguageModel>> {
+        if AnthropicLanguageModelProvider::api_url(cx) != ANTHROPIC_API_URL {
+            return Vec::new();
+        }
         [
             anthropic::Model::ClaudeSonnet4_5,
             anthropic::Model::ClaudeSonnet4_5Thinking,
@@ -152,10 +161,14 @@ impl LanguageModelProvider for AnthropicLanguageModelProvider {
     fn provided_models(&self, cx: &App) -> Vec<Arc<dyn LanguageModel>> {
         let mut models = BTreeMap::default();
 
-        // Add base models from anthropic::Model::iter()
-        for model in anthropic::Model::iter() {
-            if !matches!(model, anthropic::Model::Custom { .. }) {
-                models.insert(model.id().to_string(), model);
+        // Only add built-in Claude models when using the official Anthropic API.
+        // Custom endpoints (e.g. Anthropic-compatible third-party providers) should
+        // only expose the models explicitly declared in available_models.
+        if AnthropicLanguageModelProvider::api_url(cx) == ANTHROPIC_API_URL {
+            for model in anthropic::Model::iter() {
+                if !matches!(model, anthropic::Model::Custom { .. }) {
+                    models.insert(model.id().to_string(), model);
+                }
             }
         }
 
@@ -244,6 +257,7 @@ fn to_anthropic_content(content: MessageContent) -> Option<anthropic::RequestCon
         } => {
             if let Some(signature) = signature
                 && !thinking.is_empty()
+                && !signature.is_empty()
             {
                 Some(anthropic::RequestContent::Thinking {
                     thinking,
