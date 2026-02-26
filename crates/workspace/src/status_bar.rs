@@ -46,6 +46,8 @@ impl Render for StatusBar {
             .py(DynamicSpacing::Base04.rems(cx))
             .px(DynamicSpacing::Base06.rems(cx))
             .bg(cx.theme().colors().status_bar_background)
+            .border_t_1()
+            .border_color(cx.theme().colors().border)
             .map(|el| match window.window_decorations() {
                 Decorations::Server => el,
                 Decorations::Client { tiling, .. } => el

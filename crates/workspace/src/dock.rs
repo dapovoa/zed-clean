@@ -828,7 +828,7 @@ impl Render for Dock {
                     DockPosition::Bottom => deferred(
                         handle
                             .absolute()
-                            .top(-RESIZE_HANDLE_SIZE / 2.)
+                            .top(px(0.))
                             .left(px(0.))
                             .w_full()
                             .h(RESIZE_HANDLE_SIZE)
