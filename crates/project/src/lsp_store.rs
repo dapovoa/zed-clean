@@ -1010,16 +1010,8 @@ impl LocalLspStore {
                         lsp_store
                             .update(&mut cx, |lsp_store, cx| {
                                 if lsp_store.as_local().is_some() {
-                                    match lsp_store
-                                        .unregister_server_capabilities(server_id, params, cx)
-                                    {
-                                        Ok(()) => {}
-                                        Err(e) => {
-                                            log::error!(
-                                                "Failed to unregister server capabilities: {e:#}"
-                                            );
-                                        }
-                                    }
+                                    // Silently ignore errors during shutdown - servers may already be gone
+                                    let _ = lsp_store.unregister_server_capabilities(server_id, params, cx);
                                 }
                             })
                             .ok();
@@ -12553,9 +12545,10 @@ impl LspStore {
         params: lsp::UnregistrationParams,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<()> {
-        let server = self
-            .language_server_for_id(server_id)
-            .with_context(|| format!("no server {server_id} found"))?;
+        let Some(server) = self.language_server_for_id(server_id) else {
+            // Server already shut down, nothing to unregister
+            return Ok(());
+        };
         for unreg in params.unregisterations.iter() {
             match unreg.method.as_str() {
                 "workspace/didChangeWatchedFiles" => {

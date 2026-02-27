@@ -1393,10 +1393,11 @@ impl Element for MarkdownElement {
                                     .when(col_index > 0, |this| this.border_l_1())
                                     .when(row_index > 0, |this| this.border_t_1())
                                     .border_color(cx.theme().colors().border)
-                                    .px_1()
-                                    .py_0p5()
+                                    .px_3()
+                                    .py_1p5()
+                                    .text_sm()
                                     .when(is_header, |this| {
-                                        this.bg(cx.theme().colors().title_bar_background)
+                                        this.bg(cx.theme().colors().editor_foreground.opacity(0.07))
                                     })
                                     .when(!is_header && row_index % 2 == 1, |this| {
                                         this.bg(cx.theme().colors().panel_background)

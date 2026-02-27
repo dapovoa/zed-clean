@@ -268,10 +268,17 @@ impl Model {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct StreamOptions {
+    pub include_usage: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
     pub model: String,
     pub messages: Vec<RequestMessage>,
     pub stream: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream_options: Option<StreamOptions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_completion_tokens: Option<u64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -455,8 +462,11 @@ pub struct FunctionChunk {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Usage {
+    #[serde(default)]
     pub prompt_tokens: u64,
+    #[serde(default)]
     pub completion_tokens: u64,
+    #[serde(default)]
     pub total_tokens: u64,
 }
 

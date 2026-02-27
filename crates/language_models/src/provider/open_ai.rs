@@ -500,6 +500,13 @@ pub fn into_open_ai(
         model: model_id.into(),
         messages,
         stream,
+        stream_options: if stream {
+            Some(open_ai::StreamOptions {
+                include_usage: true,
+            })
+        } else {
+            None
+        },
         stop: request.stop,
         temperature: request.temperature.or(Some(1.0)),
         top_p: request.top_p,

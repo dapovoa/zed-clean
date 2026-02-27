@@ -197,6 +197,10 @@ pub struct AcpThreadView {
     pub expanded_tool_calls: HashSet<agent_client_protocol::ToolCallId>,
     pub expanded_tool_call_raw_inputs: HashSet<agent_client_protocol::ToolCallId>,
     pub expanded_thinking_blocks: HashSet<(usize, usize)>,
+    /// When each thinking block (entry_ix, chunk_ix) first appeared, for duration tracking.
+    pub thinking_block_started_at: HashMap<(usize, usize), std::time::Instant>,
+    /// Completed duration for each thinking block, populated when generation stops.
+    pub thinking_block_durations: HashMap<(usize, usize), std::time::Duration>,
     pub expanded_subagents: HashSet<agent_client_protocol::SessionId>,
     pub subagent_scroll_handles: RefCell<HashMap<agent_client_protocol::SessionId, ScrollHandle>>,
     pub edits_expanded: bool,
@@ -391,6 +395,8 @@ impl AcpThreadView {
             expanded_tool_calls: HashSet::default(),
             expanded_tool_call_raw_inputs: HashSet::default(),
             expanded_thinking_blocks: HashSet::default(),
+            thinking_block_started_at: HashMap::default(),
+            thinking_block_durations: HashMap::default(),
             expanded_subagents: HashSet::default(),
             subagent_scroll_handles: RefCell::new(HashMap::default()),
             edits_expanded: false,
@@ -4200,12 +4206,16 @@ impl AcpThreadView {
         window: &Window,
         cx: &Context<Self>,
     ) -> AnyElement {
-        let header_id = SharedString::from(format!("thinking-block-header-{}", entry_ix));
-        let card_header_id = SharedString::from("inner-card-header");
-
         let key = (entry_ix, chunk_ix);
 
         let is_open = self.expanded_thinking_blocks.contains(&key);
+        let is_generating = matches!(self.thread.read(cx).status(), ThreadStatus::Generating);
+
+        // Duration in seconds for the completed thinking block.
+        let secs_label: Option<SharedString> = self
+            .thinking_block_durations
+            .get(&key)
+            .map(|d| format!("for {}s", d.as_secs()).into());
 
         let scroll_handle = self
             .entry_view_state
@@ -4213,85 +4223,83 @@ impl AcpThreadView {
             .entry(entry_ix)
             .and_then(|entry| entry.scroll_handle_for_assistant_message_chunk(chunk_ix));
 
-        let thinking_content = {
-            div()
-                .id(("thinking-content", chunk_ix))
-                .when_some(scroll_handle, |this, scroll_handle| {
-                    this.track_scroll(&scroll_handle)
+        let thinking_content = div()
+            .id(("thinking-content", chunk_ix))
+            .when_some(scroll_handle, |this, scroll_handle| {
+                this.track_scroll(&scroll_handle)
+            })
+            .text_ui_sm(cx)
+            .overflow_hidden()
+            .child(self.render_markdown(
+                chunk,
+                MarkdownStyle::themed(MarkdownFont::Agent, window, cx),
+            ));
+
+        // Flat inline header row — no background card, chevron right next to text.
+        let header_row = h_flex()
+            .id(SharedString::from(format!("thinking-header-{}-{}", entry_ix, chunk_ix)))
+            .gap_1p5()
+            .py_0p5()
+            .cursor(CursorStyle::PointingHand)
+            .rounded_sm()
+            .hover(|s| s.bg(cx.theme().colors().ghost_element_hover))
+            .child(
+                Icon::new(IconName::ToolThink)
+                    .size(IconSize::Small)
+                    .color(Color::Muted),
+            )
+            .map(|this| {
+                if is_generating && is_open {
+                    this.child(
+                        LoadingLabel::new("Thinking")
+                            .size(LabelSize::Small)
+                            .color(Color::Muted),
+                    )
+                } else {
+                    this.child(
+                        div()
+                            .text_size(self.tool_name_font_size())
+                            .text_color(cx.theme().colors().text_muted)
+                            .child("Thought"),
+                    )
+                    .when_some(secs_label, |row, secs| {
+                        row.child(
+                            div()
+                                .text_size(self.tool_name_font_size())
+                                .text_color(cx.theme().colors().text_muted)
+                                .child(secs),
+                        )
+                    })
+                }
+            })
+            .child(
+                Icon::new(if is_open {
+                    IconName::ChevronDown
+                } else {
+                    IconName::ChevronRight
                 })
-                .text_ui_sm(cx)
-                .overflow_hidden()
-                .child(self.render_markdown(
-                    chunk,
-                    MarkdownStyle::themed(MarkdownFont::Agent, window, cx),
-                ))
-        };
+                .size(IconSize::XSmall)
+                .color(Color::Muted),
+            )
+            .on_click(cx.listener(move |this, _event, _window, cx| {
+                if is_open {
+                    this.expanded_thinking_blocks.remove(&key);
+                } else {
+                    this.expanded_thinking_blocks.insert(key);
+                }
+                cx.notify();
+            }));
 
         v_flex()
-            .gap_1()
-            .child(
-                v_flex()
-                    .id(header_id)
-                    .group(&card_header_id)
-                    .bg(cx.theme().colors().clean_chat_output_thinking_header)
-                    .rounded_t_sm()
-                    .child(
-                        h_flex()
-                            .relative()
-                            .w_full()
-                            .px_1()
-                            .justify_between()
-                            .child(
-                                h_flex()
-                                    .h(window.line_height() - px(2.))
-                                    .gap_1p5()
-                                    .overflow_hidden()
-                                    .child(
-                                        Icon::new(IconName::ToolThink)
-                                            .size(IconSize::Small)
-                                            .color(Color::Muted),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(self.tool_name_font_size())
-                                            .text_color(cx.theme().colors().text_muted)
-                                            .child("Thinking"),
-                                    ),
-                            )
-                            .child(
-                                Disclosure::new(("expand", entry_ix), is_open)
-                                    .opened_icon(IconName::ChevronUp)
-                                    .closed_icon(IconName::ChevronDown)
-                                    .visible_on_hover(&card_header_id)
-                                    .on_click(cx.listener({
-                                        move |this, _event, _window, cx| {
-                                            if is_open {
-                                                this.expanded_thinking_blocks.remove(&key);
-                                            } else {
-                                                this.expanded_thinking_blocks.insert(key);
-                                            }
-                                            cx.notify();
-                                        }
-                                    })),
-                            ),
-                    )
-                    .on_click(cx.listener(move |this, _event, _window, cx| {
-                        if is_open {
-                            this.expanded_thinking_blocks.remove(&key);
-                        } else {
-                            this.expanded_thinking_blocks.insert(key);
-                        }
-                        cx.notify();
-                    })),
-            )
+            .gap_0p5()
+            .child(header_row)
             .when(is_open, |this| {
                 this.child(
                     div()
-                        .ml_1p5()
-                        .pl_3p5()
+                        .ml_4()
+                        .pl_2()
                         .border_l_1()
                         .border_color(self.tool_card_border_color(cx))
-                        .bg(cx.theme().colors().clean_chat_output_thinking_body)
                         .child(thinking_content),
                 )
             })
@@ -4519,7 +4527,7 @@ impl AcpThreadView {
         entry_ix: usize,
         terminal: &Entity<acp_thread::Terminal>,
         tool_call: &ToolCall,
-        window: &Window,
+        _window: &Window,
         cx: &Context<Self>,
     ) -> AnyElement {
         let terminal_data = terminal.read(cx);
@@ -4755,15 +4763,7 @@ impl AcpThreadView {
                         .text_size(rems(cx.theme().colors().agent_code_block_font_size))
                         .h_full()
                         .children(terminal_view.map(|terminal_view| {
-                            let element = if terminal_view
-                                .read(cx)
-                                .content_mode(window, cx)
-                                .is_scrollable()
-                            {
-                                div().h_72().child(terminal_view).into_any_element()
-                            } else {
-                                terminal_view.into_any_element()
-                            };
+                            let element = div().h_72().child(terminal_view).into_any_element();
 
                             div()
                                 .on_action(cx.listener(|_this, _: &NewTerminal, window, cx| {
@@ -5050,6 +5050,26 @@ impl AcpThreadView {
                                         window,
                                         cx,
                                     ))
+                                    .when(is_edit && use_card_layout, |this| {
+                                        // Show diff stats (+N -M) in the edit card header.
+                                        let (added, removed) = tool_call
+                                            .diffs()
+                                            .next()
+                                            .map(|diff| diff.read(cx).diff_stats(cx))
+                                            .unwrap_or((0, 0));
+                                        if added > 0 || removed > 0 {
+                                            this.child(
+                                                DiffStat::new(
+                                                    ("diff-stat", entry_ix),
+                                                    added as usize,
+                                                    removed as usize,
+                                                )
+                                                .label_size(LabelSize::Small),
+                                            )
+                                        } else {
+                                            this
+                                        }
+                                    })
                                     .when(is_collapsible || failed_or_canceled, |this| {
                                         let diff_for_discard =
                                             if has_revealed_diff && is_cancelled_edit && cx.has_flag::<AgentV2FeatureFlag>() {
@@ -5498,6 +5518,10 @@ impl AcpThreadView {
         let has_location = tool_call.locations.len() == 1;
         let is_file = tool_call.kind == acp::ToolKind::Edit && has_location;
         let is_subagent_tool_call = tool_call.is_subagent();
+        let is_active = matches!(
+            tool_call.status,
+            ToolCallStatus::Pending | ToolCallStatus::InProgress
+        );
 
         let file_icon = if has_location {
             FileIcons::get_icon(&tool_call.locations[0].path, cx)
@@ -5507,7 +5531,12 @@ impl AcpThreadView {
             Icon::new(IconName::ToolPencil)
         };
 
-        let tool_icon = if is_file && has_failed && has_revealed_diff {
+        let tool_icon = if is_active {
+            SpinnerLabel::new()
+                .size(LabelSize::Small)
+                .color(Color::Muted)
+                .into_any_element()
+        } else if is_file && has_failed && has_revealed_diff {
             div()
                 .id(entry_ix)
                 .tooltip(Tooltip::text("Interrupted Edit"))

@@ -341,14 +341,18 @@ impl LanguageModel for OpenAiCompatibleLanguageModel {
         cx: &App,
     ) -> BoxFuture<'static, Result<u64>> {
         let max_token_count = self.max_token_count();
+        let model_name = self.model.name.clone();
+
         cx.background_spawn(async move {
+            // Use tiktoken for all OpenAI-compatible models
+            // This is fast, offline, and doesn't require downloading tokenizer files
+            log::debug!("Counting tokens with tiktoken for model '{}'", model_name);
             let messages = super::open_ai::collect_tiktoken_messages(request);
             let model = if max_token_count >= 100_000 {
-                // If the max tokens is 100k or more, it is likely the o200k_base tokenizer from gpt4o
+                // If the max tokens is 100k or more, use o200k_base tokenizer (gpt-4o)
                 "gpt-4o"
             } else {
-                // Otherwise fallback to gpt-4, since only cl100k_base and o200k_base are
-                // supported with this tiktoken method
+                // Otherwise use cl100k_base (gpt-4)
                 "gpt-4"
             };
             tiktoken_rs::num_tokens_from_messages(model, &messages).map(|tokens| tokens as u64)

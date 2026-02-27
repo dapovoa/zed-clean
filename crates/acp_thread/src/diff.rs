@@ -7,6 +7,7 @@ use language::{
 };
 use multi_buffer::{MultiBuffer, PathKey, excerpt_context_lines};
 use std::{cmp::Reverse, ops::Range, path::Path, sync::Arc};
+use text::ToPoint as _;
 use util::ResultExt;
 
 pub enum Diff {
@@ -181,6 +182,38 @@ impl Diff {
 
     pub fn has_revealed_range(&self, cx: &App) -> bool {
         self.multibuffer().read(cx).paths().next().is_some()
+    }
+
+    /// Returns `(lines_added, lines_removed)` for display in the edit card header.
+    /// Uses the BufferDiff for pending diffs (accurate) and a line-count delta for finalized diffs.
+    pub fn diff_stats(&self, cx: &App) -> (u32, u32) {
+        match self {
+            Diff::Pending(pending) => {
+                let buffer = pending.new_buffer.read(cx);
+                let diff = pending.diff.read(cx);
+                let diff_snapshot = diff.snapshot(cx);
+                let buffer_snapshot = buffer.snapshot();
+                let base_text = diff_snapshot.base_text();
+                let mut lines_added: u32 = 0;
+                let mut lines_removed: u32 = 0;
+                for hunk in diff_snapshot.hunks(&buffer_snapshot) {
+                    lines_added += hunk.range.end.row.saturating_sub(hunk.range.start.row);
+                    let base_start = hunk.diff_base_byte_range.start.to_point(base_text).row;
+                    let base_end = hunk.diff_base_byte_range.end.to_point(base_text).row;
+                    lines_removed += base_end.saturating_sub(base_start);
+                }
+                (lines_added, lines_removed)
+            }
+            Diff::Finalized(finalized) => {
+                let new_lines = finalized.new_buffer.read(cx).row_count();
+                let base_lines = finalized.base_text.lines().count() as u32;
+                if new_lines > base_lines {
+                    (new_lines - base_lines, 0)
+                } else {
+                    (0, base_lines - new_lines)
+                }
+            }
+        }
     }
 
     pub fn needs_update(&self, old_text: &str, new_text: &str, cx: &App) -> bool {

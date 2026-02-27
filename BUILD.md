@@ -39,3 +39,19 @@ rm -rf ~/.local/share/icons/hicolor/*/apps/zed.png
 ```sh
 cargo run --release --package zed
 ```
+
+## Clean build artifacts
+
+The `target/` folder can grow to ~95G. To free disk space:
+
+```sh
+cargo clean
+```
+
+Or delete directly (faster):
+
+```sh
+rm -rf target/
+```
+
+The project can be rebuilt from scratch afterwards.
