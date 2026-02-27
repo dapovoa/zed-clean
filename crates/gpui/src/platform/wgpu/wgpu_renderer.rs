@@ -5,6 +5,8 @@ use crate::{
     Underline, get_gamma_correction_ratios,
 };
 use bytemuck::{Pod, Zeroable};
+use log::warn;
+#[cfg(not(target_family = "wasm"))]
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use std::num::NonZeroU64;
 use std::sync::Arc;
@@ -798,7 +800,6 @@ impl WgpuRenderer {
 
             self.surface_config.width = clamped_width.max(1);
             self.surface_config.height = clamped_height.max(1);
-            
             self.surface.configure(&self.device, &self.surface_config);
 
             let (path_intermediate_texture, path_intermediate_view) =
