@@ -7825,13 +7825,14 @@ pub fn render_breadcrumb_text(
         if index == 0
             && !workspace::TabBarSettings::get_global(cx).show
             && active_item.is_dirty(cx)
-            && let Some(styled_element) = apply_dirty_filename_style(&segment, &text_style, cx)
+            && let Some(styled_element) = apply_dirty_filename_style(&segment, &text_style, window, cx)
         {
             return styled_element;
         }
 
+        let rem_size = window.rem_size();
         StyledText::new(segment.text.replace('\n', "⏎"))
-            .with_default_highlights(&text_style, segment.highlights.unwrap_or_default())
+            .with_default_highlights(&text_style, segment.highlights.unwrap_or_default(), rem_size)
             .into_any()
     });
 
@@ -7943,6 +7944,7 @@ pub fn render_breadcrumb_text(
 fn apply_dirty_filename_style(
     segment: &BreadcrumbText,
     text_style: &gpui::TextStyle,
+    window: &mut Window,
     cx: &App,
 ) -> Option<gpui::AnyElement> {
     let text = segment.text.replace('\n', "⏎");
@@ -7956,6 +7958,7 @@ fn apply_dirty_filename_style(
 
     let bold_weight = FontWeight::BOLD;
     let default_color = Color::Default.color(cx);
+    let rem_size = window.rem_size();
 
     if filename_position == 0 {
         let mut filename_style = text_style.clone();
@@ -7964,7 +7967,7 @@ fn apply_dirty_filename_style(
 
         return Some(
             StyledText::new(text)
-                .with_default_highlights(&filename_style, [])
+                .with_default_highlights(&filename_style, [], rem_size)
                 .into_any(),
         );
     }
@@ -7978,7 +7981,7 @@ fn apply_dirty_filename_style(
     let highlight = vec![(filename_position..text.len(), highlight_style)];
     Some(
         StyledText::new(text)
-            .with_default_highlights(text_style, highlight)
+            .with_default_highlights(text_style, highlight, rem_size)
             .into_any(),
     )
 }
@@ -8704,7 +8707,7 @@ impl LineWithInvisibles {
                             let shaped_line = window.text_system().shape_line(
                                 chunk,
                                 font_size,
-                                &[text_style.to_run(highlighted_chunk.text.len())],
+                                &[text_style.to_run(highlighted_chunk.text.len(), window.rem_size())],
                                 None,
                             );
                             AvailableSpace::Definite(shaped_line.width)

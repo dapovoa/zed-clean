@@ -399,24 +399,24 @@ impl CosmicTextSystemState {
 
     #[profiling::function]
     fn layout_line(&mut self, text: &str, font_size: Pixels, font_runs: &[FontRun]) -> LineLayout {
-        // Process each FontRun separately if it has a different font_size
-        // Group consecutive runs with the same font_size for efficiency
         let mut runs: Vec<ShapedRun> = Vec::new();
         let mut max_ascent = Pixels::ZERO;
         let mut max_descent = Pixels::ZERO;
         let mut total_len = 0;
         let mut total_width = Pixels::ZERO;
 
-        let mut group_font_size = font_runs.first().and_then(|r| r.font_size);
+        // Process each run individually if it has a unique font_size
+        // Only group runs when font_size is None (use default font_size)
+        let mut group_font_size: Option<Pixels> = None;
         let mut group_runs: Vec<(FontId, usize)> = Vec::new();
-        let mut group_widths: Vec<Pixels> = Vec::new();
 
-        for (_i, run) in font_runs.iter().enumerate() {
+        for run in font_runs {
             let run_font_size = run.font_size;
 
-            if run_font_size != group_font_size {
-                // Process the current group
+            if run_font_size.is_some() {
+                // This run has a specific font_size, process it individually
                 if !group_runs.is_empty() {
+                    // Flush any accumulated None-font-size runs
                     let group_fs = group_font_size.unwrap_or(font_size);
                     let (group_ascent, group_descent, group_len, group_width) =
                         self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
@@ -424,18 +424,27 @@ impl CosmicTextSystemState {
                     max_descent = max_descent.max(group_descent);
                     total_len = group_len;
                     total_width = total_width.max(group_width);
-                    group_widths.push(group_width);
+                    group_runs.clear();
+                    group_font_size = None;
                 }
 
-                // Start new group
-                group_font_size = run_font_size;
-                group_runs.clear();
+                // Layout this run individually
+                let (run_ascent, run_descent, run_len, run_width) =
+                    self.layout_group(text, total_len, &[(run.font_id, run.len)], run_font_size, &mut runs);
+                max_ascent = max_ascent.max(run_ascent);
+                max_descent = max_descent.max(run_descent);
+                total_len = run_len;
+                total_width += run_width;
+            } else {
+                // This run uses the default font_size, group it
+                if group_font_size.is_none() {
+                    group_font_size = run_font_size;
+                }
+                group_runs.push((run.font_id, run.len));
             }
-
-            group_runs.push((run.font_id, run.len));
         }
 
-        // Process the last group
+        // Process any remaining grouped None-font-size runs
         if !group_runs.is_empty() {
             let group_fs = group_font_size.unwrap_or(font_size);
             let (group_ascent, group_descent, group_len, group_width) =
@@ -444,10 +453,8 @@ impl CosmicTextSystemState {
             max_descent = max_descent.max(group_descent);
             total_len = group_len;
             total_width = total_width.max(group_width);
-            group_widths.push(group_width);
         }
 
-        // Return the total width as the sum of group widths (they're laid out side by side)
         LineLayout {
             font_size,
             width: total_width,

@@ -1231,10 +1231,11 @@ impl PickerDelegate for RegistersViewDelegate {
         &self,
         ix: usize,
         selected: bool,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let register_match = self.matches.get(ix)?;
+        let rem_size = window.rem_size();
 
         let mut output = String::new();
         let mut runs = Vec::new();
@@ -1297,7 +1298,7 @@ impl PickerDelegate for RegistersViewDelegate {
                 .h(theme.buffer_font_size(cx) * theme.line_height())
                 .px_2()
                 .gap_1()
-                .child(StyledText::new(output).with_default_highlights(&text_style, runs)),
+                .child(StyledText::new(output).with_default_highlights(&text_style, runs, rem_size)),
         )
     }
 }
@@ -1620,10 +1621,11 @@ impl PickerDelegate for MarksViewDelegate {
         &self,
         ix: usize,
         selected: bool,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let mark_match = self.matches.get(ix)?;
+        let rem_size = window.rem_size();
 
         let mut left_output = String::new();
         let mut left_runs = Vec::new();
@@ -1683,9 +1685,9 @@ impl PickerDelegate for MarksViewDelegate {
                 .text_buffer(cx)
                 .h(theme.buffer_font_size(cx) * theme.line_height())
                 .px_2()
-                .child(StyledText::new(left_output).with_default_highlights(&text_style, left_runs))
+                .child(StyledText::new(left_output).with_default_highlights(&text_style, left_runs, rem_size))
                 .child(
-                    StyledText::new(right_output).with_default_highlights(&text_style, right_runs),
+                    StyledText::new(right_output).with_default_highlights(&text_style, right_runs, rem_size),
                 ),
         )
     }

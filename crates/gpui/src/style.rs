@@ -481,7 +481,7 @@ impl TextStyle {
     }
 
     /// Convert this text style into a [`TextRun`], for the given length of the text.
-    pub fn to_run(&self, len: usize) -> TextRun {
+    pub fn to_run(&self, len: usize, rem_size: Pixels) -> TextRun {
         TextRun {
             len,
             font: Font {
@@ -495,7 +495,7 @@ impl TextStyle {
             background_color: self.background_color,
             underline: self.underline,
             strikethrough: self.strikethrough,
-            font_size: None,
+            font_size: Some(self.font_size.to_pixels(rem_size)),
         }
     }
 }

@@ -2335,6 +2335,7 @@ impl OutlinePanel {
             string_match
                 .map(|string_match| string_match.ranges().collect::<Vec<_>>())
                 .unwrap_or_default(),
+            window,
             cx,
         )
         .into_any_element();
@@ -2627,6 +2628,7 @@ impl OutlinePanel {
                 body_range: Some(search_data.context_range.clone()),
             },
             match_ranges.iter().cloned(),
+            window,
             cx,
         );
         let truncated_contents_label = || Label::new(TRUNCATED_CONTEXT_MARK);

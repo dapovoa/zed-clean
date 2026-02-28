@@ -2048,6 +2048,7 @@ impl Interactivity {
             const FONT_SIZE: crate::Pixels = crate::Pixels(10.);
             let element_id = format!("{global_id:?}");
             let str_len = element_id.len();
+            let rem_size = window.rem_size();
 
             let render_debug_text = |window: &mut Window| {
                 if let Some(text) = window
@@ -2055,7 +2056,7 @@ impl Interactivity {
                     .shape_text(
                         element_id.into(),
                         FONT_SIZE,
-                        &[window.text_style().to_run(str_len)],
+                        &[window.text_style().to_run(str_len, rem_size)],
                         None,
                         None,
                     )

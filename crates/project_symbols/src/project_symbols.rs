@@ -228,9 +228,10 @@ impl PickerDelegate for ProjectSymbolsDelegate {
         &self,
         ix: usize,
         selected: bool,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
+        let rem_size = window.rem_size();
         let path_style = self.project.read(cx).path_style(cx);
         let string_match = &self.matches.get(ix)?;
         let symbol = &self.symbols.get(string_match.candidate_id)?;
@@ -290,7 +291,7 @@ impl PickerDelegate for ProjectSymbolsDelegate {
                 .child(
                     v_flex()
                         .child(LabelLike::new().child(
-                            StyledText::new(label).with_default_highlights(&text_style, highlights),
+                            StyledText::new(label).with_default_highlights(&text_style, highlights, rem_size),
                         ))
                         .child(
                             h_flex()

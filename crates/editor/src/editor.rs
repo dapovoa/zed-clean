@@ -9691,7 +9691,8 @@ impl Editor {
             crate::edit_prediction_fallback_text(edits, cx)
         };
 
-        let styled_text = highlighted_edits.to_styled_text(&style.text);
+        let rem_size = window.rem_size();
+        let styled_text = highlighted_edits.to_styled_text(&style.text, rem_size);
         let line_count = highlighted_edits.text.lines().count();
 
         const BORDER_WIDTH: Pixels = px(1.);
@@ -10042,7 +10043,7 @@ impl Editor {
         cursor_point: Point,
         style: &EditorStyle,
         accept_keystroke: Option<&gpui::KeybindingKeystroke>,
-        _window: &Window,
+        window: &Window,
         cx: &mut Context<Editor>,
     ) -> Option<AnyElement> {
         let provider = self.edit_prediction_provider.as_ref()?;
@@ -10140,6 +10141,7 @@ impl Editor {
                     prediction,
                     cursor_point,
                     style,
+                    window,
                     cx,
                 )?
             }
@@ -10149,6 +10151,7 @@ impl Editor {
                     stale_completion,
                     cursor_point,
                     style,
+                    window,
                     cx,
                 )?,
 
@@ -10236,6 +10239,7 @@ impl Editor {
         completion: &EditPredictionState,
         cursor_point: Point,
         style: &EditorStyle,
+        window: &Window,
         cx: &mut Context<Editor>,
     ) -> Option<Div> {
         use text::ToPoint as _;
@@ -10322,7 +10326,11 @@ impl Editor {
                     };
 
                 let styled_text = gpui::StyledText::new(highlighted_edits.text)
-                    .with_default_highlights(&style.text, highlighted_edits.highlights);
+                    .with_default_highlights(
+                        &style.text,
+                        highlighted_edits.highlights,
+                        window.rem_size(),
+                    );
 
                 let preview = h_flex()
                     .gap_1()

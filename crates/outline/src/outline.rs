@@ -383,7 +383,7 @@ impl PickerDelegate for OutlineViewDelegate {
         &self,
         ix: usize,
         selected: bool,
-        _: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let mat = self.matches.get(ix)?;
@@ -398,7 +398,7 @@ impl PickerDelegate for OutlineViewDelegate {
                     div()
                         .text_ui(cx)
                         .pl(rems(outline_item.depth as f32))
-                        .child(render_item(outline_item, mat.ranges(), cx)),
+                        .child(render_item(outline_item, mat.ranges(), window, cx)),
                 ),
         )
     }
@@ -407,8 +407,10 @@ impl PickerDelegate for OutlineViewDelegate {
 pub fn render_item<T>(
     outline_item: &OutlineItem<T>,
     match_ranges: impl IntoIterator<Item = Range<usize>>,
-    cx: &App,
+    window: &mut Window,
+    cx: &mut App,
 ) -> StyledText {
+    let rem_size = window.rem_size();
     let highlight_style = HighlightStyle {
         background_color: Some(cx.theme().colors().text_accent.alpha(0.3)),
         ..Default::default()
@@ -437,7 +439,7 @@ pub fn render_item<T>(
         outline_item.highlight_ranges.iter().cloned(),
     );
 
-    StyledText::new(outline_item.text.clone()).with_default_highlights(&text_style, highlights)
+    StyledText::new(outline_item.text.clone()).with_default_highlights(&text_style, highlights, rem_size)
 }
 
 #[cfg(test)]

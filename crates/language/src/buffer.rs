@@ -29,8 +29,8 @@ use encoding_rs::Encoding;
 use fs::MTime;
 use futures::channel::oneshot;
 use gpui::{
-    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, SharedString, StyledText,
-    Task, TextStyle,
+    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, Pixels, SharedString,
+    StyledText, Task, TextStyle,
 };
 
 use lsp::{LanguageServerId, NumberOrString};
@@ -669,9 +669,9 @@ impl HighlightedText {
         highlighted_text.build()
     }
 
-    pub fn to_styled_text(&self, default_style: &TextStyle) -> StyledText {
+    pub fn to_styled_text(&self, default_style: &TextStyle, rem_size: Pixels) -> StyledText {
         gpui::StyledText::new(self.text.clone())
-            .with_default_highlights(default_style, self.highlights.iter().cloned())
+            .with_default_highlights(default_style, self.highlights.iter().cloned(), rem_size)
     }
 
     /// Returns the first line without leading whitespace unless highlighted

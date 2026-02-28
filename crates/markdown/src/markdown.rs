@@ -1088,10 +1088,12 @@ impl Element for MarkdownElement {
         window: &mut Window,
         cx: &mut App,
     ) -> (gpui::LayoutId, Self::RequestLayoutState) {
+        let rem_size = window.rem_size();
         let mut builder = MarkdownElementBuilder::new(
             &self.style.container_style,
             self.style.base_text_style.clone(),
             self.style.syntax.clone(),
+            rem_size,
         );
         let (parsed_markdown, images) = {
             let markdown = self.markdown.read(cx);
@@ -1839,6 +1841,7 @@ struct MarkdownElementBuilder {
     current_source_index: usize,
     html_comment: bool,
     base_text_style: TextStyle,
+    rem_size: Pixels,
     text_style_stack: Vec<TextStyleRefinement>,
     code_block_stack: Vec<Option<Arc<Language>>>,
     list_stack: Vec<ListStackEntry>,
@@ -1862,6 +1865,7 @@ impl MarkdownElementBuilder {
         container_style: &StyleRefinement,
         base_text_style: TextStyle,
         syntax_theme: Arc<SyntaxTheme>,
+        rem_size: Pixels,
     ) -> Self {
         Self {
             div_stack: vec![{
@@ -1875,6 +1879,7 @@ impl MarkdownElementBuilder {
             current_source_index: 0,
             html_comment: false,
             base_text_style,
+            rem_size,
             text_style_stack: Vec::new(),
             code_block_stack: Vec::new(),
             list_stack: Vec::new(),
@@ -1987,7 +1992,7 @@ impl MarkdownElementBuilder {
             let mut offset = 0;
             for (range, highlight_id) in language.highlight_text(&Rope::from(text), 0..text.len()) {
                 if range.start > offset {
-                    let run = self.text_style().to_run(range.start - offset);
+                    let run = self.text_style().to_run(range.start - offset, self.rem_size);
                     self.pending_line.runs.push(run);
                 }
 
@@ -1995,17 +2000,17 @@ impl MarkdownElementBuilder {
                 if let Some(highlight) = highlight_id.style(&self.syntax_theme) {
                     run_style = run_style.highlight(highlight);
                 }
-                let run = run_style.to_run(range.len());
+                let run = run_style.to_run(range.len(), self.rem_size);
                 self.pending_line.runs.push(run);
                 offset = range.end;
             }
 
             if offset < text.len() {
-                let run = self.text_style().to_run(text.len() - offset);
+                let run = self.text_style().to_run(text.len() - offset, self.rem_size);
                 self.pending_line.runs.push(run);
             }
         } else {
-            let run = self.text_style().to_run(text.len());
+            let run = self.text_style().to_run(text.len(), self.rem_size);
             self.pending_line.runs.push(run);
         }
     }

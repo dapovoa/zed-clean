@@ -755,6 +755,7 @@ fn render_markdown_code_block(
                     .style(cx.syntax_theme.as_ref())
                     .map(|style| (range.clone(), style))
             }),
+            cx.window_rem_size,
         )
     } else {
         StyledText::new(parsed.contents.clone())
@@ -935,7 +936,7 @@ fn render_markdown_text(parsed_new: &MarkdownParagraph, cx: &mut RenderContext) 
                         InteractiveText::new(
                             element_id,
                             StyledText::new(parsed.contents.clone())
-                                .with_default_highlights(&text_style, highlights),
+                                .with_default_highlights(&text_style, highlights, cx.window_rem_size),
                         )
                         .tooltip({
                             let links = links.clone();

@@ -722,6 +722,7 @@ impl PickerDelegate for OpenPathDelegate {
         };
 
         let is_current_dir_candidate = candidate.path.string == self.current_dir();
+        let rem_size = window.rem_size();
 
         let file_icon = maybe!({
             if !settings.file_icons {
@@ -799,6 +800,7 @@ impl PickerDelegate for OpenPathDelegate {
                                             delta..label_len,
                                             HighlightStyle::color(Color::Conflict.color(cx)),
                                         )],
+                                        rem_size,
                                     )
                                     .into_any_element()
                             } else {
@@ -809,6 +811,7 @@ impl PickerDelegate for OpenPathDelegate {
                                             delta..label_len,
                                             HighlightStyle::color(Color::Created.color(cx)),
                                         )],
+                                        rem_size,
                                     )
                                     .into_any_element()
                             }
