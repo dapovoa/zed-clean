@@ -539,7 +539,7 @@ impl CosmicTextSystemState {
             let shaped_glyph = ShapedGlyph {
                 id: GlyphId(glyph.glyph_id as u32),
                 position: point(glyph.x.into(), glyph.y.into()),
-                index: glyph.start,
+                index: text_offset + glyph.start as usize,
                 is_emoji,
             };
 
