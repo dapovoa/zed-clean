@@ -481,7 +481,29 @@ impl TextStyle {
     }
 
     /// Convert this text style into a [`TextRun`], for the given length of the text.
-    pub fn to_run(&self, len: usize, rem_size: Pixels) -> TextRun {
+    /// Note: font_size is always None in the returned TextRun. Use `to_run_with_font_size()`
+    /// if you need to specify a font size different from the line's base font size.
+    pub fn to_run(&self, len: usize) -> TextRun {
+        TextRun {
+            len,
+            font: Font {
+                family: self.font_family.clone(),
+                features: self.font_features.clone(),
+                fallbacks: self.font_fallbacks.clone(),
+                weight: self.font_weight,
+                style: self.font_style,
+            },
+            color: self.color,
+            background_color: self.background_color,
+            underline: self.underline,
+            strikethrough: self.strikethrough,
+            font_size: None,
+        }
+    }
+
+    /// Convert this text style into a [`TextRun`] with a specific font size.
+    /// Use this when you need the run to have a font size different from the line's base.
+    pub fn to_run_with_font_size(&self, len: usize, rem_size: Pixels) -> TextRun {
         TextRun {
             len,
             font: Font {

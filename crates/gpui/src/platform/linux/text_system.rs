@@ -403,7 +403,7 @@ impl CosmicTextSystemState {
         let mut max_ascent = Pixels::ZERO;
         let mut max_descent = Pixels::ZERO;
         let mut total_len = 0;
-        let mut total_width = Pixels::ZERO;
+        let mut x_offset = Pixels::ZERO;
 
         // Process each run individually if it has a unique font_size
         // Only group runs when font_size is None (use default font_size)
@@ -419,22 +419,22 @@ impl CosmicTextSystemState {
                     // Flush any accumulated None-font-size runs
                     let group_fs = group_font_size.unwrap_or(font_size);
                     let (group_ascent, group_descent, group_len, group_width) =
-                        self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
+                        self.layout_group(text, total_len, &group_runs, Some(group_fs), x_offset, &mut runs);
                     max_ascent = max_ascent.max(group_ascent);
                     max_descent = max_descent.max(group_descent);
                     total_len += group_len;
-                    total_width = total_width.max(group_width);
+                    x_offset += group_width;
                     group_runs.clear();
                     group_font_size = None;
                 }
 
                 // Layout this run individually
                 let (run_ascent, run_descent, _, run_width) =
-                    self.layout_group(text, total_len, &[(run.font_id, run.len)], run_font_size, &mut runs);
+                    self.layout_group(text, total_len, &[(run.font_id, run.len)], run_font_size, x_offset, &mut runs);
                 max_ascent = max_ascent.max(run_ascent);
                 max_descent = max_descent.max(run_descent);
                 total_len += run.len;
-                total_width += run_width;
+                x_offset += run_width;
             } else {
                 // This run uses the default font_size, group it
                 if group_font_size.is_none() {
@@ -448,16 +448,16 @@ impl CosmicTextSystemState {
         if !group_runs.is_empty() {
             let group_fs = group_font_size.unwrap_or(font_size);
             let (group_ascent, group_descent, group_len, group_width) =
-                self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
+                self.layout_group(text, total_len, &group_runs, Some(group_fs), x_offset, &mut runs);
             max_ascent = max_ascent.max(group_ascent);
             max_descent = max_descent.max(group_descent);
             total_len += group_len;
-            total_width = total_width.max(group_width);
+            x_offset += group_width;
         }
 
         LineLayout {
             font_size,
-            width: total_width,
+            width: x_offset,
             ascent: max_ascent,
             descent: max_descent,
             runs,
@@ -471,6 +471,7 @@ impl CosmicTextSystemState {
         text_offset: usize,
         runs: &[(FontId, usize)],
         font_size: Option<Pixels>,
+        x_offset: Pixels,
         result_runs: &mut Vec<ShapedRun>,
     ) -> (Pixels, Pixels, usize, Pixels) {
         let font_size = font_size.unwrap_or_default();
@@ -538,7 +539,7 @@ impl CosmicTextSystemState {
 
             let shaped_glyph = ShapedGlyph {
                 id: GlyphId(glyph.glyph_id as u32),
-                position: point(glyph.x.into(), glyph.y.into()),
+                position: point(x_offset + glyph.x.into(), glyph.y.into()),
                 index: text_offset + glyph.start as usize,
                 is_emoji,
             };

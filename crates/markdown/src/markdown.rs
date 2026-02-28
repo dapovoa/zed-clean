@@ -1992,7 +1992,7 @@ impl MarkdownElementBuilder {
             let mut offset = 0;
             for (range, highlight_id) in language.highlight_text(&Rope::from(text), 0..text.len()) {
                 if range.start > offset {
-                    let run = self.text_style().to_run(range.start - offset, self.rem_size);
+                    let run = self.text_style().to_run(range.start - offset);
                     self.pending_line.runs.push(run);
                 }
 
@@ -2000,17 +2000,17 @@ impl MarkdownElementBuilder {
                 if let Some(highlight) = highlight_id.style(&self.syntax_theme) {
                     run_style = run_style.highlight(highlight);
                 }
-                let run = run_style.to_run(range.len(), self.rem_size);
+                let run = run_style.to_run(range.len());
                 self.pending_line.runs.push(run);
                 offset = range.end;
             }
 
             if offset < text.len() {
-                let run = self.text_style().to_run(text.len() - offset, self.rem_size);
+                let run = self.text_style().to_run(text.len() - offset);
                 self.pending_line.runs.push(run);
             }
         } else {
-            let run = self.text_style().to_run(text.len(), self.rem_size);
+            let run = self.text_style().to_run(text.len());
             self.pending_line.runs.push(run);
         }
     }

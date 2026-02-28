@@ -7967,7 +7967,7 @@ fn apply_dirty_filename_style(
 
         return Some(
             StyledText::new(text)
-                .with_default_highlights(&filename_style, [], rem_size)
+                .with_default_highlights(&filename_style, [])
                 .into_any(),
         );
     }
@@ -7981,7 +7981,7 @@ fn apply_dirty_filename_style(
     let highlight = vec![(filename_position..text.len(), highlight_style)];
     Some(
         StyledText::new(text)
-            .with_default_highlights(text_style, highlight, rem_size)
+            .with_default_highlights(text_style, highlight)
             .into_any(),
     )
 }
@@ -8707,7 +8707,7 @@ impl LineWithInvisibles {
                             let shaped_line = window.text_system().shape_line(
                                 chunk,
                                 font_size,
-                                &[text_style.to_run(highlighted_chunk.text.len(), window.rem_size())],
+                                &[text_style.to_run(highlighted_chunk.text.len()))],
                                 None,
                             );
                             AvailableSpace::Definite(shaped_line.width)

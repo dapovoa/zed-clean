@@ -1298,7 +1298,7 @@ impl PickerDelegate for RegistersViewDelegate {
                 .h(theme.buffer_font_size(cx) * theme.line_height())
                 .px_2()
                 .gap_1()
-                .child(StyledText::new(output).with_default_highlights(&text_style, runs, rem_size)),
+                .child(StyledText::new(output).with_default_highlights(&text_style, runs)),
         )
     }
 }
@@ -1685,9 +1685,9 @@ impl PickerDelegate for MarksViewDelegate {
                 .text_buffer(cx)
                 .h(theme.buffer_font_size(cx) * theme.line_height())
                 .px_2()
-                .child(StyledText::new(left_output).with_default_highlights(&text_style, left_runs, rem_size))
+                .child(StyledText::new(left_output).with_default_highlights(&text_style, left_runs))
                 .child(
-                    StyledText::new(right_output).with_default_highlights(&text_style, right_runs, rem_size),
+                    StyledText::new(right_output).with_default_highlights(&text_style, right_runs),
                 ),
         )
     }

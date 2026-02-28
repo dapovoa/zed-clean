@@ -143,7 +143,7 @@ impl RenderOnce for HighlightedLabel {
 
         self.base.child(
             StyledText::new(self.label)
-                .with_default_highlights(&text_style, highlights, rem_size),
+                .with_default_highlights(&text_style, highlights),
         )
     }
 }

@@ -291,7 +291,7 @@ impl PickerDelegate for ProjectSymbolsDelegate {
                 .child(
                     v_flex()
                         .child(LabelLike::new().child(
-                            StyledText::new(label).with_default_highlights(&text_style, highlights, rem_size),
+                            StyledText::new(label).with_default_highlights(&text_style, highlights),
                         ))
                         .child(
                             h_flex()

@@ -800,7 +800,6 @@ impl PickerDelegate for OpenPathDelegate {
                                             delta..label_len,
                                             HighlightStyle::color(Color::Conflict.color(cx)),
                                         )],
-                                        rem_size,
                                     )
                                     .into_any_element()
                             } else {
@@ -811,7 +810,6 @@ impl PickerDelegate for OpenPathDelegate {
                                             delta..label_len,
                                             HighlightStyle::color(Color::Created.color(cx)),
                                         )],
-                                        rem_size,
                                     )
                                     .into_any_element()
                             }

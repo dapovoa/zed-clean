@@ -2205,7 +2205,7 @@ impl RenderOnce for SyntaxHighlightedText {
         for (highlight_range, highlight_id) in highlights {
             // Add un-highlighted text before the current highlight
             if highlight_range.start > offset {
-                runs.push(text_style.to_run(highlight_range.start - offset, rem_size));
+                runs.push(text_style.to_run(highlight_range.start - offset));
             }
 
             let mut run_style = text_style.clone();
@@ -2213,13 +2213,13 @@ impl RenderOnce for SyntaxHighlightedText {
                 run_style = run_style.highlight(highlight_style);
             }
             // add the highlighted range
-            runs.push(run_style.to_run(highlight_range.len(), rem_size));
+            runs.push(run_style.to_run(highlight_range.len()));
             offset = highlight_range.end;
         }
 
         // Add any remaining un-highlighted text
         if offset < text.len() {
-            runs.push(text_style.to_run(text.len() - offset, rem_size));
+            runs.push(text_style.to_run(text.len() - offset));
         }
 
         StyledText::new(text).with_runs(runs)

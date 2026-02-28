@@ -906,7 +906,7 @@ impl CompletionsMenu {
                             .collect();
                         let rem_size = _window.rem_size();
                         let main_label = StyledText::new(main_text)
-                            .with_default_highlights(&style.text, main_highlights, rem_size);
+                            .with_default_highlights(&style.text, main_highlights);
 
                         let suffix_text: String = full_text[filter_range.end..].to_string();
                         let suffix_highlights: Vec<_> = highlights
@@ -923,7 +923,7 @@ impl CompletionsMenu {
                         let suffix_label = if !suffix_text.is_empty() {
                             Some(
                                 StyledText::new(suffix_text)
-                                    .with_default_highlights(&style.text, suffix_highlights, rem_size),
+                                    .with_default_highlights(&style.text, suffix_highlights),
                             )
                         } else {
                             None

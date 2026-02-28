@@ -184,13 +184,12 @@ impl StyledText {
         mut self,
         default_style: &TextStyle,
         highlights: impl IntoIterator<Item = (Range<usize>, HighlightStyle)>,
-        rem_size: Pixels,
     ) -> Self {
         debug_assert!(
             self.delayed_highlights.is_none(),
             "Can't use `with_default_highlights` and `with_highlights`"
         );
-        let runs = Self::compute_runs(&self.text, default_style, highlights, rem_size);
+        let runs = Self::compute_runs(&self.text, default_style, highlights);
         self.with_runs(runs)
     }
 
@@ -220,26 +219,25 @@ impl StyledText {
         text: &str,
         default_style: &TextStyle,
         highlights: impl IntoIterator<Item = (Range<usize>, HighlightStyle)>,
-        rem_size: Pixels,
     ) -> Vec<TextRun> {
         let mut runs = Vec::new();
         let mut ix = 0;
         for (range, highlight) in highlights {
             if ix < range.start {
                 debug_assert!(text.is_char_boundary(range.start));
-                runs.push(default_style.clone().to_run(range.start - ix, rem_size));
+                runs.push(default_style.clone().to_run(range.start - ix));
             }
             debug_assert!(text.is_char_boundary(range.end));
             runs.push(
                 default_style
                     .clone()
                     .highlight(highlight)
-                    .to_run(range.len(), rem_size),
+                    .to_run(range.len()),
             );
             ix = range.end;
         }
         if ix < text.len() {
-            runs.push(default_style.to_run(text.len() - ix, rem_size));
+            runs.push(default_style.to_run(text.len() - ix));
         }
         runs
     }
@@ -278,7 +276,7 @@ impl Element for StyledText {
         let rem_size = window.rem_size();
         let runs = self.runs.take().or_else(|| {
             self.delayed_highlights.take().map(|delayed_highlights| {
-                Self::compute_runs(&self.text, &window.text_style(), delayed_highlights, rem_size)
+                Self::compute_runs(&self.text, &window.text_style(), delayed_highlights)
             })
         });
 
@@ -351,7 +349,7 @@ impl TextLayout {
         let runs = if let Some(runs) = runs {
             runs
         } else {
-            vec![text_style.to_run(text.len(), rem_size)]
+            vec![text_style.to_run(text.len())]
         };
         window.request_measured_layout(Default::default(), {
             let element_state = self.clone();

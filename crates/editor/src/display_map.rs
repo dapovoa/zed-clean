@@ -2053,7 +2053,7 @@ impl DisplaySnapshot {
                 Cow::Borrowed(&editor_style.text)
             };
 
-            runs.push(text_style.to_run(chunk.text.len(), *rem_size))
+            runs.push(text_style.to_run(chunk.text.len()))
         }
 
         if line.ends_with('\n') {
