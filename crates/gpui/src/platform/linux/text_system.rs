@@ -407,12 +407,11 @@ impl CosmicTextSystemState {
         let mut total_len = 0;
         let mut total_width = Pixels::ZERO;
 
-        let mut group_start = 0; // Used for tracking group boundaries (may be useful in future)
         let mut group_font_size = font_runs.first().and_then(|r| r.font_size);
         let mut group_runs: Vec<(FontId, usize)> = Vec::new();
         let mut group_widths: Vec<Pixels> = Vec::new();
 
-        for (i, run) in font_runs.iter().enumerate() {
+        for (_i, run) in font_runs.iter().enumerate() {
             let run_font_size = run.font_size;
 
             if run_font_size != group_font_size {
@@ -429,7 +428,6 @@ impl CosmicTextSystemState {
                 }
 
                 // Start new group
-                group_start = i;
                 group_font_size = run_font_size;
                 group_runs.clear();
             }
