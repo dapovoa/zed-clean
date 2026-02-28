@@ -422,18 +422,18 @@ impl CosmicTextSystemState {
                         self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
                     max_ascent = max_ascent.max(group_ascent);
                     max_descent = max_descent.max(group_descent);
-                    total_len = group_len;
+                    total_len += group_len;
                     total_width = total_width.max(group_width);
                     group_runs.clear();
                     group_font_size = None;
                 }
 
                 // Layout this run individually
-                let (run_ascent, run_descent, run_len, run_width) =
+                let (run_ascent, run_descent, _, run_width) =
                     self.layout_group(text, total_len, &[(run.font_id, run.len)], run_font_size, &mut runs);
                 max_ascent = max_ascent.max(run_ascent);
                 max_descent = max_descent.max(run_descent);
-                total_len = run_len;
+                total_len += run.len;
                 total_width += run_width;
             } else {
                 // This run uses the default font_size, group it
@@ -451,7 +451,7 @@ impl CosmicTextSystemState {
                 self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
             max_ascent = max_ascent.max(group_ascent);
             max_descent = max_descent.max(group_descent);
-            total_len = group_len;
+            total_len += group_len;
             total_width = total_width.max(group_width);
         }
 
