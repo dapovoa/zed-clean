@@ -101,7 +101,10 @@ impl TableView {
             len: 0,
             font: text_font,
             color: text_style.color,
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         }];
 
         for field in table.schema.fields.iter() {

@@ -859,7 +859,7 @@ pub fn theme_colors_refinement(
             .agent_inline_code_foreground
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        agent_inline_code_font_size: this.agent_inline_code_font_size,
+        agent_inline_code_font_size: Some(this.agent_inline_code_font_size.unwrap_or(0.75)),
         agent_user_message_background: this
             .agent_user_message_background
             .as_ref()

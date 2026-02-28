@@ -35,6 +35,8 @@ pub struct ShapedRun {
     pub font_id: FontId,
     /// The glyphs that make up this run
     pub glyphs: Vec<ShapedGlyph>,
+    /// The font size for this run
+    pub font_size: Pixels,
 }
 
 /// A single glyph, ready to paint.
@@ -593,10 +595,27 @@ impl LineLayoutCache {
 }
 
 /// A run of text with a single font.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug)]
 pub struct FontRun {
     pub(crate) len: usize,
     pub(crate) font_id: FontId,
+    pub(crate) font_size: Option<Pixels>,
+}
+
+impl PartialEq for FontRun {
+    fn eq(&self, other: &Self) -> bool {
+        self.len == other.len && self.font_id == other.font_id && self.font_size == other.font_size
+    }
+}
+
+impl Eq for FontRun {}
+
+impl Hash for FontRun {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.len.hash(state);
+        self.font_id.hash(state);
+        self.font_size.hash(state);
+    }
 }
 
 trait AsCacheKeyRef {

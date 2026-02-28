@@ -401,7 +401,11 @@ mod tests {
                     weight: FontWeight::default(),
                     style: FontStyle::Normal,
                 },
-                ..Default::default()
+                color: Default::default(),
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+                font_size: None,
             })
             .collect()
     }
@@ -881,12 +885,16 @@ mod tests {
                 font: font("Helvetica"),
                 color: Default::default(),
                 underline: Default::default(),
-                ..Default::default()
+                font_size: None,
             };
             let bold = TextRun {
                 len: 0,
                 font: font("Helvetica").bold(),
-                ..Default::default()
+                color: Default::default(),
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+                font_size: None,
             };
 
             let text = "aa bbb cccc ddddd eeee".into();

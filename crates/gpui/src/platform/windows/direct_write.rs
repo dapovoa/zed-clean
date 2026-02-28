@@ -534,6 +534,7 @@ impl DirectWriteState {
                 let first_run = &font_runs[0];
                 let font_info = &self.fonts[first_run.font_id.0];
                 let collection = &font_info.font_collection;
+                let run_font_size = first_run.font_size.unwrap_or(font_size);
                 let format: IDWriteTextFormat1 = components
                     .factory
                     .CreateTextFormat(
@@ -542,7 +543,7 @@ impl DirectWriteState {
                         font_info.font_face.GetWeight(),
                         font_info.font_face.GetStyle(),
                         DWRITE_FONT_STRETCH_NORMAL,
-                        font_size.0,
+                        run_font_size.0,
                         &components.locale,
                     )?
                     .cast()?;
@@ -593,17 +594,34 @@ impl DirectWriteState {
                 utf16_offset += current_text_utf16_length;
                 text_layout.SetFontCollection(collection, text_range)?;
                 text_layout.SetFontFamilyName(&font_info.font_family_h, text_range)?;
-                let font_size = if break_ligatures {
-                    font_size.0.next_up()
+                let font_size = run.font_size.unwrap_or(font_size);
+                let font_size_for_rendering = if break_ligatures {
+                    px(font_size.0.next_up())
                 } else {
-                    font_size.0
+                    font_size
                 };
-                text_layout.SetFontSize(font_size, text_range)?;
+                text_layout.SetFontSize(font_size_for_rendering.0, text_range)?;
                 text_layout.SetFontStyle(font_info.font_face.GetStyle(), text_range)?;
                 text_layout.SetFontWeight(font_info.font_face.GetWeight(), text_range)?;
                 text_layout.SetTypography(&font_info.features, text_range)?;
 
                 break_ligatures = !break_ligatures;
+            }
+
+            // Collect font size ranges for use during glyph rendering
+            let mut font_size_ranges: Vec<(u32, u32, f32)> = Vec::new();
+            let mut current_text_pos: u32 = 0;
+            
+            // First run uses the initial font_size
+            let first_run = &font_runs[0];
+            let first_font_size = first_run.font_size.unwrap_or(font_size).0;
+            font_size_ranges.push((current_text_pos, first_run.len as u32, first_font_size));
+            current_text_pos += first_run.len as u32;
+            
+            for run in &font_runs[1..] {
+                let run_font_size = run.font_size.unwrap_or(font_size).0;
+                font_size_ranges.push((current_text_pos, run.len as u32, run_font_size));
+                current_text_pos += run.len as u32;
             }
 
             let mut runs = Vec::new();
@@ -613,6 +631,8 @@ impl DirectWriteState {
                 index_converter: StringIndexConverter::new(text),
                 runs: &mut runs,
                 width: 0.0,
+                font_size_ranges,
+                current_range_idx: 0,
             };
             text_layout.Draw(
                 Some((&raw const renderer_context).cast::<c_void>()),
@@ -1363,6 +1383,8 @@ struct RendererContext<'t, 'a, 'b> {
     index_converter: StringIndexConverter<'a>,
     runs: &'b mut Vec<ShapedRun>,
     width: f32,
+    font_size_ranges: Vec<(u32, u32, f32)>, // (start, length, font_size)
+    current_range_idx: usize,
 }
 
 #[derive(Debug)]
@@ -1554,7 +1576,24 @@ impl IDWriteTextRenderer_Impl for TextRenderer_Impl {
             }
             glyph_idx += cluster_glyph_count;
         }
-        context.runs.push(ShapedRun { font_id, glyphs });
+        
+        // Determine font_size for this glyph run based on the text position
+        let start_pos = desc.textPosition;
+        let end_pos = start_pos + desc.stringLength as u32;
+        let font_size = context
+            .font_size_ranges
+            .iter()
+            .find(|(range_start, range_len, _)| {
+                start_pos >= *range_start && (start_pos + desc.stringLength as u32) <= (*range_start + *range_len)
+            })
+            .map(|(_, _, fs)| *fs as f32)
+            .unwrap_or_else(|| context.font_size_ranges.first().map(|(_, _, fs)| *fs as f32).unwrap_or(font_size.0));
+        
+        context.runs.push(ShapedRun {
+            font_id,
+            glyphs,
+            font_size: px(font_size),
+        });
         Ok(())
     }
 

@@ -601,6 +601,7 @@ impl TerminalElement {
             },
             underline,
             strikethrough,
+            font_size: None,
         };
 
         if let Some((style, range)) = hyperlink
@@ -1128,7 +1129,10 @@ impl Element for TerminalElement {
                             len,
                             font: text_style.font(),
                             color: theme.colors().terminal_ansi_background,
-                            ..Default::default()
+                            background_color: None,
+                            underline: None,
+                            strikethrough: None,
+                            font_size: None,
                         }],
                         None,
                     )
@@ -1350,7 +1354,9 @@ impl Element for TerminalElement {
                                 font: ime_style.font(),
                                 color: ime_style.color,
                                 underline: ime_style.underline,
-                                ..Default::default()
+                                background_color: None,
+                                strikethrough: None,
+                                font_size: None,
                             }],
                             None,
                         );
@@ -1891,21 +1897,30 @@ mod tests {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::red(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let style2 = TextRun {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::red(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let style3 = TextRun {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::blue(), // Different color
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let font_size = AbsoluteLength::Pixels(px(12.0));
@@ -1924,7 +1939,10 @@ mod tests {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::red(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let font_size = AbsoluteLength::Pixels(px(12.0));
@@ -1953,7 +1971,10 @@ mod tests {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::red(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let font_size = AbsoluteLength::Pixels(px(12.0));
@@ -1983,7 +2004,10 @@ mod tests {
             len: 1,
             font: font("Helvetica"),
             color: Hsla::red(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         };
 
         let font_size = AbsoluteLength::Pixels(px(12.0));

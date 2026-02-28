@@ -456,12 +456,14 @@ impl Element for TextElement {
             background_color: None,
             underline: None,
             strikethrough: None,
+            font_size: None,
         };
         let runs = if let Some(marked_range) = input.marked_range.as_ref() {
             vec![
                 TextRun {
                     len: marked_range.start,
-                    ..run.clone()
+                    ..run.clone(),
+                    font_size: None,
                 },
                 TextRun {
                     len: marked_range.end - marked_range.start,
@@ -470,11 +472,13 @@ impl Element for TextElement {
                         thickness: px(1.0),
                         wavy: false,
                     }),
-                    ..run.clone()
+                    ..run.clone(),
+                    font_size: None,
                 },
                 TextRun {
                     len: display_text.len() - marked_range.end,
-                    ..run
+                    ..run,
+                    font_size: None,
                 },
             ]
             .into_iter()

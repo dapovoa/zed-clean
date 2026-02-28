@@ -217,6 +217,7 @@ impl TextSystem {
                 &[FontRun {
                     len: buffer.len(),
                     font_id,
+                    font_size: None,
                 }],
             )
             .width
@@ -473,6 +474,7 @@ impl WindowTextSystem {
                     && last_run.underline == run.underline
                     && last_run.strikethrough == run.strikethrough
                     && last_run.background_color == run.background_color
+                    && run.font_size.is_none()  // font_size doesn't affect decoration
                 {
                     last_run.len += run_len_within_line as u32;
                     false
@@ -491,12 +493,14 @@ impl WindowTextSystem {
                 if let Some(font_run) = font_runs.last_mut()
                     && font_id == font_run.font_id
                     && !decoration_changed
+                    && font_run.font_size == run.font_size
                 {
                     font_run.len += run_len_within_line;
                 } else {
                     font_runs.push(FontRun {
                         len: run_len_within_line,
                         font_id,
+                        font_size: run.font_size,
                     });
                 }
 
@@ -592,6 +596,7 @@ impl WindowTextSystem {
                 && last_run.color == run.color
                 && last_run.underline == run.underline
                 && last_run.strikethrough == run.strikethrough
+                && last_run.font_size == run.font_size
             // we do not consider differing background color relevant, as it does not affect glyphs
             // && last_run.background_color == run.background_color
             {
@@ -611,6 +616,7 @@ impl WindowTextSystem {
                 font_runs.push(FontRun {
                     len: run.len,
                     font_id,
+                    font_size: run.font_size,
                 });
             }
         }
@@ -785,6 +791,8 @@ pub struct TextRun {
     pub underline: Option<UnderlineStyle>,
     /// The strikethrough style (if any)
     pub strikethrough: Option<StrikethroughStyle>,
+    /// The font size for this run. If None, uses the global font_size of the line.
+    pub font_size: Option<Pixels>,
 }
 
 #[cfg(all(target_os = "macos", test))]

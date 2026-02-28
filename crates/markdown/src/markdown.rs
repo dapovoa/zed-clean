@@ -257,7 +257,16 @@ impl MarkdownStyle {
                 font_family: Some(theme_settings.buffer_font.family.clone()),
                 font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
                 font_features: Some(theme_settings.buffer_font.features.clone()),
-                font_size: Some(buffer_font_size.into()),
+                font_size: Some(match font {
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                        if colors.agent_inline_code_font_size != 0.75 {
+                            rems(colors.agent_inline_code_font_size).into()
+                        } else {
+                            buffer_font_size.into()
+                        }
+                    }
+                    MarkdownFont::Editor => buffer_font_size.into(),
+                }),
                 background_color: Some(match font {
                     MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_background,
                     MarkdownFont::Editor => colors.editor_foreground.opacity(0.08),
@@ -1830,6 +1839,7 @@ struct MarkdownElementBuilder {
     current_source_index: usize,
     html_comment: bool,
     base_text_style: TextStyle,
+    base_font_size_rems: AbsoluteLength,
     text_style_stack: Vec<TextStyleRefinement>,
     code_block_stack: Vec<Option<Arc<Language>>>,
     list_stack: Vec<ListStackEntry>,
@@ -1862,10 +1872,11 @@ impl MarkdownElementBuilder {
             }],
             rendered_lines: Vec::new(),
             pending_line: PendingLine::default(),
-            rendered_links: Vec::new(),
+                rendered_links: Vec::new(),
             current_source_index: 0,
             html_comment: false,
             base_text_style,
+            base_font_size_rems: AbsoluteLength::default(), // Will be set from base_text_style.font_size later
             text_style_stack: Vec::new(),
             code_block_stack: Vec::new(),
             list_stack: Vec::new(),
@@ -1974,32 +1985,36 @@ impl MarkdownElementBuilder {
         self.pending_line.text.push_str(text);
         self.current_source_index = source_range.end;
 
+        let current_style = self.text_style();
+
         if let Some(Some(language)) = self.code_block_stack.last() {
             let mut offset = 0;
             for (range, highlight_id) in language.highlight_text(&Rope::from(text), 0..text.len()) {
                 if range.start > offset {
-                    self.pending_line
-                        .runs
-                        .push(self.text_style().to_run(range.start - offset));
+                    let mut run = self.text_style().to_run(range.start - offset);
+                    // Note: font_size from refiment is ignored here - see shape_line below
+                    // The font_size conversion happens when layouts are painted
+                    self.pending_line.runs.push(run);
                 }
 
                 let mut run_style = self.text_style();
                 if let Some(highlight) = highlight_id.style(&self.syntax_theme) {
                     run_style = run_style.highlight(highlight);
                 }
-                self.pending_line.runs.push(run_style.to_run(range.len()));
+                let mut run = run_style.to_run(range.len());
+                // Note: font_size from refiment is ignored here
+                self.pending_line.runs.push(run);
                 offset = range.end;
             }
 
             if offset < text.len() {
-                self.pending_line
-                    .runs
-                    .push(self.text_style().to_run(text.len() - offset));
+                let mut run = self.text_style().to_run(text.len() - offset);
+                self.pending_line.runs.push(run);
             }
         } else {
-            self.pending_line
-                .runs
-                .push(self.text_style().to_run(text.len()));
+            let mut run = self.text_style().to_run(text.len());
+            // Note: font_size from refinement is ignored here
+            self.pending_line.runs.push(run);
         }
     }
 

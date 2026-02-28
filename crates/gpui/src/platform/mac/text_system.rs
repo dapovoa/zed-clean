@@ -480,11 +480,12 @@ impl MacTextSystemState {
                 let font = &self.fonts[run.font_id.0];
 
                 let font_metrics = font.metrics();
+                let font_size = run.font_size.unwrap_or(font_size);
                 let font_scale = font_size.0 / font_metrics.units_per_em as f32;
                 max_ascent = max_ascent.max(font_metrics.ascent * font_scale);
                 max_descent = max_descent.max(-font_metrics.descent * font_scale);
 
-                let font_size = if break_ligature {
+                let font_size_for_rendering = if break_ligature {
                     px(font_size.0.next_up())
                 } else {
                     font_size
@@ -493,7 +494,7 @@ impl MacTextSystemState {
                     string.set_attribute(
                         cf_range,
                         kCTFontAttributeName,
-                        &font.native_font().clone_with_font_size(font_size.into()),
+                        &font.native_font().clone_with_font_size(font_size_for_rendering.into()),
                     );
                 }
                 break_ligature = !break_ligature;
@@ -517,9 +518,15 @@ impl MacTextSystemState {
             let mut glyphs = match runs.last_mut() {
                 Some(run) if run.font_id == font_id => &mut run.glyphs,
                 _ => {
+                    let font_metrics = font.metrics();
+                    let font_size = font_runs
+                        .first()
+                        .map(|r| r.font_size.unwrap_or(font_size))
+                        .unwrap_or(font_size);
                     runs.push(ShapedRun {
                         font_id,
                         glyphs: Vec::with_capacity(run.glyph_count().try_into().unwrap_or(0)),
+                        font_size,
                     });
                     &mut runs.last_mut().unwrap().glyphs
                 }

@@ -399,28 +399,103 @@ impl CosmicTextSystemState {
 
     #[profiling::function]
     fn layout_line(&mut self, text: &str, font_size: Pixels, font_runs: &[FontRun]) -> LineLayout {
+        // Process each FontRun separately if it has a different font_size
+        // Group consecutive runs with the same font_size for efficiency
+        let mut runs: Vec<ShapedRun> = Vec::new();
+        let mut max_ascent = Pixels::ZERO;
+        let mut max_descent = Pixels::ZERO;
+        let mut total_len = 0;
+        let mut total_width = Pixels::ZERO;
+
+        let mut group_start = 0; // Used for tracking group boundaries (may be useful in future)
+        let mut group_font_size = font_runs.first().and_then(|r| r.font_size);
+        let mut group_runs: Vec<(FontId, usize)> = Vec::new();
+        let mut group_widths: Vec<Pixels> = Vec::new();
+
+        for (i, run) in font_runs.iter().enumerate() {
+            let run_font_size = run.font_size;
+
+            if run_font_size != group_font_size {
+                // Process the current group
+                if !group_runs.is_empty() {
+                    let group_fs = group_font_size.unwrap_or(font_size);
+                    let (group_ascent, group_descent, group_len, group_width) =
+                        self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
+                    max_ascent = max_ascent.max(group_ascent);
+                    max_descent = max_descent.max(group_descent);
+                    total_len = group_len;
+                    total_width = total_width.max(group_width);
+                    group_widths.push(group_width);
+                }
+
+                // Start new group
+                group_start = i;
+                group_font_size = run_font_size;
+                group_runs.clear();
+            }
+
+            group_runs.push((run.font_id, run.len));
+        }
+
+        // Process the last group
+        if !group_runs.is_empty() {
+            let group_fs = group_font_size.unwrap_or(font_size);
+            let (group_ascent, group_descent, group_len, group_width) =
+                self.layout_group(text, total_len, &group_runs, Some(group_fs), &mut runs);
+            max_ascent = max_ascent.max(group_ascent);
+            max_descent = max_descent.max(group_descent);
+            total_len = group_len;
+            total_width = total_width.max(group_width);
+            group_widths.push(group_width);
+        }
+
+        // Return the total width as the sum of group widths (they're laid out side by side)
+        LineLayout {
+            font_size,
+            width: total_width,
+            ascent: max_ascent,
+            descent: max_descent,
+            runs,
+            len: total_len,
+        }
+    }
+
+    fn layout_group(
+        &mut self,
+        text: &str,
+        text_offset: usize,
+        runs: &[(FontId, usize)],
+        font_size: Option<Pixels>,
+        result_runs: &mut Vec<ShapedRun>,
+    ) -> (Pixels, Pixels, usize, Pixels) {
+        let font_size = font_size.unwrap_or_default();
         let mut attrs_list = AttrsList::new(&Attrs::new());
-        let mut offs = 0;
-        for run in font_runs {
-            let loaded_font = self.loaded_font(run.font_id);
+        let mut current_offs = text_offset;
+        let mut total_len = 0;
+
+        for (font_id, len) in runs {
+            let loaded_font = self.loaded_font(*font_id);
             let font = self.font_system.db().face(loaded_font.font.id()).unwrap();
 
             attrs_list.add_span(
-                offs..(offs + run.len),
+                current_offs..(current_offs + len),
                 &Attrs::new()
-                    .metadata(run.font_id.0)
+                    .metadata(font_id.0)
                     .family(Family::Name(&font.families.first().unwrap().0))
                     .stretch(font.stretch)
                     .style(font.style)
                     .weight(font.weight)
                     .font_features(loaded_font.features.clone()),
             );
-            offs += run.len;
+            current_offs += len;
+            total_len += len;
         }
+
+        let text_chunk = &text[text_offset..text_offset + total_len];
 
         let line = ShapeLine::new(
             &mut self.font_system,
-            text,
+            text_chunk,
             &attrs_list,
             cosmic_text::Shaping::Advanced,
             4,
@@ -429,7 +504,7 @@ impl CosmicTextSystemState {
         line.layout_to_buffer(
             &mut self.scratch,
             font_size.0,
-            None, // We do our own wrapping
+            None,
             cosmic_text::Wrap::None,
             None,
             &mut layout_lines,
@@ -437,8 +512,11 @@ impl CosmicTextSystemState {
             cosmic_text::Hinting::Disabled,
         );
         let layout = layout_lines.first().unwrap();
+        let group_width = layout.w.into();
 
-        let mut runs: Vec<ShapedRun> = Vec::new();
+        let mut current_font_id = FontId(0);
+        let mut glyphs: Vec<ShapedGlyph> = Vec::new();
+
         for glyph in &layout.glyphs {
             let mut font_id = FontId(glyph.metadata);
             let mut loaded_font = self.loaded_font(font_id);
@@ -460,27 +538,36 @@ impl CosmicTextSystemState {
                 is_emoji,
             };
 
-            if let Some(last_run) = runs
-                .last_mut()
-                .filter(|last_run| last_run.font_id == font_id)
-            {
-                last_run.glyphs.push(shaped_glyph);
+            if font_id == current_font_id {
+                glyphs.push(shaped_glyph);
             } else {
-                runs.push(ShapedRun {
-                    font_id,
-                    glyphs: vec![shaped_glyph],
-                });
+                if !glyphs.is_empty() {
+                    result_runs.push(ShapedRun {
+                        font_id: current_font_id,
+                        glyphs,
+                        font_size,
+                    });
+                }
+                current_font_id = font_id;
+                glyphs = vec![shaped_glyph];
             }
         }
 
-        LineLayout {
-            font_size,
-            width: layout.w.into(),
-            ascent: layout.max_ascent.into(),
-            descent: layout.max_descent.into(),
-            runs,
-            len: text.len(),
+        if !glyphs.is_empty() {
+            result_runs.push(ShapedRun {
+                font_id: current_font_id,
+                glyphs,
+                font_size,
+            });
         }
+
+        // Return: max_ascent, max_descent, total_len, group_width
+        (
+            layout.max_ascent.into(),
+            layout.max_descent.into(),
+            total_len,
+            group_width,
+        )
     }
 }
 

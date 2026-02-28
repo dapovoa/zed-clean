@@ -27629,7 +27629,10 @@ pub fn column_pixels(style: &EditorStyle, column: usize, window: &Window) -> Pix
             len: column,
             font: style.text.font(),
             color: Hsla::default(),
-            ..Default::default()
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            font_size: None,
         }],
         None,
     );
