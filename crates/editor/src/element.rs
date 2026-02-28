@@ -7830,9 +7830,8 @@ pub fn render_breadcrumb_text(
             return styled_element;
         }
 
-        let rem_size = window.rem_size();
         StyledText::new(segment.text.replace('\n', "⏎"))
-            .with_default_highlights(&text_style, segment.highlights.unwrap_or_default(), rem_size)
+            .with_default_highlights(&text_style, segment.highlights.unwrap_or_default())
             .into_any()
     });
 
@@ -7958,7 +7957,6 @@ fn apply_dirty_filename_style(
 
     let bold_weight = FontWeight::BOLD;
     let default_color = Color::Default.color(cx);
-    let rem_size = window.rem_size();
 
     if filename_position == 0 {
         let mut filename_style = text_style.clone();
@@ -8707,7 +8705,7 @@ impl LineWithInvisibles {
                             let shaped_line = window.text_system().shape_line(
                                 chunk,
                                 font_size,
-                                &[text_style.to_run(highlighted_chunk.text.len()))],
+                                &[text_style.to_run(highlighted_chunk.text.len())],
                                 None,
                             );
                             AvailableSpace::Definite(shaped_line.width)

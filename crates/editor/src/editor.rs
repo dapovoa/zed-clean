@@ -9692,7 +9692,7 @@ impl Editor {
         };
 
         let rem_size = window.rem_size();
-        let styled_text = highlighted_edits.to_styled_text(&style.text, rem_size);
+        let styled_text = highlighted_edits.to_styled_text(&style.text);
         let line_count = highlighted_edits.text.lines().count();
 
         const BORDER_WIDTH: Pixels = px(1.);
@@ -10329,7 +10329,6 @@ impl Editor {
                     .with_default_highlights(
                         &style.text,
                         highlighted_edits.highlights,
-                        window.rem_size(),
                     );
 
                 let preview = h_flex()

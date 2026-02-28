@@ -904,7 +904,6 @@ impl CompletionsMenu {
                                 Some((clamped_start..clamped_end, (*highlight)))
                             })
                             .collect();
-                        let rem_size = _window.rem_size();
                         let main_label = StyledText::new(main_text)
                             .with_default_highlights(&style.text, main_highlights);
 

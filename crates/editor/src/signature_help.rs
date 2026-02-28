@@ -392,11 +392,9 @@ impl SignatureHelpPopover {
                     .max_h(max_size.height)
                     .track_scroll(&self.scroll_handle)
                     .child({
-                        let rem_size = window.rem_size();
                         StyledText::new(signature.label.clone()).with_default_highlights(
                             &self.style,
                             signature.highlights.iter().cloned(),
-                            rem_size,
                         )
                     })
                     .when_some(
