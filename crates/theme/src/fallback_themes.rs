@@ -269,6 +269,8 @@ pub(crate) fn zed_default_dark() -> Theme {
                 agent_foreground: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
                 agent_code_block_background: editor,
                 agent_inline_code_background: hsla(218. / 360., 14. / 100., 71. / 100., 0.08),
+                agent_inline_code_foreground: hsla(221. / 360., 11. / 100., 86. / 100., 1.0),
+                agent_inline_code_font_size: 0.75,
                 agent_user_message_background: editor,
                 agent_user_message_border: hsla(225. / 360., 13. / 100., 12. / 100., 1.),
                 agent_selection_background: player.local().selection.alpha(0.25),

@@ -262,6 +262,10 @@ impl MarkdownStyle {
                     MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_background,
                     MarkdownFont::Editor => colors.editor_foreground.opacity(0.08),
                 }),
+                color: Some(match font {
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_foreground,
+                    MarkdownFont::Editor => colors.text,
+                }),
                 ..Default::default()
             },
             link: TextStyleRefinement {

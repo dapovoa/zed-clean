@@ -335,6 +335,10 @@ pub struct ThemeColors {
     pub agent_code_block_background: Hsla,
     /// Agent panel inline code background.
     pub agent_inline_code_background: Hsla,
+    /// Agent panel inline code foreground.
+    pub agent_inline_code_foreground: Hsla,
+    /// Agent panel inline code font size in rems.
+    pub agent_inline_code_font_size: f32,
     /// Agent panel user message background.
     pub agent_user_message_background: Hsla,
     /// Agent panel user message border.

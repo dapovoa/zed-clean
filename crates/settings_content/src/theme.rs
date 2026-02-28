@@ -1082,6 +1082,14 @@ pub struct ThemeColorsContent {
     #[serde(rename = "agent.inline_code.background")]
     pub agent_inline_code_background: Option<String>,
 
+    /// Agent panel inline code foreground color.
+    #[serde(rename = "agent.inline_code.foreground")]
+    pub agent_inline_code_foreground: Option<String>,
+
+    /// Agent panel inline code font size in rems.
+    #[serde(rename = "agent.inline_code.font_size")]
+    pub agent_inline_code_font_size: Option<f32>,
+
     /// Agent panel user message background color.
     #[serde(rename = "agent.user_message.background")]
     pub agent_user_message_background: Option<String>,
