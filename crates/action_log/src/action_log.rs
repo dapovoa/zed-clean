@@ -7,6 +7,7 @@ use gpui::{
     App, AppContext, AsyncApp, Context, Entity, SharedString, Subscription, Task, WeakEntity,
 };
 use language::{Anchor, Buffer, BufferEvent, Point, ToPoint};
+use log::error;
 use project::{Project, ProjectItem, lsp_store::OpenLspBufferHandle};
 use std::{cmp, ops::Range, sync::Arc};
 use text::{Edit, Patch, Rope};
@@ -232,14 +233,18 @@ impl ActionLog {
             futures::select_biased! {
                 buffer_update = buffer_updates.next() => {
                     if let Some((author, buffer_snapshot)) = buffer_update {
-                        Self::track_edits(&this, &buffer, author, buffer_snapshot, cx).await?;
+                        if let Err(err) = Self::track_edits(&this, &buffer, author, buffer_snapshot, cx).await {
+                            log::error!("track_edits failed: {err:#?}");
+                        }
                     } else {
                         break;
                     }
                 }
                 _ = git_diff_updates_rx.changed().fuse() => {
                     if let Some(git_diff) = git_diff.as_ref() {
-                        Self::keep_committed_edits(&this, &buffer, git_diff, cx).await?;
+                        if let Err(err) = Self::keep_committed_edits(&this, &buffer, git_diff, cx).await {
+                            log::error!("keep_committed_edits failed: {err:#?}");
+                        }
                     }
                 }
             }
@@ -720,25 +725,26 @@ impl ActionLog {
         telemetry: Option<ActionLogTelemetry>,
         cx: &mut Context<Self>,
     ) {
-        self.tracked_buffers.retain(|buffer, tracked_buffer| {
+        for (buffer, tracked_buffer) in &mut self.tracked_buffers {
             let mut metrics = ActionLogMetrics::for_buffer(buffer.read(cx));
             metrics.add_edits(tracked_buffer.unreviewed_edits.edits());
             if let Some(telemetry) = telemetry.as_ref() {
                 telemetry_report_accepted_edits(telemetry, metrics);
             }
+
             match tracked_buffer.status {
-                TrackedBufferStatus::Deleted => false,
+                TrackedBufferStatus::Deleted => {}
                 _ => {
                     if let TrackedBufferStatus::Created { .. } = &mut tracked_buffer.status {
                         tracked_buffer.status = TrackedBufferStatus::Modified;
                     }
+
                     tracked_buffer.unreviewed_edits.clear();
-                    tracked_buffer.diff_base = tracked_buffer.snapshot.as_rope().clone();
+                    tracked_buffer.diff_base = buffer.read(cx).as_rope().clone();
                     tracked_buffer.schedule_diff_update(ChangeAuthor::User, cx);
-                    true
                 }
             }
-        });
+        }
 
         cx.notify();
     }

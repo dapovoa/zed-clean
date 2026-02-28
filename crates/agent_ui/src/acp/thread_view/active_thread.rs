@@ -6127,15 +6127,6 @@ impl AcpThreadView {
                                 this.child(
                                     h_flex()
                                         .gap_1()
-                                        .child(
-                                            Label::new(format!(
-                                                "— {} {} changed",
-                                                files_changed,
-                                                if files_changed == 1 { "file" } else { "files" }
-                                            ))
-                                            .size(LabelSize::Small)
-                                            .color(Color::Muted),
-                                        )
                                         .child(DiffStat::new(
                                             diff_stat_id.clone(),
                                             diff_stats.lines_added as usize,
