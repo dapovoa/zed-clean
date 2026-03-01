@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use gpui::{hsla, App, Hsla, SharedString, WindowBackgroundAppearance};
+use gpui::{App, Hsla, SharedString, WindowBackgroundAppearance, hsla};
 use refineable::Refineable;
 use std::sync::Arc;
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
@@ -373,7 +373,7 @@ pub struct ThemeColors {
     pub clean_project_panel_edited_text: Hsla,
     /// Project panel item active background color for the 'clean' theme.
     pub clean_project_panel_active_background: Hsla,
-    
+
     /// Height of the chat input area in rems.
     pub clean_chat_input_height: f32,
     /// Chat input background color for the 'clean' theme.
@@ -382,7 +382,7 @@ pub struct ThemeColors {
     pub clean_chat_input_text: Hsla,
     /// Chat input border color for the 'clean' theme.
     pub clean_chat_input_border: Hsla,
-    
+
     /// Chat output text color for the 'clean' theme.
     pub clean_chat_output_text: Hsla,
     /// Chat output selection background color for the 'clean' theme.
@@ -419,7 +419,7 @@ pub struct ThemeColors {
     pub clean_chat_output_scrollbar_thumb_active: Hsla,
     /// Chat output background color for the 'clean' theme.
     pub clean_chat_output_background: Hsla,
-    
+
     /// Height of the git input area in rems.
     pub clean_git_input_height: f32,
     /// Git background color for the 'clean' theme.
@@ -436,6 +436,8 @@ pub struct ThemeColors {
 
     /// Font size for user message bubbles in the agent chat, in rems.
     pub agent_user_message_font_size: f32,
+    /// Font size for user input field in the agent chat, in rems.
+    pub agent_user_input_font_size: f32,
     /// Vertical padding for user message bubbles in the agent chat, in rems.
     pub agent_user_message_padding_y: f32,
     /// Horizontal padding for user message bubbles in the agent chat, in rems.
@@ -568,6 +570,8 @@ pub enum ThemeColorField {
     AgentUserMessageSelectionBackground,
     AgentResponseFontSize,
     AgentCodeBlockFontSize,
+    AgentUserInputFontSize,
+    AgentUserMessageFontSize,
     CleanProjectPanelBackground,
     CleanProjectPanelHoverBackground,
     CleanProjectPanelText,
@@ -738,30 +742,54 @@ impl ThemeColors {
             ThemeColorField::AgentUserMessageSelectionBackground => {
                 self.agent_user_message_selection_background
             }
-            ThemeColorField::AgentResponseFontSize => hsla(0., 0., 0., self.agent_response_font_size),
-            ThemeColorField::AgentCodeBlockFontSize => hsla(0., 0., 0., self.agent_code_block_font_size),
+            ThemeColorField::AgentResponseFontSize => {
+                hsla(0., 0., 0., self.agent_response_font_size)
+            }
+            ThemeColorField::AgentCodeBlockFontSize => {
+                hsla(0., 0., 0., self.agent_code_block_font_size)
+            }
+            ThemeColorField::AgentUserInputFontSize => {
+                hsla(0., 0., 0., self.agent_user_input_font_size)
+            }
+            ThemeColorField::AgentUserMessageFontSize => {
+                hsla(0., 0., 0., self.agent_user_message_font_size)
+            }
             ThemeColorField::CleanProjectPanelBackground => self.clean_project_panel_background,
-            ThemeColorField::CleanProjectPanelHoverBackground => self.clean_project_panel_hover_background,
+            ThemeColorField::CleanProjectPanelHoverBackground => {
+                self.clean_project_panel_hover_background
+            }
             ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,
             ThemeColorField::CleanProjectPanelHoverText => self.clean_project_panel_hover_text,
             ThemeColorField::CleanProjectPanelActiveText => self.clean_project_panel_active_text,
             ThemeColorField::CleanProjectPanelEditedText => self.clean_project_panel_edited_text,
-            ThemeColorField::CleanProjectPanelActiveBackground => self.clean_project_panel_active_background,
+            ThemeColorField::CleanProjectPanelActiveBackground => {
+                self.clean_project_panel_active_background
+            }
             ThemeColorField::CleanChatInputBackground => self.clean_chat_input_background,
             ThemeColorField::CleanChatInputText => self.clean_chat_input_text,
             ThemeColorField::CleanChatInputBorder => self.clean_chat_input_border,
             ThemeColorField::CleanChatOutputText => self.clean_chat_output_text,
             ThemeColorField::CleanChatOutputSelection => self.clean_chat_output_selection,
-            ThemeColorField::CleanChatOutputRunCommandHeader => self.clean_chat_output_run_command_header,
-            ThemeColorField::CleanChatOutputRunCommandBody => self.clean_chat_output_run_command_body,
-            ThemeColorField::CleanChatOutputRunCommandText => self.clean_chat_output_run_command_text,
-            ThemeColorField::CleanChatOutputTerminalHeader => self.clean_chat_output_terminal_header,
+            ThemeColorField::CleanChatOutputRunCommandHeader => {
+                self.clean_chat_output_run_command_header
+            }
+            ThemeColorField::CleanChatOutputRunCommandBody => {
+                self.clean_chat_output_run_command_body
+            }
+            ThemeColorField::CleanChatOutputRunCommandText => {
+                self.clean_chat_output_run_command_text
+            }
+            ThemeColorField::CleanChatOutputTerminalHeader => {
+                self.clean_chat_output_terminal_header
+            }
             ThemeColorField::CleanChatOutputTerminalBody => self.clean_chat_output_terminal_body,
             ThemeColorField::CleanChatOutputTerminalText => self.clean_chat_output_terminal_text,
             ThemeColorField::CleanChatOutputEditHeader => self.clean_chat_output_edit_header,
             ThemeColorField::CleanChatOutputEditBody => self.clean_chat_output_edit_body,
             ThemeColorField::CleanChatOutputCodeHeader => self.clean_chat_output_code_header,
-            ThemeColorField::CleanChatOutputThinkingHeader => self.clean_chat_output_thinking_header,
+            ThemeColorField::CleanChatOutputThinkingHeader => {
+                self.clean_chat_output_thinking_header
+            }
             ThemeColorField::CleanChatOutputThinkingBody => self.clean_chat_output_thinking_body,
             ThemeColorField::CleanChatOutputIndentGuide => self.clean_chat_output_indent_guide,
             ThemeColorField::CleanChatOutputScrollbarThumb => {
@@ -878,5 +906,23 @@ mod tests {
 
         assert_eq!(colors.background, Some(gpui::rgb(0xff00ff).into()));
         assert_eq!(colors.text, Some(gpui::rgb(0xff0000).into()));
+    }
+
+    #[test]
+    fn override_agent_user_message_font_size() {
+        let mut colors = ThemeColors::light();
+
+        // Default value is 0.75
+        assert_eq!(colors.agent_user_message_font_size, 0.75);
+
+        // Override to 1.5
+        let overrides = ThemeColorsRefinement {
+            agent_user_message_font_size: Some(1.5),
+            ..Default::default()
+        };
+
+        colors.refine(&overrides);
+
+        assert_eq!(colors.agent_user_message_font_size, 1.5);
     }
 }

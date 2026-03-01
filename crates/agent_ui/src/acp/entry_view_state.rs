@@ -108,6 +108,10 @@ impl EntryViewState {
                             editor.set_read_only(true, cx);
                         }
                         editor.set_message(chunks, window, cx);
+
+                        // Apply the appropriate font size style immediately after creation
+                        editor.update_editor_style(cx);
+
                         editor
                     });
                     cx.subscribe(&message_editor, move |_, editor, event, cx| {
@@ -212,7 +216,12 @@ impl EntryViewState {
     pub fn agent_ui_font_size_changed(&mut self, cx: &mut App) {
         for entry in self.entries.iter() {
             match entry {
-                Entry::UserMessage { .. } | Entry::AssistantMessage { .. } => {}
+                Entry::UserMessage(message_editor) => {
+                    message_editor.update(cx, |message_editor, cx| {
+                        message_editor.update_editor_style(cx);
+                    });
+                }
+                Entry::AssistantMessage { .. } => {}
                 Entry::Content(response_views) => {
                     for view in response_views.values() {
                         if let Ok(diff_editor) = view.clone().downcast::<Editor>() {

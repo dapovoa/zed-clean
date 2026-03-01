@@ -1321,6 +1321,11 @@ impl MessageEditor {
             editor.set_text(text, window, cx);
         });
     }
+
+    pub fn update_editor_style(&mut self, cx: &mut Context<Self>) {
+        // This function is called when theme settings change
+        cx.notify();
+    }
 }
 
 impl Focusable for MessageEditor {

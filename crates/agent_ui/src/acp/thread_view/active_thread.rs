@@ -1,7 +1,7 @@
-use theme::ThemeSettings;
 use gpui::{Corner, List};
 use language_model::LanguageModelEffortLevel;
 use settings::update_settings_file;
+use theme::ThemeSettings;
 use ui::{ButtonLike, SplitButton, SplitButtonStyle, Tab};
 
 use super::*;
@@ -2721,13 +2721,12 @@ impl AcpThreadView {
                 .unwrap_or(0);
 
             let input = crate::text_thread_editor::humanize_token_count(usage.input_tokens);
-            let input_max =
-                crate::text_thread_editor::humanize_token_count(usage.max_tokens);
+            let input_max = crate::text_thread_editor::humanize_token_count(usage.max_tokens);
             let output = crate::text_thread_editor::humanize_token_count(usage.output_tokens);
             let output_max = crate::text_thread_editor::humanize_token_count(max_output_tokens);
 
-            let has_cache = usage.cache_read_input_tokens > 0
-                || usage.cache_creation_input_tokens > 0;
+            let has_cache =
+                usage.cache_read_input_tokens > 0 || usage.cache_creation_input_tokens > 0;
 
             Some(
                 h_flex()
@@ -3527,7 +3526,6 @@ impl AcpThreadView {
                                         }
                                         this
                                     })
-                                    .text_size(rems(cx.theme().colors().agent_user_message_font_size))
                                     .child(editor.clone().into_any_element())
                             )
                             .when(editor_focus, |this| {
@@ -4237,7 +4235,10 @@ impl AcpThreadView {
 
         // Flat inline header row — no background card, chevron right next to text.
         let header_row = h_flex()
-            .id(SharedString::from(format!("thinking-header-{}-{}", entry_ix, chunk_ix)))
+            .id(SharedString::from(format!(
+                "thinking-header-{}-{}",
+                entry_ix, chunk_ix
+            )))
             .gap_1p5()
             .py_0p5()
             .cursor(CursorStyle::PointingHand)
@@ -6124,15 +6125,11 @@ impl AcpThreadView {
                             .child(icon)
                             .child(Label::new(title.to_string()).size(LabelSize::Small))
                             .when(files_changed > 0, |this| {
-                                this.child(
-                                    h_flex()
-                                        .gap_1()
-                                        .child(DiffStat::new(
-                                            diff_stat_id.clone(),
-                                            diff_stats.lines_added as usize,
-                                            diff_stats.lines_removed as usize,
-                                        )),
-                                )
+                                this.child(h_flex().gap_1().child(DiffStat::new(
+                                    diff_stat_id.clone(),
+                                    diff_stats.lines_added as usize,
+                                    diff_stats.lines_removed as usize,
+                                )))
                             }),
                     )
                     .when_some(session_id, |this, session_id| {
