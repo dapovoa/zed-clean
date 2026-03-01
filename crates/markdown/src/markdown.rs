@@ -29,7 +29,7 @@ use gpui::{
     FocusHandle, Focusable, FontStyle, FontWeight, GlobalElementId, Hitbox, Hsla, Image,
     ImageFormat, KeyContext, Length, MouseButton, MouseDownEvent, MouseEvent, MouseMoveEvent,
     MouseUpEvent, Point, ScrollHandle, Stateful, StrikethroughStyle, StyleRefinement, StyledText,
-    Task, TextLayout, TextRun, TextStyle, TextStyleRefinement, actions, img, point, quad,
+    Task, TextLayout, TextRun, TextStyle, TextStyleRefinement, actions, img, point, px, quad,
 };
 use language::{CharClassifier, Language, LanguageRegistry, Rope};
 use parser::CodeBlockMetadata;
@@ -130,13 +130,13 @@ impl MarkdownStyle {
                 let mut ui_font_size = theme_settings.agent_ui_font_size(cx);
                 if matches!(font, MarkdownFont::Agent) {
                     if colors.agent_response_font_size != 1.0 {
-                        ui_font_size = rems(colors.agent_response_font_size)
-                            .to_pixels(window.rem_size());
+                        ui_font_size =
+                            rems(colors.agent_response_font_size).to_pixels(window.rem_size());
                     }
                 } else if matches!(font, MarkdownFont::UserAgent) {
                     if colors.agent_user_message_font_size != 0.75 {
-                        ui_font_size = rems(colors.agent_user_message_font_size)
-                            .to_pixels(window.rem_size());
+                        ui_font_size =
+                            rems(colors.agent_user_message_font_size).to_pixels(window.rem_size());
                     }
                 }
                 (theme_settings.agent_buffer_font_size(cx), ui_font_size)
@@ -155,7 +155,9 @@ impl MarkdownStyle {
 
         let mut text_style = window.text_style();
         let line_height_multiplier = match font {
-            MarkdownFont::Agent | MarkdownFont::UserAgent => theme_settings.agent_buffer_line_height(),
+            MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                theme_settings.agent_buffer_line_height()
+            }
             MarkdownFont::Editor => 1.75,
         };
         let line_height = buffer_font_size * line_height_multiplier;
@@ -181,27 +183,33 @@ impl MarkdownStyle {
             code_block_overflow_x_scroll: true,
             heading_level_styles: Some(HeadingLevelStyles {
                 h1: Some(TextStyleRefinement {
-                    font_size: Some(rems(1.15).into()),
+                    font_size: Some(rems(1.10).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
                 h2: Some(TextStyleRefinement {
-                    font_size: Some(rems(1.1).into()),
+                    font_size: Some(rems(1.05).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
                 h3: Some(TextStyleRefinement {
-                    font_size: Some(rems(1.05).into()),
+                    font_size: Some(rems(1.0).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
                 h4: Some(TextStyleRefinement {
-                    font_size: Some(rems(1.).into()),
+                    font_size: Some(rems(1.0).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
                 h5: Some(TextStyleRefinement {
-                    font_size: Some(rems(0.95).into()),
+                    font_size: Some(rems(1.0).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
                 h6: Some(TextStyleRefinement {
-                    font_size: Some(rems(0.875).into()),
+                    font_size: Some(rems(0.95).into()),
+                    font_weight: Some(FontWeight::BOLD),
                     ..Default::default()
                 }),
             }),
@@ -230,11 +238,14 @@ impl MarkdownStyle {
                     MarkdownFont::UserAgent => colors.agent_user_message_border,
                     MarkdownFont::Editor => colors.border_variant,
                 }),
-                background: Some(match font {
-                    MarkdownFont::Agent => colors.agent_code_block_background,
-                    MarkdownFont::UserAgent => colors.agent_user_message_background,
-                    MarkdownFont::Editor => colors.editor_background,
-                }.into()),
+                background: Some(
+                    match font {
+                        MarkdownFont::Agent => colors.agent_code_block_background,
+                        MarkdownFont::UserAgent => colors.agent_user_message_background,
+                        MarkdownFont::Editor => colors.editor_background,
+                    }
+                    .into(),
+                ),
                 text: TextStyleRefinement {
                     font_family: Some(theme_settings.buffer_font.family.clone()),
                     font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
@@ -268,11 +279,15 @@ impl MarkdownStyle {
                     MarkdownFont::Editor => buffer_font_size.into(),
                 }),
                 background_color: Some(match font {
-                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_background,
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                        colors.agent_inline_code_background
+                    }
                     MarkdownFont::Editor => colors.editor_foreground.opacity(0.08),
                 }),
                 color: Some(match font {
-                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_inline_code_foreground,
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                        colors.agent_inline_code_foreground
+                    }
                     MarkdownFont::Editor => colors.text,
                 }),
                 ..Default::default()
@@ -1135,7 +1150,8 @@ impl Element for MarkdownElement {
                         MarkdownTag::Paragraph => {
                             builder.push_div(
                                 div().when(!self.style.height_is_multiple_of_line_height, |el| {
-                                    el.mb_2().line_height(self.style.base_text_style.line_height)
+                                    el.mb_2()
+                                        .line_height(self.style.base_text_style.line_height)
                                 }),
                                 range,
                                 markdown_end,
@@ -1226,7 +1242,9 @@ impl Element for MarkdownElement {
                                             .rounded_md()
                                             .border_1()
                                             .border_color(match self.style.font {
-                                                MarkdownFont::Agent | MarkdownFont::UserAgent => colors.agent_code_block_border,
+                                                MarkdownFont::Agent | MarkdownFont::UserAgent => {
+                                                    colors.agent_code_block_border
+                                                }
                                                 MarkdownFont::Editor => colors.border_variant,
                                             });
                                     }
@@ -1237,7 +1255,10 @@ impl Element for MarkdownElement {
                                     // moving padding from the parent to the code body
                                     // so the header sits flush against the container edges.
                                     let mut parent_container = parent_container;
-                                    let is_agent_block = matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent);
+                                    let is_agent_block = matches!(
+                                        self.style.font,
+                                        MarkdownFont::Agent | MarkdownFont::UserAgent
+                                    );
                                     if is_agent_block {
                                         let colors = cx.theme().colors();
                                         let language_name = match kind {
@@ -1258,8 +1279,8 @@ impl Element for MarkdownElement {
                                                 .child(
                                                     Label::new(language_name)
                                                         .size(LabelSize::XSmall)
-                                                        .color(Color::Muted)
-                                                )
+                                                        .color(Color::Muted),
+                                                ),
                                         );
                                     }
 
@@ -1322,7 +1343,9 @@ impl Element for MarkdownElement {
                             builder.push_div(
                                 div()
                                     .when(!self.style.height_is_multiple_of_line_height, |el| {
-                                        el.mb_1().gap_1().line_height(self.style.base_text_style.line_height)
+                                        el.mb_1()
+                                            .gap_1()
+                                            .line_height(self.style.base_text_style.line_height)
                                     })
                                     .h_flex()
                                     .items_start()
@@ -1463,7 +1486,10 @@ impl Element for MarkdownElement {
                                     code,
                                     self.markdown.clone(),
                                 );
-                                let is_agent = matches!(self.style.font, MarkdownFont::Agent | MarkdownFont::UserAgent);
+                                let is_agent = matches!(
+                                    self.style.font,
+                                    MarkdownFont::Agent | MarkdownFont::UserAgent
+                                );
                                 el.child(
                                     h_flex()
                                         .w_4()
@@ -1875,7 +1901,7 @@ impl MarkdownElementBuilder {
             }],
             rendered_lines: Vec::new(),
             pending_line: PendingLine::default(),
-                rendered_links: Vec::new(),
+            rendered_links: Vec::new(),
             current_source_index: 0,
             html_comment: false,
             base_text_style,
@@ -1902,6 +1928,31 @@ impl MarkdownElementBuilder {
 
     fn pop_text_style(&mut self) {
         self.text_style_stack.pop();
+    }
+
+    fn text_style_for_run(&self, len: usize) -> TextRun {
+        let current_style = self.text_style();
+        // Check if the current style's font size differs from the base
+        let current_font_size = current_style.font_size.to_pixels(self.rem_size);
+        let base_font_size = self.base_text_style.font_size.to_pixels(self.rem_size);
+
+        if (current_font_size - base_font_size).abs() > px(0.001) {
+            current_style.to_run_with_font_size(len, self.rem_size)
+        } else {
+            current_style.to_run(len)
+        }
+    }
+
+    fn text_style_for_run_with_style(&self, run_style: TextStyle, len: usize) -> TextRun {
+        // Check if the run style's font size differs from the base
+        let run_font_size = run_style.font_size.to_pixels(self.rem_size);
+        let base_font_size = self.base_text_style.font_size.to_pixels(self.rem_size);
+
+        if (run_font_size - base_font_size).abs() > px(0.001) {
+            run_style.to_run_with_font_size(len, self.rem_size)
+        } else {
+            run_style.to_run(len)
+        }
     }
 
     fn push_div(&mut self, div: impl Into<AnyDiv>, range: &Range<usize>, markdown_end: usize) {
@@ -1992,7 +2043,7 @@ impl MarkdownElementBuilder {
             let mut offset = 0;
             for (range, highlight_id) in language.highlight_text(&Rope::from(text), 0..text.len()) {
                 if range.start > offset {
-                    let run = self.text_style().to_run(range.start - offset);
+                    let run = self.text_style_for_run(range.start - offset);
                     self.pending_line.runs.push(run);
                 }
 
@@ -2000,17 +2051,17 @@ impl MarkdownElementBuilder {
                 if let Some(highlight) = highlight_id.style(&self.syntax_theme) {
                     run_style = run_style.highlight(highlight);
                 }
-                let run = run_style.to_run(range.len());
+                let run = self.text_style_for_run_with_style(run_style, range.len());
                 self.pending_line.runs.push(run);
                 offset = range.end;
             }
 
             if offset < text.len() {
-                let run = self.text_style().to_run(text.len() - offset);
+                let run = self.text_style_for_run(text.len() - offset);
                 self.pending_line.runs.push(run);
             }
         } else {
-            let run = self.text_style().to_run(text.len());
+            let run = self.text_style_for_run(text.len());
             self.pending_line.runs.push(run);
         }
     }
