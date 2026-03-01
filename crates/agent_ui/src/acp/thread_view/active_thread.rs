@@ -1381,6 +1381,7 @@ impl AcpThreadView {
         action_log.update(cx, |action_log, cx| {
             action_log.keep_all_edits(Some(telemetry), cx)
         });
+        cx.notify();
     }
 
     pub fn reject_all(&mut self, _: &RejectAll, _window: &mut Window, cx: &mut Context<Self>) {
@@ -1392,6 +1393,7 @@ impl AcpThreadView {
                 action_log.reject_all_edits(Some(telemetry), cx)
             })
             .detach();
+        cx.notify();
     }
 
     pub fn open_edited_buffer(
