@@ -273,7 +273,7 @@ impl Element for StyledText {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
         let runs = self.runs.take().or_else(|| {
             self.delayed_highlights.take().map(|delayed_highlights| {
                 Self::compute_runs(&self.text, &window.text_style(), delayed_highlights)

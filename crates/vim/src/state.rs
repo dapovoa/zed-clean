@@ -1235,7 +1235,7 @@ impl PickerDelegate for RegistersViewDelegate {
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let register_match = self.matches.get(ix)?;
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
 
         let mut output = String::new();
         let mut runs = Vec::new();
@@ -1625,7 +1625,7 @@ impl PickerDelegate for MarksViewDelegate {
         cx: &mut Context<Picker<Self>>,
     ) -> Option<Self::ListItem> {
         let mark_match = self.matches.get(ix)?;
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
 
         let mut left_output = String::new();
         let mut left_runs = Vec::new();

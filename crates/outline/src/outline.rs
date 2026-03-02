@@ -410,7 +410,7 @@ pub fn render_item<T>(
     window: &mut Window,
     cx: &mut App,
 ) -> StyledText {
-    let rem_size = window.rem_size();
+    let _rem_size = window.rem_size();
     let highlight_style = HighlightStyle {
         background_color: Some(cx.theme().colors().text_accent.alpha(0.3)),
         ..Default::default()

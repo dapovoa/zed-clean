@@ -317,6 +317,7 @@ pub(crate) fn zed_default_dark() -> Theme {
                 agent_code_block_font_size: 0.85,
                 agent_user_message_padding_y: 0.75,
                 agent_user_message_padding_x: 0.5,
+                agent_user_input_font_size: 1.0,
             },
             status: StatusColors {
                 conflict: yellow,

@@ -323,6 +323,7 @@ impl AcpServerView {
         let subscriptions = vec![
             cx.observe_global_in::<SettingsStore>(window, Self::agent_ui_font_size_changed),
             cx.observe_global_in::<AgentFontSize>(window, Self::agent_ui_font_size_changed),
+            cx.observe_global_in::<theme::GlobalTheme>(window, Self::agent_ui_font_size_changed),
             cx.subscribe_in(
                 &agent_server_store,
                 window,
@@ -1052,10 +1053,7 @@ impl AcpServerView {
                                             .iter()
                                             .enumerate()
                                             .filter(|(_, c)| {
-                                                matches!(
-                                                    c,
-                                                    AssistantMessageChunk::Thought { .. }
-                                                )
+                                                matches!(c, AssistantMessageChunk::Thought { .. })
                                             })
                                             .map(|(ix, _)| ix)
                                             .collect(),
@@ -1072,7 +1070,6 @@ impl AcpServerView {
                                     let key = (index, chunk_ix);
                                     if !active.thinking_block_started_at.contains_key(&key) {
                                         active.thinking_block_started_at.insert(key, now);
-                                        active.expanded_thinking_blocks.insert(key);
                                     }
                                 }
                             });
@@ -1116,7 +1113,6 @@ impl AcpServerView {
                                 let key = (index, chunk_ix);
                                 if !active.thinking_block_started_at.contains_key(&key) {
                                     active.thinking_block_started_at.insert(key, now);
-                                    active.expanded_thinking_blocks.insert(key);
                                 }
                             }
                         });

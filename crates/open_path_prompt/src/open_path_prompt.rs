@@ -722,7 +722,7 @@ impl PickerDelegate for OpenPathDelegate {
         };
 
         let is_current_dir_candidate = candidate.path.string == self.current_dir();
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
 
         let file_icon = maybe!({
             if !settings.file_icons {

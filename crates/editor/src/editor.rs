@@ -9691,7 +9691,7 @@ impl Editor {
             crate::edit_prediction_fallback_text(edits, cx)
         };
 
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
         let styled_text = highlighted_edits.to_styled_text(&style.text);
         let line_count = highlighted_edits.text.lines().count();
 
@@ -10239,7 +10239,7 @@ impl Editor {
         completion: &EditPredictionState,
         cursor_point: Point,
         style: &EditorStyle,
-        window: &Window,
+        _window: &Window,
         cx: &mut Context<Editor>,
     ) -> Option<Div> {
         use text::ToPoint as _;

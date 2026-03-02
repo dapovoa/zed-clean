@@ -4230,6 +4230,7 @@ impl AcpThreadView {
             })
             .text_ui_sm(cx)
             .overflow_hidden()
+            .p_1()
             .child(self.render_markdown(
                 chunk,
                 MarkdownStyle::themed(MarkdownFont::Agent, window, cx),
@@ -4254,9 +4255,10 @@ impl AcpThreadView {
             .map(|this| {
                 if is_generating && is_open {
                     this.child(
-                        LoadingLabel::new("Thinking")
-                            .size(LabelSize::Small)
-                            .color(Color::Muted),
+                        div()
+                            .text_size(self.tool_name_font_size())
+                            .text_color(cx.theme().colors().text_muted)
+                            .child("Thinking..."),
                     )
                 } else {
                     this.child(
@@ -4275,15 +4277,6 @@ impl AcpThreadView {
                     })
                 }
             })
-            .child(
-                Icon::new(if is_open {
-                    IconName::ChevronDown
-                } else {
-                    IconName::ChevronRight
-                })
-                .size(IconSize::XSmall)
-                .color(Color::Muted),
-            )
             .on_click(cx.listener(move |this, _event, _window, cx| {
                 if is_open {
                     this.expanded_thinking_blocks.remove(&key);

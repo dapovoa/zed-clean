@@ -1282,6 +1282,10 @@ pub struct ThemeColorsContent {
     #[serde(rename = "agent.user_message.padding_x")]
     pub agent_user_message_padding_x: Option<f32>,
 
+    /// Agent user input field font size in rems. Default: 1.0.
+    #[serde(rename = "agent.user_input.font_size")]
+    pub agent_user_input_font_size: Option<f32>,
+
     /// Project panel entry font size in rems. Default: 1.0 (inherits UI font size).
     #[serde(rename = "project_panel.font_size")]
     pub project_panel_font_size: Option<f32>,

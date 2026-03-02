@@ -7943,7 +7943,7 @@ pub fn render_breadcrumb_text(
 fn apply_dirty_filename_style(
     segment: &BreadcrumbText,
     text_style: &gpui::TextStyle,
-    window: &mut Window,
+    _window: &mut Window,
     cx: &App,
 ) -> Option<gpui::AnyElement> {
     let text = segment.text.replace('\n', "⏎");

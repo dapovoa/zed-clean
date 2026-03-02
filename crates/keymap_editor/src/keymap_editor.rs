@@ -2200,7 +2200,7 @@ impl RenderOnce for SyntaxHighlightedText {
             .highlight_text(&text.as_ref().into(), 0..text.len());
         let mut runs = Vec::with_capacity(highlights.len());
         let mut offset = 0;
-        let rem_size = window.rem_size();
+        let _rem_size = window.rem_size();
 
         for (highlight_range, highlight_id) in highlights {
             // Add un-highlighted text before the current highlight

@@ -29,7 +29,7 @@ use encoding_rs::Encoding;
 use fs::MTime;
 use futures::channel::oneshot;
 use gpui::{
-    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, Pixels, SharedString,
+    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, SharedString,
     StyledText, Task, TextStyle,
 };
 
