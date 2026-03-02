@@ -49,6 +49,10 @@ pub struct WorkspaceSettingsContent {
     /// Values: empty_tab, last_workspace, last_session, launchpad
     /// Default: last_session
     pub restore_on_startup: Option<RestoreOnStartupBehavior>,
+
+    /// Whether to open the agent panel as the default view on startup when no files are open.
+    /// Default: false
+    pub open_agent_panel_on_startup: Option<bool>,
     /// Whether to attempt to restore previous file's state when opening it again.
     /// The state is stored per pane.
     /// When disabled, defaults are applied instead of the state restoration.
