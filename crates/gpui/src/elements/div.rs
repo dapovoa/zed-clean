@@ -2048,7 +2048,7 @@ impl Interactivity {
             const FONT_SIZE: crate::Pixels = crate::Pixels(10.);
             let element_id = format!("{global_id:?}");
             let str_len = element_id.len();
-            let _rem_size = window.rem_size();
+            let rem_size = window.rem_size();
 
             let render_debug_text = |window: &mut Window| {
                 if let Some(text) = window

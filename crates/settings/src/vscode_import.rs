@@ -987,7 +987,6 @@ impl VsCodeSettings {
                 }
             }),
             zoomed_padding: None,
-            open_agent_panel_on_startup: None,
         }
     }
 

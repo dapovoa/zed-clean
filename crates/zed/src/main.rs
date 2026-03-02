@@ -1382,12 +1382,7 @@ pub(crate) async fn restore_or_create_workspace(
                     match restore_on_startup {
                         workspace::RestoreOnStartupBehavior::Launchpad => {}
                         _ => {
-                            if WorkspaceSettings::get_global(cx).open_agent_panel_on_startup {
-                                // Open agent panel instead of editor when starting up
-                                workspace.toggle_panel_focus::<agent_ui::AgentPanel>(window, cx);
-                            } else {
-                                Editor::new_file(workspace, &Default::default(), window, cx);
-                            }
+                            Editor::new_file(workspace, &Default::default(), window, cx);
                         }
                     }
                 },
