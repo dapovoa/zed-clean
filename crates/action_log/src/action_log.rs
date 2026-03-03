@@ -724,6 +724,20 @@ impl ActionLog {
         telemetry: Option<ActionLogTelemetry>,
         cx: &mut Context<Self>,
     ) {
+        // Collect buffers to remove (deleted buffers) before iterating
+        let buffers_to_remove: Vec<_> = self
+            .tracked_buffers
+            .iter()
+            .filter(|(_, tracked)| matches!(tracked.status, TrackedBufferStatus::Deleted))
+            .map(|(buffer, _)| buffer.clone())
+            .collect();
+
+        // Remove deleted buffers first
+        for buffer in buffers_to_remove {
+            self.tracked_buffers.remove(&buffer);
+        }
+
+        // Process remaining buffers
         for (buffer, tracked_buffer) in &mut self.tracked_buffers {
             let mut metrics = ActionLogMetrics::for_buffer(buffer.read(cx));
             metrics.add_edits(tracked_buffer.unreviewed_edits.edits());
@@ -731,18 +745,13 @@ impl ActionLog {
                 telemetry_report_accepted_edits(telemetry, metrics);
             }
 
-            match tracked_buffer.status {
-                TrackedBufferStatus::Deleted => {}
-                _ => {
-                    if let TrackedBufferStatus::Created { .. } = &mut tracked_buffer.status {
-                        tracked_buffer.status = TrackedBufferStatus::Modified;
-                    }
-
-                    tracked_buffer.unreviewed_edits.clear();
-                    tracked_buffer.diff_base = buffer.read(cx).as_rope().clone();
-                    tracked_buffer.schedule_diff_update(ChangeAuthor::User, cx);
-                }
+            if let TrackedBufferStatus::Created { .. } = &mut tracked_buffer.status {
+                tracked_buffer.status = TrackedBufferStatus::Modified;
             }
+
+            tracked_buffer.unreviewed_edits.clear();
+            tracked_buffer.diff_base = buffer.read(cx).as_rope().clone();
+            tracked_buffer.schedule_diff_update(ChangeAuthor::User, cx);
         }
 
         cx.notify();
@@ -1894,6 +1903,86 @@ mod tests {
         assert_eq!(buffer.read_with(cx, |buffer, _| buffer.text()), "content");
         assert!(fs.is_file(path!("/dir/file").as_ref()).await);
         assert_eq!(unreviewed_hunks(&action_log, cx), vec![]);
+    }
+
+    #[gpui::test(iterations = 10)]
+    async fn test_keep_all_edits_with_deleted_buffers(cx: &mut TestAppContext) {
+        init_test(cx);
+
+        let fs = FakeFs::new(cx.executor());
+        fs.insert_tree(path!("/dir"), json!({"file1": "content1", "file2": "content2"}))
+            .await;
+        let project = Project::test(fs.clone(), [path!("/dir").as_ref()], cx).await;
+        let action_log = cx.new(|_| ActionLog::new(project.clone()));
+        
+        // Open and track two buffers
+        let file_path1 = project
+            .read_with(cx, |project, cx| project.find_project_path("dir/file1", cx))
+            .unwrap();
+        let file_path2 = project
+            .read_with(cx, |project, cx| project.find_project_path("dir/file2", cx))
+            .unwrap();
+        
+        let buffer1 = project
+            .update(cx, |project, cx| project.open_buffer(file_path1.clone(), cx))
+            .await
+            .unwrap();
+        let buffer2 = project
+            .update(cx, |project, cx| project.open_buffer(file_path2.clone(), cx))
+            .await
+            .unwrap();
+
+        // Mark both buffers as read, then delete them
+        cx.update(|cx| {
+            action_log.update(cx, |log, cx| {
+                log.buffer_read(buffer1.clone(), cx);
+                log.buffer_read(buffer2.clone(), cx);
+                log.will_delete_buffer(buffer1.clone(), cx);
+                log.will_delete_buffer(buffer2.clone(), cx);
+            });
+        });
+        
+        // Actually delete the files
+        project
+            .update(cx, |project, cx| {
+                project.delete_file(file_path1.clone(), false, cx)
+            })
+            .unwrap()
+            .await
+            .unwrap();
+        project
+            .update(cx, |project, cx| {
+                project.delete_file(file_path2.clone(), false, cx)
+            })
+            .unwrap()
+            .await
+            .unwrap();
+        
+        cx.run_until_parked();
+        
+        // Verify both buffers are tracked as deleted
+        assert_eq!(
+            unreviewed_hunks(&action_log, cx).len(),
+            2,
+            "Both deleted buffers should have unreviewed hunks"
+        );
+        
+        // Call keep_all_edits - this should remove both deleted buffers
+        action_log.update(cx, |log, cx| log.keep_all_edits(None, cx));
+        cx.run_until_parked();
+        
+        // After keep_all_edits, deleted buffers should be removed from tracked_buffers
+        assert_eq!(
+            unreviewed_hunks(&action_log, cx).len(),
+            0,
+            "All deleted buffers should be removed after keep_all_edits"
+        );
+        
+        // Verify tracked_buffers no longer contains the deleted buffers
+        let tracked_count = action_log.read_with(cx, |log, cx| {
+            log.tracked_buffers_for_debug(cx).count()
+        });
+        assert_eq!(tracked_count, 0, "No buffers should remain tracked after keep_all_edits on deleted buffers");
     }
 
     #[gpui::test(iterations = 10)]

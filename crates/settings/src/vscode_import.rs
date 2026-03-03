@@ -923,13 +923,12 @@ impl VsCodeSettings {
             buffer_font_features: None,
             agent_ui_font_size: None,
             agent_buffer_font_size: None,
-            agent_buffer_line_height: None,
             theme: None,
             icon_theme: None,
             ui_density: None,
             unnecessary_code_fade: None,
-                            ui_theme_overrides: None,
-                            theme_overrides: Default::default(),        }
+            experimental_theme_overrides: None,
+            theme_overrides: Default::default(),        }
     }
 
     fn workspace_settings_content(&self) -> WorkspaceSettingsContent {

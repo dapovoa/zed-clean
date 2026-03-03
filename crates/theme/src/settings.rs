@@ -1,5 +1,5 @@
 use crate::{
-    ActiveTheme, Appearance, DEFAULT_ICON_THEME_NAME, SyntaxTheme, Theme, status_colors_refinement,
+    Appearance, DEFAULT_ICON_THEME_NAME, SyntaxTheme, Theme, status_colors_refinement,
     syntax_overrides, theme_colors_refinement,
 };
 use collections::HashMap;
@@ -114,8 +114,6 @@ pub struct ThemeSettings {
     agent_ui_font_size: Option<Pixels>,
     /// The agent buffer font size. Determines the size of user messages in the agent panel.
     agent_buffer_font_size: Option<Pixels>,
-    /// The line height for the agent panel. Falls back to a 1.75x multiplier of the buffer font size if unset.
-    agent_buffer_line_height: Option<BufferLineHeight>,
     /// The line height for buffers, and the terminal.
     ///
     /// Changing this may affect the spacing of some UI elements.
@@ -124,8 +122,6 @@ pub struct ThemeSettings {
     pub buffer_line_height: BufferLineHeight,
     /// The current theme selection.
     pub theme: ThemeSelection,
-    /// Manual overrides for the active theme.
-    pub ui_theme_overrides: Option<settings::ThemeStyleContent>,
     /// Manual overrides per theme
     pub theme_overrides: HashMap<String, settings::ThemeStyleContent>,
     /// The current icon theme selection.
@@ -497,19 +493,6 @@ impl ThemeSettings {
             .unwrap_or_else(|| self.buffer_font_size(cx))
     }
 
-    /// Returns the agent panel line height as a multiplier.
-    /// Falls back to 1.75 if unset.
-    pub fn agent_buffer_line_height(&self) -> f32 {
-        self.agent_buffer_line_height
-            .map(|lh| f32::max(lh.value(), MIN_LINE_HEIGHT))
-            .unwrap_or(1.75)
-    }
-
-    /// Returns the clean chat input height in rems.
-    pub fn clean_chat_input_height_rems(&self, cx: &App) -> f32 {
-        cx.theme().colors().clean_chat_input_height
-    }
-
     /// Returns the buffer font size, read from the settings.
     ///
     /// The real buffer font size is stored in-memory, to support temporary font size changes.
@@ -550,13 +533,6 @@ impl ThemeSettings {
 
     /// Applies the theme overrides, if there are any, to the current theme.
     pub fn apply_theme_overrides(&self, mut arc_theme: Arc<Theme>) -> Arc<Theme> {
-        // Apply the old overrides setting first, so that the new setting can override those.
-        if let Some(ui_theme_overrides) = &self.ui_theme_overrides {
-            let mut theme = (*arc_theme).clone();
-            ThemeSettings::modify_theme(&mut theme, ui_theme_overrides);
-            arc_theme = Arc::new(theme);
-        }
-
         if let Some(theme_overrides) = self.theme_overrides.get(arc_theme.name.as_ref()) {
             let mut theme = (*arc_theme).clone();
             ThemeSettings::modify_theme(&mut theme, theme_overrides);
@@ -744,9 +720,7 @@ impl settings::Settings for ThemeSettings {
             buffer_line_height: content.buffer_line_height.unwrap().into(),
             agent_ui_font_size: content.agent_ui_font_size.map(|s| s.into_gpui()),
             agent_buffer_font_size: content.agent_buffer_font_size.map(|s| s.into_gpui()),
-            agent_buffer_line_height: content.agent_buffer_line_height.map(|lh| lh.into()),
             theme: theme_selection,
-            ui_theme_overrides: content.ui_theme_overrides.clone(),
             theme_overrides: content.theme_overrides.clone(),
             icon_theme: icon_theme_selection,
             ui_density: content.ui_density.unwrap_or_default().into(),

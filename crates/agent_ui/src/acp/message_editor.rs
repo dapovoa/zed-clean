@@ -1350,16 +1350,10 @@ impl Render for MessageEditor {
             .flex_1()
             .child({
                 let colors = cx.theme().colors();
-                let font_size = if colors.agent_user_message_font_size != 0.75 {
-                    rems(colors.agent_user_message_font_size).into()
-                } else if settings.agent_buffer_font_size_settings().is_some() {
-                    settings.agent_buffer_font_size(cx).into()
-                } else {
-                    rems(colors.agent_user_message_font_size).into()
-                };
+                let font_size = settings.agent_buffer_font_size(cx).into();
 
                 let text_style = TextStyle {
-                    color: colors.agent_user_message_foreground,
+                    color: colors.text,
                     font_family: settings.buffer_font.family.clone(),
                     font_fallbacks: settings.buffer_font.fallbacks.clone(),
                     font_features: settings.buffer_font.features.clone(),
@@ -1369,7 +1363,7 @@ impl Render for MessageEditor {
                 };
 
                 let mut local_player = cx.theme().players().local();
-                local_player.selection = cx.theme().colors().agent_user_message_selection_background;
+                local_player.selection = colors.element_selection_background;
 
                 v_flex().size_full().flex_1().child(
                     EditorElement::new(

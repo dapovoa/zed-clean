@@ -2380,7 +2380,7 @@ impl AcpThreadView {
         }
 
         let focus_handle = self.message_editor.focus_handle(cx);
-        let editor_bg_color = cx.theme().colors().clean_chat_input_background;
+        let editor_bg_color = cx.theme().colors().editor_background;
         let editor_expanded = self.editor_expanded;
         let (expand_icon, expand_tooltip) = if editor_expanded {
             (IconName::Minimize, "Minimize Message Editor")
@@ -2388,15 +2388,15 @@ impl AcpThreadView {
             (IconName::Maximize, "Expand Message Editor")
         };
 
-        let settings = ThemeSettings::get_global(cx);
-        let min_height = settings.clean_chat_input_height_rems(cx);
+        let _settings = ThemeSettings::get_global(cx);
+        let min_height = 10.0; // Default chat input height in rems
 
         v_flex()
             .on_action(cx.listener(Self::expand_message_editor))
             .gap_2()
             .border_t_1()
-            .border_color(cx.theme().colors().clean_chat_input_border)
-            .text_color(cx.theme().colors().clean_chat_input_text)
+            .border_color(cx.theme().colors().border)
+            .text_color(cx.theme().colors().text)
             .bg(editor_bg_color)
             .when(editor_expanded, |this| {
                 this.h(vh(0.8, window)).size_full().justify_between()
@@ -2408,7 +2408,7 @@ impl AcpThreadView {
                     .w_full()
                     .px_4()
                     .py_3()
-                    .bg(cx.theme().colors().clean_chat_input_background)
+                    .bg(cx.theme().colors().editor_background)
                     .child(self.message_editor.clone())
                     .child(
                         h_flex()
@@ -3500,17 +3500,17 @@ impl AcpThreadView {
                             .relative()
                             .child(
                                 div()
-                                    .py(rems(cx.theme().colors().agent_user_message_padding_y))
-                                    .px(rems(cx.theme().colors().agent_user_message_padding_x))
+                                    .py(rems(0.75))
+                                    .px(rems(0.5))
                                     .rounded_md()
                                     .shadow_md()
-                                    .bg(cx.theme().colors().agent_user_message_background)
-                                    .text_color(cx.theme().colors().agent_user_message_foreground)
+                                    .bg(cx.theme().colors().editor_background)
+                                    .text_color(cx.theme().colors().text)
                                     .border_1()
                                     .when(is_indented, |this| {
                                         this.py_2().px_2().shadow_sm()
                                     })
-                                    .border_color(cx.theme().colors().agent_user_message_border)
+                                    .border_color(cx.theme().colors().border)
                                     .map(|this| {
                                         if is_subagent {
                                             return this.border_dashed();
@@ -3680,7 +3680,7 @@ impl AcpThreadView {
                         .when(is_last, |this| this.pb_4())
                         .w_full()
                         .text_ui(cx)
-                        .text_color(cx.theme().colors().clean_chat_output_text)
+                        .text_color(cx.theme().colors().text)
                         .child(self.render_message_context_menu(entry_ix, message_body, cx))
                         .into_any()
                 }
@@ -3723,7 +3723,7 @@ impl AcpThreadView {
                         .top(line_top)
                         .bottom_0()
                         .w_px()
-                        .bg(cx.theme().colors().clean_chat_output_indent_guide),
+                        .bg(cx.theme().colors().panel_indent_guide),
                 )
                 .child(primary)
                 .into_any_element()
@@ -4474,8 +4474,8 @@ impl AcpThreadView {
 
         v_flex()
             .group(command_group.clone())
-            .bg(colors.clean_chat_output_run_command_body)
-            .text_color(colors.clean_chat_output_run_command_text)
+            .bg(colors.editor_background)
+            .text_color(colors.text)
             .relative()
             .when(is_preview, |this| {
                 this.child(
@@ -4483,7 +4483,7 @@ impl AcpThreadView {
                         .w_full()
                         .px_2()
                         .py_1()
-                        .bg(colors.clean_chat_output_run_command_header)
+                        .bg(colors.surface_background)
                         .border_b_1()
                         .border_color(self.tool_card_border_color(cx))
                         .child(
@@ -4497,7 +4497,7 @@ impl AcpThreadView {
             .child(
                 v_flex()
                     .p_1p5()
-                    .text_size(rems(cx.theme().colors().agent_code_block_font_size))
+                    .text_size(ThemeSettings::get_global(cx).ui_font_size(cx))
                     .font(ThemeSettings::get_global(cx).buffer_font.clone())
                     .children(command_source.lines().map(|line| {
                         let text: SharedString = if line.is_empty() {
@@ -4557,7 +4557,7 @@ impl AcpThreadView {
             "terminal-tool-header-group-{}",
             terminal.entity_id()
         ));
-        let header_bg = cx.theme().colors().clean_chat_output_terminal_header;
+        let header_bg = cx.theme().colors().surface_background;
         let border_color = cx.theme().colors().border.opacity(0.6);
 
         let working_dir = working_dir
@@ -4753,10 +4753,10 @@ impl AcpThreadView {
                         .border_t_1()
                         .when(tool_failed || command_failed, |card| card.border_dashed())
                         .border_color(border_color)
-                        .bg(cx.theme().colors().clean_chat_output_terminal_body)
-                        .text_color(cx.theme().colors().clean_chat_output_terminal_text)
+                        .bg(cx.theme().colors().editor_background)
+                        .text_color(cx.theme().colors().text)
                         .rounded_b_md()
-                        .text_size(rems(cx.theme().colors().agent_code_block_font_size))
+                        .text_size(ThemeSettings::get_global(cx).ui_font_size(cx))
                         .h_full()
                         .children(terminal_view.map(|terminal_view| {
                             let element = div().h_72().child(terminal_view).into_any_element();
@@ -5002,7 +5002,7 @@ impl AcpThreadView {
                         .border_1()
                         .when(failed_or_canceled, |this| this.border_dashed())
                         .border_color(self.tool_card_border_color(cx))
-                        .bg(cx.theme().colors().clean_chat_output_edit_body)
+                        .bg(cx.theme().colors().editor_background)
                         .overflow_hidden()
                 } else {
                     this.my_1()
@@ -5028,7 +5028,7 @@ impl AcpThreadView {
                             .w_full()
                             .when(use_card_layout, |this| {
                                 this.rounded_t(rems_from_px(5.))
-                                    .bg(cx.theme().colors().clean_chat_output_edit_header)
+                                    .bg(cx.theme().colors().surface_background)
                             })
                             .child(
                                 h_flex()
@@ -6113,7 +6113,7 @@ impl AcpThreadView {
                     .w_full()
                     .gap_1()
                     .justify_between()
-                    .bg(cx.theme().colors().clean_chat_output_edit_header)
+                    .bg(cx.theme().colors().surface_background)
                     .child(
                         h_flex()
                             .gap_1p5()
@@ -7331,10 +7331,10 @@ impl Render for AcpThreadView {
                 let colors = cx.theme().colors();
                 let scrollbars = Scrollbars::new(ScrollAxes::Vertical)
                     .tracked_scroll_handle(&list_state)
-                    .with_thumb_color(colors.clean_chat_output_scrollbar_thumb)
-                    .with_thumb_hover_color(colors.clean_chat_output_scrollbar_thumb_hover)
-                    .with_thumb_active_color(colors.clean_chat_output_scrollbar_thumb_active);
-                this.bg(colors.clean_chat_output_background)
+                    .with_thumb_color(colors.scrollbar_thumb_background)
+                    .with_thumb_hover_color(colors.scrollbar_thumb_hover_background)
+                    .with_thumb_active_color(colors.scrollbar_thumb_active_background);
+                this.bg(colors.editor_background)
                     .child(self.render_entries(cx))
                     .custom_scrollbars(scrollbars, window, cx)
                     .into_any()

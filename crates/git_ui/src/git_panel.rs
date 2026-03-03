@@ -4256,7 +4256,7 @@ impl GitPanel {
         let head_commit = active_repository.read(cx).head_commit.clone();
 
         let footer_size = px(32.);
-        let input_height = rems(cx.theme().colors().clean_git_input_height).to_pixels(window.rem_size());
+        let input_height = rems(10.0).to_pixels(window.rem_size());
 
         let git_panel = cx.entity();
         let display_name = SharedString::from(Arc::from(
@@ -5011,7 +5011,7 @@ impl GitPanel {
         let state_opacity_step = 0.04;
 
         let info_color = cx.theme().status().info;
-        let selection_color = cx.theme().colors().clean_git_selection;
+        let selection_color = cx.theme().colors().element_selection_background;
 
         let base_bg = match (selected, marked) {
             (true, true) => selection_color.blend(info_color.alpha(marked_bg_alpha)),
@@ -5176,7 +5176,7 @@ impl GitPanel {
 
         let info_color = cx.theme().status().info;
         let colors = cx.theme().colors();
-        let selection_color = colors.clean_git_selection;
+        let selection_color = colors.element_selection_background;
 
         let (base_bg, hover_bg, active_bg) = if selected {
             (
@@ -5528,8 +5528,8 @@ impl Render for GitPanel {
             .on_action(cx.listener(Self::toggle_tree_view))
             .size_full()
             .overflow_hidden()
-            .bg(cx.theme().colors().clean_git_background)
-            .text_color(cx.theme().colors().clean_git_text)
+            .bg(cx.theme().colors().panel_background)
+            .text_color(cx.theme().colors().text)
             .child(
                 v_flex()
                     .size_full()
@@ -5666,7 +5666,7 @@ pub fn panel_editor_container(_window: &mut Window, cx: &mut App) -> Div {
 pub(crate) fn panel_editor_style(monospace: bool, window: &Window, cx: &App) -> EditorStyle {
     let settings = ThemeSettings::get_global(cx);
 
-    let font_size = rems(cx.theme().colors().clean_git_font_size).to_pixels(window.rem_size());
+    let font_size = rems(0.875).to_pixels(window.rem_size());
 
     let (font_family, font_fallbacks, font_features, font_weight, line_height) = if monospace {
         (
@@ -5694,7 +5694,7 @@ pub(crate) fn panel_editor_style(monospace: bool, window: &Window, cx: &App) -> 
             font_family,
             font_fallbacks,
             font_features,
-            font_size: rems(cx.theme().colors().clean_git_font_size).into(),
+            font_size: rems(0.875).into(),
             font_weight,
             line_height: line_height.into(),
             ..Default::default()

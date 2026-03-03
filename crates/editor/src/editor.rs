@@ -24124,9 +24124,9 @@ impl Editor {
             .flatten()
             .chain(
                 theme_settings
-                    .ui_theme_overrides
-                    .as_ref()
-                    .map(|overrides| &overrides.accents)
+                    .theme_overrides
+                    .get(theme.name.as_ref())
+                    .map(|theme_style| &theme_style.accents)
                     .into_iter()
                     .flatten(),
             )

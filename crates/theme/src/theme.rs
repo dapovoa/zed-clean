@@ -133,10 +133,7 @@ pub fn init(themes_to_load: LoadThemes, cx: &mut App) {
     let mut prev_agent_buffer_font_size_settings = settings.agent_buffer_font_size_settings();
     let mut prev_theme_name = settings.theme.name(SystemAppearance::global(cx).0);
     let mut prev_icon_theme_name = settings.icon_theme.name(SystemAppearance::global(cx).0);
-    let mut prev_theme_overrides = (
-        settings.ui_theme_overrides.clone(),
-        settings.theme_overrides.clone(),
-    );
+    let mut prev_theme_overrides = settings.theme_overrides.clone();
 
     cx.observe_global::<SettingsStore>(move |cx| {
         let settings = ThemeSettings::get_global(cx);
@@ -147,10 +144,7 @@ pub fn init(themes_to_load: LoadThemes, cx: &mut App) {
         let agent_buffer_font_size_settings = settings.agent_buffer_font_size_settings();
         let theme_name = settings.theme.name(SystemAppearance::global(cx).0);
         let icon_theme_name = settings.icon_theme.name(SystemAppearance::global(cx).0);
-        let theme_overrides = (
-            settings.ui_theme_overrides.clone(),
-            settings.theme_overrides.clone(),
-        );
+        let theme_overrides = settings.theme_overrides.clone();
 
         if buffer_font_size_settings != prev_buffer_font_size_settings {
             prev_buffer_font_size_settings = buffer_font_size_settings;

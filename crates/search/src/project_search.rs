@@ -2683,7 +2683,7 @@ pub mod tests {
         cx.update(|cx| {
             SettingsStore::update_global(cx, |settings, cx| {
                 settings.update_user_settings(cx, |settings| {
-                    settings.theme.ui_theme_overrides = Some(ThemeStyleContent {
+                    settings.theme.theme_overrides = Some(ThemeStyleContent {
                         colors: ThemeColorsContent {
                             search_active_match_background: Some("#ff0000ff".to_string()),
                             ..Default::default()

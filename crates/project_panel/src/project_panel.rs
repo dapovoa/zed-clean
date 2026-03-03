@@ -592,12 +592,12 @@ fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
         default: if is_sticky {
             colors.panel_overlay_background
         } else {
-            colors.clean_project_panel_background
+            colors.panel_background
         },
         hover: if is_sticky {
             colors.panel_overlay_hover
         } else {
-            colors.clean_project_panel_hover_background
+            colors.element_hover
         },
         drag_over: colors.drop_target_background,
     }
@@ -5029,11 +5029,11 @@ impl ProjectPanel {
         let item_colors = get_item_color(is_sticky, cx);
 
         let theme_colors = cx.theme().colors();
-        let clean_normal_text = theme_colors.clean_project_panel_text;
-        let clean_hover_text = theme_colors.clean_project_panel_hover_text;
-        let clean_active_text = theme_colors.clean_project_panel_active_text;
-        let clean_edited_text = theme_colors.clean_project_panel_edited_text;
-        let clean_active_bg = theme_colors.clean_project_panel_active_background;
+        let clean_normal_text = theme_colors.text;
+        let clean_hover_text = theme_colors.text_muted;
+        let clean_active_text = theme_colors.text_accent;
+        let clean_edited_text = cx.theme().status().warning;
+        let clean_active_bg = theme_colors.element_selected;
 
         let has_git_changes = !matches!(details.filename_text_color, ui::Color::Default | ui::Color::Muted);
 
@@ -5127,18 +5127,18 @@ impl ProjectPanel {
             .group(GROUP_NAME)
             .cursor_pointer()
             .rounded_none()
-            .text_size(rems(cx.theme().colors().project_panel_font_size))
+            .text_size(rems(0.875))
             .text_color(clean_base_text)
             .map(|this| {
                 if is_active {
                     this.bg(clean_active_bg)
                 } else {
-                    this.bg(cx.theme().colors().clean_project_panel_background)
+                    this.bg(cx.theme().colors().panel_background)
                 }
             })
             .hover(|style| {
                 style
-                    .bg(cx.theme().colors().clean_project_panel_hover_background)
+                    .bg(cx.theme().colors().element_hover)
                     .text_color(clean_hover_text)
             })
             .when(is_sticky, |this| this.block_mouse_except_scroll())
@@ -6290,7 +6290,7 @@ impl Render for ProjectPanel {
                 })
                 .size_full()
                 .relative()
-                .bg(cx.theme().colors().clean_project_panel_background)
+                .bg(cx.theme().colors().panel_background)
                 .on_modifiers_changed(cx.listener(
                     |this, event: &ModifiersChangedEvent, window, cx| {
                         this.refresh_drag_cursor_style(&event.modifiers, window, cx);

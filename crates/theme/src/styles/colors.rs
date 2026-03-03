@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use gpui::{App, Hsla, SharedString, WindowBackgroundAppearance, hsla};
+use gpui::{App, Hsla, SharedString, WindowBackgroundAppearance};
 use refineable::Refineable;
 use std::sync::Arc;
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
@@ -65,7 +65,7 @@ pub struct ThemeColors {
     ///
     /// Elements might include: Buttons, Inputs, Checkboxes, Radio Buttons...
     ///
-    /// For an element that should have the same background as the surface it's on, use `element_background`.
+    /// For an element that should have a different background than the surface it's on, use `element_background`.
     pub ghost_element_background: Hsla,
     /// Background Color. Used for the hover state of a ghost element that should have the same background as the surface it's on.
     ///
@@ -95,8 +95,6 @@ pub struct ThemeColors {
     pub text_disabled: Hsla,
     /// Text Color. Color used for emphasis or highlighting certain text, like an active filter or a matched character in a search.
     pub text_accent: Hsla,
-    /// Text Color. Color used when an element is hovered.
-    pub text_hover: Hsla,
     /// Fill Color. Used for the default fill color of an icon.
     pub icon: Hsla,
     /// Fill Color. Used for the muted or deemphasized fill color of an icon.
@@ -177,6 +175,8 @@ pub struct ThemeColors {
     pub vim_visual_line_background: Hsla,
     /// Background color for Vim Visual Block mode indicator.
     pub vim_visual_block_background: Hsla,
+    /// Background color for Vim yank highlight.
+    pub vim_yank_background: Hsla,
     /// Background color for Vim Helix Normal mode indicator.
     pub vim_helix_normal_background: Hsla,
     /// Background color for Vim Helix Select mode indicator.
@@ -325,123 +325,6 @@ pub struct ThemeColors {
     pub version_control_conflict_marker_ours: Hsla,
     /// Represents the "theirs" region of a merge conflict.
     pub version_control_conflict_marker_theirs: Hsla,
-
-    // ===
-    // Agent Panel
-    // ===
-    /// Agent panel foreground text color.
-    pub agent_foreground: Hsla,
-    /// Agent panel code block background.
-    pub agent_code_block_background: Hsla,
-    /// Agent panel inline code background.
-    pub agent_inline_code_background: Hsla,
-    /// Agent panel inline code foreground.
-    pub agent_inline_code_foreground: Hsla,
-    /// Agent panel inline code font size in rems.
-    pub agent_inline_code_font_size: f32,
-    /// Agent panel user message background.
-    pub agent_user_message_background: Hsla,
-    /// Agent panel user message border.
-    pub agent_user_message_border: Hsla,
-    /// Agent panel selection background.
-    pub agent_selection_background: Hsla,
-    /// Agent panel code block border.
-    pub agent_code_block_border: Hsla,
-    /// Agent panel user message foreground.
-    pub agent_user_message_foreground: Hsla,
-    /// Agent panel user message selection background.
-    pub agent_user_message_selection_background: Hsla,
-    /// Agent response font size for the 'clean' theme, in rems.
-    pub agent_response_font_size: f32,
-    /// Agent code block font size for the 'clean' theme, in rems.
-    pub agent_code_block_font_size: f32,
-
-    // ===
-    // Clean (Custom project namespace - Hierarchical)
-    // ===
-    /// Project panel background color for the 'clean' theme.
-    pub clean_project_panel_background: Hsla,
-    /// Project panel item hover background color for the 'clean' theme.
-    pub clean_project_panel_hover_background: Hsla,
-    /// Project panel item normal text color for the 'clean' theme.
-    pub clean_project_panel_text: Hsla,
-    /// Project panel item hover text color for the 'clean' theme.
-    pub clean_project_panel_hover_text: Hsla,
-    /// Project panel item active text color for the 'clean' theme.
-    pub clean_project_panel_active_text: Hsla,
-    /// Project panel item edited (git modified) text color for the 'clean' theme.
-    pub clean_project_panel_edited_text: Hsla,
-    /// Project panel item active background color for the 'clean' theme.
-    pub clean_project_panel_active_background: Hsla,
-
-    /// Height of the chat input area in rems.
-    pub clean_chat_input_height: f32,
-    /// Chat input background color for the 'clean' theme.
-    pub clean_chat_input_background: Hsla,
-    /// Chat input text color for the 'clean' theme.
-    pub clean_chat_input_text: Hsla,
-    /// Chat input border color for the 'clean' theme.
-    pub clean_chat_input_border: Hsla,
-
-    /// Chat output text color for the 'clean' theme.
-    pub clean_chat_output_text: Hsla,
-    /// Chat output selection background color for the 'clean' theme.
-    pub clean_chat_output_selection: Hsla,
-    /// Chat output run command header color for the 'clean' theme.
-    pub clean_chat_output_run_command_header: Hsla,
-    /// Chat output run command body color for the 'clean' theme.
-    pub clean_chat_output_run_command_body: Hsla,
-    /// Chat output run command text color for the 'clean' theme.
-    pub clean_chat_output_run_command_text: Hsla,
-    /// Chat output terminal header color for the 'clean' theme.
-    pub clean_chat_output_terminal_header: Hsla,
-    /// Chat output terminal body color for the 'clean' theme.
-    pub clean_chat_output_terminal_body: Hsla,
-    /// Chat output terminal text color for the 'clean' theme.
-    pub clean_chat_output_terminal_text: Hsla,
-    /// Chat output edit header color for the 'clean' theme.
-    pub clean_chat_output_edit_header: Hsla,
-    /// Chat output edit body color for the 'clean' theme.
-    pub clean_chat_output_edit_body: Hsla,
-    /// Chat output code header color for the 'clean' theme.
-    pub clean_chat_output_code_header: Hsla,
-    /// Chat output thinking header color for the 'clean' theme.
-    pub clean_chat_output_thinking_header: Hsla,
-    /// Chat output thinking body color for the 'clean' theme.
-    pub clean_chat_output_thinking_body: Hsla,
-    /// Chat output indent guide color for the 'clean' theme.
-    pub clean_chat_output_indent_guide: Hsla,
-    /// Chat output scrollbar thumb color for the 'clean' theme.
-    pub clean_chat_output_scrollbar_thumb: Hsla,
-    /// Chat output scrollbar thumb hover color for the 'clean' theme.
-    pub clean_chat_output_scrollbar_thumb_hover: Hsla,
-    /// Chat output scrollbar thumb active/dragging color for the 'clean' theme.
-    pub clean_chat_output_scrollbar_thumb_active: Hsla,
-    /// Chat output background color for the 'clean' theme.
-    pub clean_chat_output_background: Hsla,
-
-    /// Height of the git input area in rems.
-    pub clean_git_input_height: f32,
-    /// Git background color for the 'clean' theme.
-    pub clean_git_background: Hsla,
-    /// Git text color for the 'clean' theme.
-    pub clean_git_text: Hsla,
-    /// Git selection background color for the 'clean' theme.
-    pub clean_git_selection: Hsla,
-    /// Git input font size for the 'clean' theme, in rems.
-    pub clean_git_font_size: f32,
-
-    /// Project panel entry font size in rems. Default: 1.0.
-    pub project_panel_font_size: f32,
-
-    /// Font size for user message bubbles in the agent chat, in rems.
-    pub agent_user_message_font_size: f32,
-    /// Font size for user input field in the agent chat, in rems.
-    pub agent_user_input_font_size: f32,
-    /// Vertical padding for user message bubbles in the agent chat, in rems.
-    pub agent_user_message_padding_y: f32,
-    /// Horizontal padding for user message bubbles in the agent chat, in rems.
-    pub agent_user_message_padding_x: f32,
 }
 
 #[derive(EnumIter, Debug, Clone, Copy, AsRefStr)]
@@ -473,7 +356,6 @@ pub enum ThemeColorField {
     TextPlaceholder,
     TextDisabled,
     TextAccent,
-    TextHover,
     Icon,
     IconMuted,
     IconDisabled,
@@ -559,51 +441,6 @@ pub enum ThemeColorField {
     VersionControlRenamed,
     VersionControlConflict,
     VersionControlIgnored,
-    AgentForeground,
-    AgentCodeBlockBackground,
-    AgentInlineCodeBackground,
-    AgentUserMessageBackground,
-    AgentUserMessageBorder,
-    AgentSelectionBackground,
-    AgentCodeBlockBorder,
-    AgentUserMessageForeground,
-    AgentUserMessageSelectionBackground,
-    AgentResponseFontSize,
-    AgentCodeBlockFontSize,
-    AgentUserInputFontSize,
-    AgentUserMessageFontSize,
-    CleanProjectPanelBackground,
-    CleanProjectPanelHoverBackground,
-    CleanProjectPanelText,
-    CleanProjectPanelHoverText,
-    CleanProjectPanelActiveText,
-    CleanProjectPanelEditedText,
-    CleanProjectPanelActiveBackground,
-    CleanChatInputBackground,
-    CleanChatInputText,
-    CleanChatInputBorder,
-    CleanChatOutputText,
-    CleanChatOutputSelection,
-    CleanChatOutputRunCommandHeader,
-    CleanChatOutputRunCommandBody,
-    CleanChatOutputRunCommandText,
-    CleanChatOutputTerminalHeader,
-    CleanChatOutputTerminalBody,
-    CleanChatOutputTerminalText,
-    CleanChatOutputEditHeader,
-    CleanChatOutputEditBody,
-    CleanChatOutputCodeHeader,
-    CleanChatOutputThinkingHeader,
-    CleanChatOutputThinkingBody,
-    CleanChatOutputIndentGuide,
-    CleanChatOutputScrollbarThumb,
-    CleanChatOutputScrollbarThumbHover,
-    CleanChatOutputScrollbarThumbActive,
-    CleanChatOutputBackground,
-    CleanGitBackground,
-    CleanGitText,
-    CleanGitSelection,
-    CleanGitFontSize,
 }
 
 impl ThemeColors {
@@ -635,7 +472,6 @@ impl ThemeColors {
             ThemeColorField::TextPlaceholder => self.text_placeholder,
             ThemeColorField::TextDisabled => self.text_disabled,
             ThemeColorField::TextAccent => self.text_accent,
-            ThemeColorField::TextHover => self.text_hover,
             ThemeColorField::Icon => self.icon,
             ThemeColorField::IconMuted => self.icon_muted,
             ThemeColorField::IconDisabled => self.icon_disabled,
@@ -731,81 +567,6 @@ impl ThemeColors {
             ThemeColorField::VersionControlRenamed => self.version_control_renamed,
             ThemeColorField::VersionControlConflict => self.version_control_conflict,
             ThemeColorField::VersionControlIgnored => self.version_control_ignored,
-            ThemeColorField::AgentForeground => self.agent_foreground,
-            ThemeColorField::AgentCodeBlockBackground => self.agent_code_block_background,
-            ThemeColorField::AgentInlineCodeBackground => self.agent_inline_code_background,
-            ThemeColorField::AgentUserMessageBackground => self.agent_user_message_background,
-            ThemeColorField::AgentUserMessageBorder => self.agent_user_message_border,
-            ThemeColorField::AgentSelectionBackground => self.agent_selection_background,
-            ThemeColorField::AgentCodeBlockBorder => self.agent_code_block_border,
-            ThemeColorField::AgentUserMessageForeground => self.agent_user_message_foreground,
-            ThemeColorField::AgentUserMessageSelectionBackground => {
-                self.agent_user_message_selection_background
-            }
-            ThemeColorField::AgentResponseFontSize => {
-                hsla(0., 0., 0., self.agent_response_font_size)
-            }
-            ThemeColorField::AgentCodeBlockFontSize => {
-                hsla(0., 0., 0., self.agent_code_block_font_size)
-            }
-            ThemeColorField::AgentUserInputFontSize => {
-                hsla(0., 0., 0., self.agent_user_input_font_size)
-            }
-            ThemeColorField::AgentUserMessageFontSize => {
-                hsla(0., 0., 0., self.agent_user_message_font_size)
-            }
-            ThemeColorField::CleanProjectPanelBackground => self.clean_project_panel_background,
-            ThemeColorField::CleanProjectPanelHoverBackground => {
-                self.clean_project_panel_hover_background
-            }
-            ThemeColorField::CleanProjectPanelText => self.clean_project_panel_text,
-            ThemeColorField::CleanProjectPanelHoverText => self.clean_project_panel_hover_text,
-            ThemeColorField::CleanProjectPanelActiveText => self.clean_project_panel_active_text,
-            ThemeColorField::CleanProjectPanelEditedText => self.clean_project_panel_edited_text,
-            ThemeColorField::CleanProjectPanelActiveBackground => {
-                self.clean_project_panel_active_background
-            }
-            ThemeColorField::CleanChatInputBackground => self.clean_chat_input_background,
-            ThemeColorField::CleanChatInputText => self.clean_chat_input_text,
-            ThemeColorField::CleanChatInputBorder => self.clean_chat_input_border,
-            ThemeColorField::CleanChatOutputText => self.clean_chat_output_text,
-            ThemeColorField::CleanChatOutputSelection => self.clean_chat_output_selection,
-            ThemeColorField::CleanChatOutputRunCommandHeader => {
-                self.clean_chat_output_run_command_header
-            }
-            ThemeColorField::CleanChatOutputRunCommandBody => {
-                self.clean_chat_output_run_command_body
-            }
-            ThemeColorField::CleanChatOutputRunCommandText => {
-                self.clean_chat_output_run_command_text
-            }
-            ThemeColorField::CleanChatOutputTerminalHeader => {
-                self.clean_chat_output_terminal_header
-            }
-            ThemeColorField::CleanChatOutputTerminalBody => self.clean_chat_output_terminal_body,
-            ThemeColorField::CleanChatOutputTerminalText => self.clean_chat_output_terminal_text,
-            ThemeColorField::CleanChatOutputEditHeader => self.clean_chat_output_edit_header,
-            ThemeColorField::CleanChatOutputEditBody => self.clean_chat_output_edit_body,
-            ThemeColorField::CleanChatOutputCodeHeader => self.clean_chat_output_code_header,
-            ThemeColorField::CleanChatOutputThinkingHeader => {
-                self.clean_chat_output_thinking_header
-            }
-            ThemeColorField::CleanChatOutputThinkingBody => self.clean_chat_output_thinking_body,
-            ThemeColorField::CleanChatOutputIndentGuide => self.clean_chat_output_indent_guide,
-            ThemeColorField::CleanChatOutputScrollbarThumb => {
-                self.clean_chat_output_scrollbar_thumb
-            }
-            ThemeColorField::CleanChatOutputScrollbarThumbHover => {
-                self.clean_chat_output_scrollbar_thumb_hover
-            }
-            ThemeColorField::CleanChatOutputScrollbarThumbActive => {
-                self.clean_chat_output_scrollbar_thumb_active
-            }
-            ThemeColorField::CleanChatOutputBackground => self.clean_chat_output_background,
-            ThemeColorField::CleanGitBackground => self.clean_git_background,
-            ThemeColorField::CleanGitText => self.clean_git_text,
-            ThemeColorField::CleanGitSelection => self.clean_git_selection,
-            ThemeColorField::CleanGitFontSize => hsla(0., 0., 0., self.clean_git_font_size),
         }
     }
 
@@ -906,23 +667,5 @@ mod tests {
 
         assert_eq!(colors.background, Some(gpui::rgb(0xff00ff).into()));
         assert_eq!(colors.text, Some(gpui::rgb(0xff0000).into()));
-    }
-
-    #[test]
-    fn override_agent_user_message_font_size() {
-        let mut colors = ThemeColors::light();
-
-        // Default value is 0.75
-        assert_eq!(colors.agent_user_message_font_size, 0.75);
-
-        // Override to 1.5
-        let overrides = ThemeColorsRefinement {
-            agent_user_message_font_size: Some(1.5),
-            ..Default::default()
-        };
-
-        colors.refine(&overrides);
-
-        assert_eq!(colors.agent_user_message_font_size, 1.5);
     }
 }

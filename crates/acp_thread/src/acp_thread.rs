@@ -718,11 +718,11 @@ impl ToolCallContent {
                     cx,
                 )
             })))),
-            acp::ToolCallContent::Terminal(acp::Terminal { terminal_id, .. }) => terminals
-                .get(&terminal_id)
-                .cloned()
-                .map(|terminal| Some(Self::Terminal(terminal)))
-                .ok_or_else(|| anyhow::anyhow!("Terminal with id `{}` not found", terminal_id)),
+            acp::ToolCallContent::Terminal(acp::Terminal { terminal_id, .. }) => {
+                // Terminal may not be registered yet due to async timing - return None
+                // to skip this content for now. It will be retried on the next update.
+                Ok(terminals.get(&terminal_id).cloned().map(Self::Terminal))
+            }
             _ => Ok(None),
         }
     }

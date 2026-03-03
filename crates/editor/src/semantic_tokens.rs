@@ -1632,18 +1632,21 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.ui_theme_overrides = Some(ThemeStyleContent {
-                        syntax: IndexMap::from_iter([(
-                            "function".to_string(),
-                            HighlightStyleContent {
-                                color: Some("#ff0000".to_string()),
-                                background_color: None,
-                                font_style: None,
-                                font_weight: None,
-                            },
-                        )]),
-                        ..ThemeStyleContent::default()
-                    });
+                    settings.theme.theme_overrides = collections::HashMap::from_iter([(
+                        "One Dark".to_string(),
+                        ThemeStyleContent {
+                            syntax: IndexMap::from_iter([(
+                                "function".to_string(),
+                                HighlightStyleContent {
+                                    color: Some("#ff0000".to_string()),
+                                    background_color: None,
+                                    font_style: None,
+                                    font_weight: None,
+                                },
+                            )]),
+                            ..ThemeStyleContent::default()
+                        },
+                    )]);
                 });
             });
         });
@@ -1674,18 +1677,21 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.ui_theme_overrides = Some(ThemeStyleContent {
-                        syntax: IndexMap::from_iter([(
-                            "function".to_string(),
-                            HighlightStyleContent {
-                                color: Some("#0000ff".to_string()),
-                                background_color: None,
-                                font_style: None,
-                                font_weight: None,
-                            },
-                        )]),
-                        ..ThemeStyleContent::default()
-                    });
+                    settings.theme.theme_overrides = collections::HashMap::from_iter([(
+                        "One Dark".to_string(),
+                        ThemeStyleContent {
+                            syntax: IndexMap::from_iter([(
+                                "function".to_string(),
+                                HighlightStyleContent {
+                                    color: Some("#0000ff".to_string()),
+                                    background_color: None,
+                                    font_style: None,
+                                    font_weight: None,
+                                },
+                            )]),
+                            ..ThemeStyleContent::default()
+                        },
+                    )]);
                 });
             });
         });
@@ -1705,7 +1711,7 @@ mod tests {
         cx.update(|_, cx| {
             SettingsStore::update_global(cx, |store, cx| {
                 store.update_user_settings(cx, |settings| {
-                    settings.theme.ui_theme_overrides = None;
+                    settings.theme.theme_overrides.clear();
                 });
             });
         });

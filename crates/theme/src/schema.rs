@@ -400,10 +400,6 @@ pub fn theme_colors_refinement(
             .text_accent
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        text_hover: this
-            .text_hover
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
         icon: this
             .icon
             .as_ref()
@@ -458,10 +454,7 @@ pub fn theme_colors_refinement(
             .and_then(|color| try_parse_color(color).ok()),
         search_match_background: search_match_background,
         search_active_match_background: search_active_match_background,
-        panel_background: this
-            .panel_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
+        panel_background,
         panel_focused_border: this
             .panel_focused_border
             .as_ref()
@@ -803,6 +796,11 @@ pub fn theme_colors_refinement(
             .vim_visual_block_background
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
+        vim_yank_background: this
+            .vim_yank_background
+            .as_ref()
+            .and_then(|color| try_parse_color(color).ok())
+            .or(editor_document_highlight_read_background),
         vim_helix_normal_background: this
             .vim_helix_normal_background
             .as_ref()
@@ -843,181 +841,6 @@ pub fn theme_colors_refinement(
             .vim_helix_select_foreground
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        agent_foreground: this
-            .agent_foreground
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_code_block_background: this
-            .agent_code_block_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_inline_code_background: this
-            .agent_inline_code_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_inline_code_foreground: this
-            .agent_inline_code_foreground
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_inline_code_font_size: Some(this.agent_inline_code_font_size.unwrap_or(0.75)),
-        agent_user_message_background: this
-            .agent_user_message_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_user_message_border: this
-            .agent_user_message_border
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_selection_background: this
-            .agent_selection_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_code_block_border: this
-            .agent_code_block_border
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_user_message_foreground: this
-            .agent_user_message_foreground
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        agent_user_message_selection_background: this
-            .agent_user_message_selection_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_background: this
-            .clean_project_panel_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_hover_background: this
-            .clean_project_panel_hover_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_text: this
-            .clean_project_panel_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_hover_text: this
-            .clean_project_panel_hover_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_active_text: this
-            .clean_project_panel_active_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_edited_text: this
-            .clean_project_panel_edited_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_project_panel_active_background: this
-            .clean_project_panel_active_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_input_height: Some(this.clean_chat_input_height.unwrap_or(10.0)),
-        clean_chat_input_background: this
-            .clean_chat_input_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_input_text: this
-            .clean_chat_input_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_input_border: this
-            .clean_chat_input_border
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_text: this
-            .clean_chat_output_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_selection: this
-            .clean_chat_output_selection
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_run_command_header: this
-            .clean_chat_output_run_command_header
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_run_command_body: this
-            .clean_chat_output_run_command_body
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_run_command_text: this
-            .clean_chat_output_run_command_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_terminal_header: this
-            .clean_chat_output_terminal_header
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_terminal_body: this
-            .clean_chat_output_terminal_body
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_terminal_text: this
-            .clean_chat_output_terminal_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_edit_header: this
-            .clean_chat_output_edit_header
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_edit_body: this
-            .clean_chat_output_edit_body
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_code_header: this
-            .clean_chat_output_code_header
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_thinking_header: this
-            .clean_chat_output_thinking_header
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_thinking_body: this
-            .clean_chat_output_thinking_body
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_indent_guide: this
-            .clean_chat_output_indent_guide
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_scrollbar_thumb: this
-            .clean_chat_output_scrollbar_thumb
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_scrollbar_thumb_hover: this
-            .clean_chat_output_scrollbar_thumb_hover
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_scrollbar_thumb_active: this
-            .clean_chat_output_scrollbar_thumb_active
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_chat_output_background: this
-            .clean_chat_output_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_git_input_height: Some(this.clean_git_input_height.unwrap_or(10.0)),
-        clean_git_background: this
-            .clean_git_background
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_git_text: this
-            .clean_git_text
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_git_selection: this
-            .clean_git_selection
-            .as_ref()
-            .and_then(|color| try_parse_color(color).ok()),
-        clean_git_font_size: Some(this.clean_git_font_size.unwrap_or(0.875)),
-        project_panel_font_size: Some(this.project_panel_font_size.unwrap_or(1.0)),
-        agent_user_message_font_size: Some(this.agent_user_message_font_size.unwrap_or(0.75)),
-        agent_response_font_size: Some(this.agent_response_font_size.unwrap_or(1.0)),
-        agent_code_block_font_size: Some(this.agent_code_block_font_size.unwrap_or(0.85)),
-        agent_user_message_padding_y: Some(this.agent_user_message_padding_y.unwrap_or(0.75)),
-        agent_user_message_padding_x: Some(this.agent_user_message_padding_x.unwrap_or(0.5)),
-        agent_user_input_font_size: Some(this.agent_user_input_font_size.unwrap_or(1.0)),
     }
 }
 
