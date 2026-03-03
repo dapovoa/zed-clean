@@ -4497,7 +4497,7 @@ impl AcpThreadView {
             .child(
                 v_flex()
                     .p_1p5()
-                    .text_size(ThemeSettings::get_global(cx).ui_font_size(cx))
+                    .text_size(rems_from_px(11.))
                     .font(ThemeSettings::get_global(cx).buffer_font.clone())
                     .children(command_source.lines().map(|line| {
                         let text: SharedString = if line.is_empty() {
@@ -4756,7 +4756,7 @@ impl AcpThreadView {
                         .bg(cx.theme().colors().editor_background)
                         .text_color(cx.theme().colors().text)
                         .rounded_b_md()
-                        .text_size(ThemeSettings::get_global(cx).ui_font_size(cx))
+                        .text_size(rems_from_px(11.))
                         .h_full()
                         .children(terminal_view.map(|terminal_view| {
                             let element = div().h_72().child(terminal_view).into_any_element();
