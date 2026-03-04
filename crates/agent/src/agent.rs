@@ -1804,7 +1804,7 @@ impl SubagentHandle for NativeSubagentHandle {
                 result = wait_for_summary_task.fuse() => result,
                 _ = user_cancelled.fuse() => {
                     thread.update(cx, |thread, cx| thread.cancel(cx).detach());
-                    Err(anyhow!("User cancelled"))
+                    Err(anyhow!("User canceled"))
                 },
             };
             parent_thread

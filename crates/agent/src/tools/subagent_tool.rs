@@ -179,7 +179,14 @@ impl AgentTool for SubagentTool {
                     subagent_session_id,
                 }),
                 _ = event_stream.cancelled_by_user().fuse() => {
-                    Err(anyhow!("Subagent was cancelled by user"))
+                    // Add metadata to indicate this was a cancellation, not a failure
+                    let error = "User canceled".to_string();
+                    event_stream.update_fields(acp::ToolCallUpdateFields::new().content(vec![
+                        acp::ToolCallContent::Content(acp::Content::new(error.clone()).meta(
+                            acp::Meta::from_iter([("cancelled".into(), true.into())]),
+                        )),
+                    ]));
+                    Err(anyhow!(error))
                 }
             }
         })

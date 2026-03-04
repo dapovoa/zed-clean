@@ -2137,12 +2137,17 @@ impl Thread {
                     content: output.llm_output,
                     output: Some(output.raw_output),
                 },
-                Err(error) => LanguageModelToolResult {
-                    tool_use_id: tool_use.id,
-                    tool_name: tool_use.name,
-                    is_error: true,
-                    content: LanguageModelToolResultContent::Text(Arc::from(error.to_string())),
-                    output: Some(error.to_string().into()),
+                Err(error) => {
+                    // Check if this is a cancellation error
+                    let error_str = error.to_string();
+                    
+                    LanguageModelToolResult {
+                        tool_use_id: tool_use.id,
+                        tool_name: tool_use.name,
+                        is_error: true,
+                        content: LanguageModelToolResultContent::Text(Arc::from(error_str.clone())),
+                        output: Some(error_str.into()),
+                    }
                 },
             }
         }))
