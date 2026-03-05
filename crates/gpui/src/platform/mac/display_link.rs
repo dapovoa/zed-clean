@@ -44,6 +44,10 @@ impl DisplayLink {
                 0,
                 dispatch_get_main_queue(),
             );
+            // Resume before any potential failures to avoid crashing on drop
+            dispatch_resume(crate::dispatch_sys::dispatch_object_t {
+                _ds: frame_requests,
+            });
             dispatch_set_context(
                 crate::dispatch_sys::dispatch_object_t {
                     _ds: frame_requests,
@@ -67,9 +71,6 @@ impl DisplayLink {
 
     pub fn start(&mut self) -> Result<()> {
         unsafe {
-            dispatch_resume(crate::dispatch_sys::dispatch_object_t {
-                _ds: self.frame_requests,
-            });
             self.display_link.as_mut().unwrap().start()?;
         }
         Ok(())
@@ -77,9 +78,6 @@ impl DisplayLink {
 
     pub fn stop(&mut self) -> Result<()> {
         unsafe {
-            dispatch_suspend(crate::dispatch_sys::dispatch_object_t {
-                _ds: self.frame_requests,
-            });
             self.display_link.as_mut().unwrap().stop()?;
         }
         Ok(())
