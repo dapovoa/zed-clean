@@ -2183,12 +2183,11 @@ impl Thread {
     }
 
     pub fn summary(&mut self, cx: &mut Context<Self>) -> Shared<Task<Option<SharedString>>> {
-        if let Some(summary) = self.summary.as_ref() {
-            return Task::ready(Some(summary.clone())).shared();
-        }
+        // Always regenerate summary to ensure it's up-to-date with current model
         if let Some(task) = self.pending_summary_generation.clone() {
             return task;
         }
+        self.summary = None; // Clear cached summary
         let Some(model) = self.summarization_model.clone() else {
             log::error!("No summarization model available");
             return Task::ready(None).shared();
