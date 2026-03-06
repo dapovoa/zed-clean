@@ -43,6 +43,10 @@ pub enum Model {
     Grok41FastReasoning,
     #[serde(rename = "grok-code-fast-1", alias = "grok-code-fast-1-0825")]
     GrokCodeFast1,
+    #[serde(rename = "grok-4.20-experimental-beta-0304-reasoning")]
+    Grok420Reasoning,
+    #[serde(rename = "grok-4.20-experimental-beta-0304-non-reasoning")]
+    Grok420NonReasoning,
     #[serde(rename = "custom")]
     Custom {
         name: String,
@@ -76,6 +80,8 @@ impl Model {
             "grok-3-fast" => Ok(Self::Grok3Fast),
             "grok-3-mini-fast" => Ok(Self::Grok3MiniFast),
             "grok-code-fast-1" => Ok(Self::GrokCodeFast1),
+            "grok-4.20-experimental-beta-0304-reasoning" => Ok(Self::Grok420Reasoning),
+            "grok-4.20-experimental-beta-0304-non-reasoning" => Ok(Self::Grok420NonReasoning),
             _ => anyhow::bail!("invalid model id '{id}'"),
         }
     }
@@ -93,6 +99,8 @@ impl Model {
             Self::Grok41FastNonReasoning => "grok-4-1-fast-non-reasoning",
             Self::Grok41FastReasoning => "grok-4-1-fast-reasoning",
             Self::GrokCodeFast1 => "grok-code-fast-1",
+            Self::Grok420Reasoning => "grok-4.20-experimental-beta-0304-reasoning",
+            Self::Grok420NonReasoning => "grok-4.20-experimental-beta-0304-non-reasoning",
             Self::Custom { name, .. } => name,
         }
     }
@@ -110,6 +118,8 @@ impl Model {
             Self::Grok41FastNonReasoning => "Grok 4.1 Fast (Non-Reasoning)",
             Self::Grok41FastReasoning => "Grok 4.1 Fast",
             Self::GrokCodeFast1 => "Grok Code Fast 1",
+            Self::Grok420Reasoning => "Grok 4.20 Reasoning",
+            Self::Grok420NonReasoning => "Grok 4.20 Non-Reasoning",
             Self::Custom {
                 name, display_name, ..
             } => display_name.as_ref().unwrap_or(name),
@@ -123,7 +133,9 @@ impl Model {
             Self::Grok4FastReasoning
             | Self::Grok4FastNonReasoning
             | Self::Grok41FastNonReasoning
-            | Self::Grok41FastReasoning => 2_000_000,
+            | Self::Grok41FastReasoning
+            | Self::Grok420Reasoning
+            | Self::Grok420NonReasoning => 2_000_000,
             Self::Grok2Vision => 8_192,
             Self::Custom { max_tokens, .. } => *max_tokens,
         }
@@ -137,6 +149,8 @@ impl Model {
             | Self::Grok4FastNonReasoning
             | Self::Grok41FastNonReasoning
             | Self::Grok41FastReasoning
+            | Self::Grok420Reasoning
+            | Self::Grok420NonReasoning
             | Self::GrokCodeFast1 => Some(64_000),
             Self::Grok2Vision => Some(4_096),
             Self::Custom {
@@ -156,7 +170,9 @@ impl Model {
             | Self::Grok4FastReasoning
             | Self::Grok4FastNonReasoning
             | Self::Grok41FastNonReasoning
-            | Self::Grok41FastReasoning => true,
+            | Self::Grok41FastReasoning
+            | Self::Grok420Reasoning
+            | Self::Grok420NonReasoning => true,
             Self::Custom {
                 parallel_tool_calls: Some(support),
                 ..
@@ -181,6 +197,8 @@ impl Model {
             | Self::Grok4FastNonReasoning
             | Self::Grok41FastNonReasoning
             | Self::Grok41FastReasoning
+            | Self::Grok420Reasoning
+            | Self::Grok420NonReasoning
             | Self::GrokCodeFast1 => true,
             Self::Custom {
                 supports_tools: Some(support),
@@ -197,7 +215,9 @@ impl Model {
             | Self::Grok4FastReasoning
             | Self::Grok4FastNonReasoning
             | Self::Grok41FastNonReasoning
-            | Self::Grok41FastReasoning => true,
+            | Self::Grok41FastReasoning
+            | Self::Grok420Reasoning
+            | Self::Grok420NonReasoning => true,
             Self::Custom {
                 supports_images: Some(support),
                 ..
