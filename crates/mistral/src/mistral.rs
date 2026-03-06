@@ -421,6 +421,7 @@ pub enum MessageContentDelta {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct ToolCallChunk {
+    #[serde(default)]
     pub index: usize,
     pub id: Option<String>,
     pub function: Option<FunctionChunk>,

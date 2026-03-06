@@ -233,6 +233,7 @@ pub struct ChatResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChoiceDelta {
+    #[serde(default)]
     pub index: u32,
     pub delta: ResponseMessageDelta,
     pub finish_reason: Option<String>,
@@ -240,6 +241,7 @@ pub struct ChoiceDelta {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ToolCallChunk {
+    #[serde(default)]
     pub index: usize,
     pub id: Option<String>,
 

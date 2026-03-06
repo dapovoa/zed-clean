@@ -356,6 +356,7 @@ pub struct ResponseMessageDelta {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ToolCallChunk {
+    #[serde(default)]
     pub index: usize,
     pub id: Option<String>,
     pub function: Option<FunctionChunk>,
@@ -378,6 +379,7 @@ pub struct Usage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChoiceDelta {
+    #[serde(default)]
     pub index: u32,
     pub delta: ResponseMessageDelta,
     pub finish_reason: Option<String>,
