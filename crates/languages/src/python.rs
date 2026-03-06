@@ -1363,12 +1363,9 @@ impl ToolchainLister for PythonToolchainProvider {
 
             match toolchain.environment.kind {
                 Some(PythonEnvironmentKind::Conda) => {
-                    let Some(manager_info) = &toolchain.environment.manager else {
+                    if toolchain.environment.manager.is_none() {
                         return vec![];
                     };
-                    if smol::fs::metadata(&manager_info.executable).await.is_err() {
-                        return vec![];
-                    }
 
                     let manager = match conda_manager {
                         settings::CondaManager::Conda => "conda",
