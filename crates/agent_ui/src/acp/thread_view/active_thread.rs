@@ -556,7 +556,36 @@ impl AcpThreadView {
             }
             ViewEvent::MessageEditorEvent(_editor, MessageEditorEvent::SendImmediately) => {}
             ViewEvent::MessageEditorEvent(editor, MessageEditorEvent::Send) => {
-                self.regenerate(event.entry_index, editor.clone(), window, cx);
+                // Check if the message content actually changed
+                let message_changed = self
+                    .thread
+                    .read(cx)
+                    .entries()
+                    .get(event.entry_index)
+                    .and_then(|entry| entry.user_message())
+                    .is_some_and(|user_message| {
+                        editor.read(cx).text(cx).as_str() != user_message.content.to_markdown(cx)
+                    });
+
+                // Check if this agent connection supports truncate (rewind)
+                let supports_truncate = self
+                    .thread
+                    .read(cx)
+                    .connection()
+                    .truncate(&self.thread.read(cx).session_id(), cx)
+                    .is_some();
+
+                if message_changed && supports_truncate {
+                    // Regenerate only if content changed AND connection supports truncate
+                    self.regenerate(event.entry_index, editor.clone(), window, cx);
+                } else if message_changed && !supports_truncate {
+                    // Content changed but no truncate support: cancel editing and send as new message
+                    self.cancel_editing(&Default::default(), window, cx);
+                    self.send(window, cx);
+                } else {
+                    // Content didn't change: just cancel editing
+                    self.cancel_editing(&Default::default(), window, cx);
+                }
             }
             ViewEvent::MessageEditorEvent(_editor, MessageEditorEvent::Cancel) => {
                 self.cancel_editing(&Default::default(), window, cx);
