@@ -567,21 +567,22 @@ impl AcpThreadView {
                         editor.read(cx).text(cx).as_str() != user_message.content.to_markdown(cx)
                     });
 
-                // Check if this agent connection supports truncate (rewind)
-                let supports_truncate = self
+                // Check if this agent connection supports remote truncate (rewind)
+                let supports_remote_truncate = self
                     .thread
                     .read(cx)
                     .connection()
                     .truncate(&self.thread.read(cx).session_id(), cx)
                     .is_some();
 
-                if message_changed && supports_truncate {
-                    // Regenerate only if content changed AND connection supports truncate
-                    self.regenerate(event.entry_index, editor.clone(), window, cx);
-                } else if message_changed && !supports_truncate {
-                    // Content changed but no truncate support: cancel editing and send as new message
-                    self.cancel_editing(&Default::default(), window, cx);
-                    self.send(window, cx);
+                if message_changed {
+                    if supports_remote_truncate {
+                        // Use remote truncate if available (full rewind with server sync)
+                        self.regenerate(event.entry_index, editor.clone(), window, cx);
+                    } else {
+                        // No remote truncate: do local rewind + send as new message
+                        self.local_rewind_and_send(event.entry_index, editor.clone(), window, cx);
+                    }
                 } else {
                     // Content didn't change: just cancel editing
                     self.cancel_editing(&Default::default(), window, cx);
@@ -1036,6 +1037,64 @@ impl AcpThreadView {
                 log::warn!("Rewind not supported for this agent connection, sending message without truncating history");
             }
             
+            this.update_in(cx, |thread, window, cx| {
+                thread.send_impl(message_editor, window, cx);
+                thread.focus_handle(cx).focus(window, cx);
+            })?;
+            anyhow::Ok(())
+        })
+        .detach_and_log_err(cx);
+    }
+
+    /// Performs a local rewind (without server truncate support) and sends the edited message.
+    /// This truncates entries locally and rejects all edits from the given entry index.
+    pub fn local_rewind_and_send(
+        &mut self,
+        entry_ix: usize,
+        message_editor: Entity<MessageEditor>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.is_loading_contents {
+            return;
+        }
+
+        let thread = self.thread.clone();
+
+        cx.spawn_in(window, async move |this, cx| {
+            // Check if there are any edits from prompts before the one being regenerated.
+            let has_earlier_edits = thread.read_with(cx, |thread, _| {
+                thread
+                    .entries()
+                    .iter()
+                    .take(entry_ix)
+                    .any(|entry| entry.diffs().next().is_some())
+            });
+
+            if has_earlier_edits {
+                thread.update(cx, |thread, cx| {
+                    thread.action_log().update(cx, |action_log, cx| {
+                        action_log.keep_all_edits(None, cx);
+                    });
+                });
+            }
+
+            // Perform local rewind: truncate entries and reject all edits from this point
+            this.update(cx, |this, cx| {
+                this.thread.update(cx, |thread, cx| {
+                    // Truncate entries at the given index
+                    let range = entry_ix..thread.entries().len();
+                    thread.entries_mut().truncate(entry_ix);
+                    cx.emit(AcpThreadEvent::EntriesRemoved(range));
+
+                    // Reject all edits from this point (this also handles checkpoint restore)
+                    let _ = thread.action_log().update(cx, |action_log, cx| {
+                        action_log.reject_all_edits(None, cx);
+                    });
+                });
+            })?;
+
+            // Send the edited message
             this.update_in(cx, |thread, window, cx| {
                 thread.send_impl(message_editor, window, cx);
                 thread.focus_handle(cx).focus(window, cx);

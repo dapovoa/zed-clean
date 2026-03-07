@@ -1243,6 +1243,10 @@ impl AcpThread {
         &self.entries
     }
 
+    pub fn entries_mut(&mut self) -> &mut Vec<AgentThreadEntry> {
+        &mut self.entries
+    }
+
     pub fn session_id(&self) -> &acp::SessionId {
         &self.session_id
     }
