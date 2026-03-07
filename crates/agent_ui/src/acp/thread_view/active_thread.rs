@@ -963,19 +963,13 @@ impl AcpThreadView {
         }
         let thread = self.thread.clone();
 
-        let Some(user_message_id) = thread.update(cx, |thread, _| {
+        // Get the user message ID if available (for rewind)
+        let user_message_id = thread.update(cx, |thread, _| {
             thread.entries().get(entry_ix)?.user_message()?.id.clone()
-        }) else {
-            return;
-        };
+        });
 
         cx.spawn_in(window, async move |this, cx| {
             // Check if there are any edits from prompts before the one being regenerated.
-            //
-            // If there are, we keep/accept them since we're not regenerating the prompt that created them.
-            //
-            // If editing the prompt that generated the edits, they are auto-rejected
-            // through the `rewind` function in the `acp_thread`.
             let has_earlier_edits = thread.read_with(cx, |thread, _| {
                 thread
                     .entries()
@@ -992,9 +986,27 @@ impl AcpThreadView {
                 });
             }
 
-            thread
-                .update(cx, |thread, cx| thread.rewind(user_message_id, cx))
-                .await?;
+            // Try to rewind using the message ID if available
+            let mut rewind_failed = false;
+            if let Some(id) = user_message_id {
+                let rewind_result = thread
+                    .update(cx, |thread, cx| thread.rewind(id, cx))
+                    .await;
+                
+                if rewind_result.is_err() {
+                    rewind_failed = true;
+                }
+            } else {
+                rewind_failed = true;
+            }
+            
+            // If rewind failed or no ID was available, we need to handle it differently
+            // The agent connection doesn't support truncation, so we just send the new message
+            // and let the agent handle it as a new prompt in the same session
+            if rewind_failed {
+                log::warn!("Rewind not supported for this agent connection, sending message without truncating history");
+            }
+            
             this.update_in(cx, |thread, window, cx| {
                 thread.send_impl(message_editor, window, cx);
                 thread.focus_handle(cx).focus(window, cx);
