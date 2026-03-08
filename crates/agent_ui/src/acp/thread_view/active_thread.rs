@@ -1088,8 +1088,8 @@ impl AcpThreadView {
                     cx.emit(AcpThreadEvent::EntriesRemoved(range));
 
                     // Reject all edits from this point (this also handles checkpoint restore)
-                    let _ = thread.action_log().update(cx, |action_log, cx| {
-                        action_log.reject_all_edits(None, cx);
+                    thread.action_log().update(cx, |action_log, cx| {
+                        let _ = action_log.reject_all_edits(None, cx);
                     });
                 });
             })?;
@@ -1488,7 +1488,7 @@ impl AcpThreadView {
         let thread = &self.thread;
         let telemetry = ActionLogTelemetry::from(thread.read(cx));
         let action_log = thread.read(cx).action_log().clone();
-        action_log
+        let _ = action_log
             .update(cx, |action_log, cx| {
                 action_log.reject_all_edits(Some(telemetry), cx)
             })
