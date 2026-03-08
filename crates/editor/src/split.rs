@@ -1616,7 +1616,7 @@ impl Item for SplittableEditor {
         self.rhs_editor.read(cx).tab_content(params, window, cx)
     }
 
-    fn to_item_events(event: &EditorEvent, f: &mut dyn FnMut(ItemEvent)) {
+    fn to_item_events(event: &EditorEvent, f: impl FnMut(ItemEvent)) {
         Editor::to_item_events(event, f)
     }
 
@@ -2061,7 +2061,7 @@ impl LhsEditor {
             new,
             lhs_cx,
         );
-        if !lhs_result.excerpt_ids.is_empty()
+        if !lhs_result.0.is_empty()
             && lhs_multibuffer
                 .diff_for(base_text_buffer.read(lhs_cx).remote_id())
                 .is_none_or(|old_diff| old_diff.entity_id() != diff.entity_id())
@@ -2074,7 +2074,7 @@ impl LhsEditor {
             let mut current_group = Vec::new();
             let mut last_id = None;
 
-            for (i, &lhs_id) in lhs_result.excerpt_ids.iter().enumerate() {
+            for (i, &lhs_id) in lhs_result.0.iter().enumerate() {
                 if last_id == Some(lhs_id) {
                     current_group.push(rhs_excerpt_ids[i]);
                 } else {
@@ -2092,7 +2092,7 @@ impl LhsEditor {
         };
 
         let deduplicated_lhs_ids: Vec<ExcerptId> =
-            lhs_result.excerpt_ids.iter().dedup().copied().collect();
+            lhs_result.0.iter().dedup().copied().collect();
 
         Some((deduplicated_lhs_ids, rhs_merge_groups))
     }

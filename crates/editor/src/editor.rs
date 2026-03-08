@@ -20732,12 +20732,6 @@ impl Editor {
         })
     }
 
-    fn toggle_single_diff_hunk(&mut self, range: Range<Anchor>, cx: &mut Context<Self>) {
-        self.buffer.update(cx, |buffer, cx| {
-            buffer.toggle_single_diff_hunk(range, cx);
-        })
-    }
-
     pub(crate) fn apply_all_diff_hunks(
         &mut self,
         _: &ApplyAllDiffHunks,

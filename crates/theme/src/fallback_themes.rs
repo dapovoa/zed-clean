@@ -184,6 +184,8 @@ pub(crate) fn zed_default_dark() -> Theme {
                 editor_document_highlight_write_background: gpui::red(),
                 editor_document_highlight_bracket_background: gpui::green(),
 
+                vim_yank_background: hsla(222.0 / 360., 11.5 / 100., 34.1 / 100., 0.5),
+
                 terminal_background: bg,
                 // todo("Use one colors for terminal")
                 terminal_ansi_background: crate::black().dark().step_12(),

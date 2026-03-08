@@ -22678,7 +22678,7 @@ async fn test_adjacent_diff_hunks(executor: BackgroundExecutor, cx: &mut TestApp
     assert_eq!(hunk_ranges.len(), 2);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[0].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[0].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22693,14 +22693,14 @@ async fn test_adjacent_diff_hunks(executor: BackgroundExecutor, cx: &mut TestApp
     cx.assert_state_with_diff(second_hunk_expanded);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[0].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[0].clone()], cx);
     });
     executor.run_until_parked();
 
     cx.assert_state_with_diff(both_hunks_expanded.clone());
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[1].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[1].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22715,7 +22715,7 @@ async fn test_adjacent_diff_hunks(executor: BackgroundExecutor, cx: &mut TestApp
     cx.assert_state_with_diff(first_hunk_expanded);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[1].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[1].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22768,7 +22768,7 @@ async fn test_adjacent_diff_hunks(executor: BackgroundExecutor, cx: &mut TestApp
     assert_eq!(hunk_ranges.len(), 2);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[1].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[1].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22833,7 +22833,7 @@ async fn test_toggle_deletion_hunk_at_start_of_file(
     assert_eq!(hunk_ranges.len(), 1);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[0].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[0].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22846,7 +22846,7 @@ async fn test_toggle_deletion_hunk_at_start_of_file(
     cx.assert_state_with_diff(hunk_collapsed);
 
     cx.update_editor(|editor, _, cx| {
-        editor.toggle_single_diff_hunk(hunk_ranges[0].clone(), cx);
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_ranges[0].clone()], cx);
     });
     executor.run_until_parked();
 
@@ -22878,7 +22878,7 @@ async fn test_expand_first_line_diff_hunk_keeps_deleted_lines_visible(
             .collect::<Vec<_>>();
         assert_eq!(hunks.len(), 1);
         let hunk_range = Anchor::range_in_buffer(excerpt_id, hunks[0].buffer_range.clone());
-        editor.toggle_single_diff_hunk(hunk_range, cx)
+        editor.toggle_diff_hunks_in_ranges(vec![hunk_range], cx)
     });
     executor.run_until_parked();
     cx.assert_state_with_diff("- old\n+ ˇnew\n  second\n  third\n".to_string());
