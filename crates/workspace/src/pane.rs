@@ -3440,7 +3440,7 @@ impl Pane {
                 cx,
             )
             .children(pinned_tabs.len().ne(&0).then(|| {
-                let max_scroll = self.tab_bar_scroll_handle.max_offset().width;
+                let max_scroll = self.tab_bar_scroll_handle.max_offset().x;
                 // We need to check both because offset returns delta values even when the scroll handle is not scrollable
                 let is_scrolled = self.tab_bar_scroll_handle.offset().x < px(0.);
                 // Avoid flickering when max_offset is very small (< 2px).
