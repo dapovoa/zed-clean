@@ -1079,6 +1079,17 @@ impl AcpThreadView {
                 });
             }
 
+            // Get the message ID before truncating (needed for restore_checkpoint)
+            let message_id: Option<acp_thread::UserMessageId> = thread.read_with(cx, |thread, _| {
+                thread.entries().get(entry_ix).and_then(|entry| {
+                    if let acp_thread::AgentThreadEntry::UserMessage(msg) = entry {
+                        Some(msg.id.clone())
+                    } else {
+                        None
+                    }
+                })
+            }).flatten();
+
             // Perform local rewind: truncate entries and reject all edits from this point
             this.update(cx, |this, cx| {
                 this.thread.update(cx, |thread, cx| {
@@ -1087,7 +1098,15 @@ impl AcpThreadView {
                     thread.entries_mut().truncate(entry_ix);
                     cx.emit(AcpThreadEvent::EntriesRemoved(range));
 
-                    // Reject all edits from this point (this also handles checkpoint restore)
+                    // Restore git checkpoint BEFORE rejecting edits
+                    match &message_id {
+                        Some(message_id) => {
+                            let _ = thread.restore_checkpoint(message_id.clone(), cx);
+                        }
+                        None => {}
+                    }
+
+                    // Reject all edits from this point
                     thread.action_log().update(cx, |action_log, cx| {
                         let _ = action_log.reject_all_edits(None, cx);
                     });
