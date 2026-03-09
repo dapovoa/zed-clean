@@ -296,6 +296,8 @@ impl LanguageModelProvider for OpenAiOAuthLanguageModelProvider {
     }
 
     fn provided_models(&self, _cx: &App) -> Vec<Arc<dyn LanguageModel>> {
+        // Return hardcoded models
+        // TODO: Fetch models from OpenAI API /v1/models endpoint
         let mut models = BTreeMap::default();
         for model in open_ai::Model::iter() {
             if !matches!(model, open_ai::Model::Custom { .. }) {
@@ -423,7 +425,8 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     fn supports_images(&self) -> bool {
         use open_ai::Model;
         match &self.model {
-            Model::FourOmniMini
+            Model::FourOmni
+            | Model::FourOmniMini
             | Model::FourPointOneNano
             | Model::Five
             | Model::FiveCodex
@@ -432,6 +435,8 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
             | Model::FivePointOne
             | Model::FivePointTwo
             | Model::FivePointTwoCodex
+            | Model::FivePointFour
+            | Model::FivePointFourPro
             | Model::O1
             | Model::O3 => true,
             Model::ThreePointFiveTurbo

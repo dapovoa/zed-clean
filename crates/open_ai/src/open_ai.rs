@@ -63,6 +63,8 @@ pub enum Model {
     Four,
     #[serde(rename = "gpt-4-turbo")]
     FourTurbo,
+    #[serde(rename = "gpt-4o")]
+    FourOmni,
     #[serde(rename = "gpt-4o-mini")]
     FourOmniMini,
     #[serde(rename = "gpt-4.1-nano")]
@@ -88,6 +90,10 @@ pub enum Model {
     FivePointTwo,
     #[serde(rename = "gpt-5.2-codex")]
     FivePointTwoCodex,
+    #[serde(rename = "gpt-5.4")]
+    FivePointFour,
+    #[serde(rename = "gpt-5.4-pro")]
+    FivePointFourPro,
     #[serde(rename = "custom")]
     Custom {
         name: String,
@@ -116,6 +122,7 @@ impl Model {
             "gpt-3.5-turbo" => Ok(Self::ThreePointFiveTurbo),
             "gpt-4" => Ok(Self::Four),
             "gpt-4-turbo-preview" => Ok(Self::FourTurbo),
+            "gpt-4o" => Ok(Self::FourOmni),
             "gpt-4o-mini" => Ok(Self::FourOmniMini),
             "gpt-4.1-nano" => Ok(Self::FourPointOneNano),
             "o1" => Ok(Self::O1),
@@ -128,6 +135,8 @@ impl Model {
             "gpt-5.1" => Ok(Self::FivePointOne),
             "gpt-5.2" => Ok(Self::FivePointTwo),
             "gpt-5.2-codex" => Ok(Self::FivePointTwoCodex),
+            "gpt-5.4" => Ok(Self::FivePointFour),
+            "gpt-5.4-pro" => Ok(Self::FivePointFourPro),
             invalid_id => anyhow::bail!("invalid model id '{invalid_id}'"),
         }
     }
@@ -137,6 +146,7 @@ impl Model {
             Self::ThreePointFiveTurbo => "gpt-3.5-turbo",
             Self::Four => "gpt-4",
             Self::FourTurbo => "gpt-4-turbo",
+            Self::FourOmni => "gpt-4o",
             Self::FourOmniMini => "gpt-4o-mini",
             Self::FourPointOneNano => "gpt-4.1-nano",
             Self::O1 => "o1",
@@ -149,6 +159,8 @@ impl Model {
             Self::FivePointOne => "gpt-5.1",
             Self::FivePointTwo => "gpt-5.2",
             Self::FivePointTwoCodex => "gpt-5.2-codex",
+            Self::FivePointFour => "gpt-5.4",
+            Self::FivePointFourPro => "gpt-5.4-pro",
             Self::Custom { name, .. } => name,
         }
     }
@@ -158,6 +170,7 @@ impl Model {
             Self::ThreePointFiveTurbo => "gpt-3.5-turbo",
             Self::Four => "gpt-4",
             Self::FourTurbo => "gpt-4-turbo",
+            Self::FourOmni => "gpt-4o",
             Self::FourOmniMini => "gpt-4o-mini",
             Self::FourPointOneNano => "gpt-4.1-nano",
             Self::O1 => "o1",
@@ -170,6 +183,8 @@ impl Model {
             Self::FivePointOne => "gpt-5.1",
             Self::FivePointTwo => "gpt-5.2",
             Self::FivePointTwoCodex => "gpt-5.2-codex",
+            Self::FivePointFour => "gpt-5.4",
+            Self::FivePointFourPro => "gpt-5.4-pro",
             Self::Custom { display_name, .. } => display_name.as_deref().unwrap_or(&self.id()),
         }
     }
@@ -179,6 +194,7 @@ impl Model {
             Self::ThreePointFiveTurbo => 16_385,
             Self::Four => 8_192,
             Self::FourTurbo => 128_000,
+            Self::FourOmni => 128_000,
             Self::FourOmniMini => 128_000,
             Self::FourPointOneNano => 1_047_576,
             Self::O1 => 200_000,
@@ -191,6 +207,8 @@ impl Model {
             Self::FivePointOne => 400_000,
             Self::FivePointTwo => 400_000,
             Self::FivePointTwoCodex => 400_000,
+            Self::FivePointFour => 400_000,
+            Self::FivePointFourPro => 400_000,
             Self::Custom { max_tokens, .. } => *max_tokens,
         }
     }
@@ -203,6 +221,7 @@ impl Model {
             Self::ThreePointFiveTurbo => Some(4_096),
             Self::Four => Some(8_192),
             Self::FourTurbo => Some(4_096),
+            Self::FourOmni => Some(16_384),
             Self::FourOmniMini => Some(16_384),
             Self::FourPointOneNano => Some(32_768),
             Self::O1 => Some(100_000),
@@ -215,6 +234,8 @@ impl Model {
             Self::FivePointOne => Some(128_000),
             Self::FivePointTwo => Some(128_000),
             Self::FivePointTwoCodex => Some(128_000),
+            Self::FivePointFour => Some(128_000),
+            Self::FivePointFourPro => Some(128_000),
         }
     }
 
@@ -246,6 +267,7 @@ impl Model {
             Self::ThreePointFiveTurbo
             | Self::Four
             | Self::FourTurbo
+            | Self::FourOmni
             | Self::FourOmniMini
             | Self::FourPointOneNano
             | Self::Five
@@ -254,6 +276,8 @@ impl Model {
             | Self::FivePointOne
             | Self::FivePointTwo
             | Self::FivePointTwoCodex
+            | Self::FivePointFour
+            | Self::FivePointFourPro
             | Self::FiveNano => true,
             Self::O1 | Self::O3 | Self::O3Mini | Model::Custom { .. } => false,
         }
