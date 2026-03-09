@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use base64::Engine as _;
-use collections::HashSet;
+use collections::BTreeMap;
 use credentials_provider::CredentialsProvider;
 use futures::future::BoxFuture;
 use futures::{AsyncReadExt as _, FutureExt, StreamExt};
@@ -12,15 +12,19 @@ use language_model::{
     LanguageModelProviderId, LanguageModelProviderName, LanguageModelProviderState,
     LanguageModelRequest, RateLimiter,
 };
+use open_ai::OPEN_AI_API_URL;
 use rand::RngCore as _;
-use release_channel::AppVersion;
 use sha2::Digest as _;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use strum::IntoEnumIterator;
 use ui::{ConfiguredApiCard, prelude::*};
 use util::ResultExt;
 
-use super::open_ai::{OpenAiResponseEventMapper, count_open_ai_tokens, into_open_ai_response};
+use super::open_ai::{
+    OpenAiEventMapper, OpenAiResponseEventMapper, count_open_ai_tokens, into_open_ai,
+    into_open_ai_response,
+};
 
 const PROVIDER_ID: LanguageModelProviderId = LanguageModelProviderId::new("openai-oauth");
 const PROVIDER_NAME: LanguageModelProviderName = LanguageModelProviderName::new("ChatGPT");
@@ -31,98 +35,6 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPES: &str = "openid profile email offline_access";
 const KEYCHAIN_URL: &str = "https://auth.openai.com/oauth";
-const CHATGPT_CODEX_API_URL: &str = "https://chatgpt.com/backend-api/codex";
-const CHATGPT_CODEX_MODELS_URL: &str = "https://chatgpt.com/backend-api/codex/models";
-
-#[derive(Clone, Debug, PartialEq)]
-struct OAuthModelCatalog {
-    models: Vec<OAuthModel>,
-    default_model: Option<String>,
-    default_fast_model: Option<String>,
-    recommended_models: Vec<String>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct OAuthModel {
-    id: Arc<str>,
-    display_name: Arc<str>,
-    max_token_count: u64,
-    max_output_tokens: Option<u64>,
-    supports_tools: bool,
-    supports_images: bool,
-    supports_thinking: bool,
-    supports_parallel_tool_calls: bool,
-    supports_chat_completions: bool,
-    reasoning_effort: Option<open_ai::ReasoningEffort>,
-    is_latest: bool,
-}
-
-impl OAuthModel {
-    fn as_open_ai_model(&self) -> open_ai::Model {
-        open_ai::Model::Custom {
-            name: self.id.to_string(),
-            display_name: Some(self.display_name.to_string()),
-            max_tokens: self.max_token_count,
-            max_output_tokens: self.max_output_tokens,
-            max_completion_tokens: self.max_output_tokens,
-            reasoning_effort: self.reasoning_effort.clone(),
-            supports_chat_completions: self.supports_chat_completions,
-        }
-    }
-}
-
-fn fallback_catalog() -> OAuthModelCatalog {
-    OAuthModelCatalog {
-        models: vec![
-            OAuthModel {
-                id: Arc::from("gpt-5"),
-                display_name: Arc::from("GPT-5"),
-                max_token_count: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_tools: true,
-                supports_images: true,
-                supports_thinking: false,
-                supports_parallel_tool_calls: true,
-                supports_chat_completions: true,
-                reasoning_effort: None,
-                is_latest: true,
-            },
-            OAuthModel {
-                id: Arc::from("gpt-5-mini"),
-                display_name: Arc::from("GPT-5 Mini"),
-                max_token_count: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_tools: true,
-                supports_images: true,
-                supports_thinking: false,
-                supports_parallel_tool_calls: true,
-                supports_chat_completions: true,
-                reasoning_effort: None,
-                is_latest: false,
-            },
-            OAuthModel {
-                id: Arc::from("gpt-5-codex"),
-                display_name: Arc::from("GPT-5 Codex"),
-                max_token_count: 272_000,
-                max_output_tokens: Some(128_000),
-                supports_tools: true,
-                supports_images: true,
-                supports_thinking: false,
-                supports_parallel_tool_calls: true,
-                supports_chat_completions: false,
-                reasoning_effort: None,
-                is_latest: false,
-            },
-        ],
-        default_model: Some("gpt-5".to_string()),
-        default_fast_model: Some("gpt-5-mini".to_string()),
-        recommended_models: vec![
-            "gpt-5".to_string(),
-            "gpt-5-mini".to_string(),
-            "gpt-5-codex".to_string(),
-        ],
-    }
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct StoredTokens {
@@ -150,8 +62,6 @@ pub struct State {
     stored_tokens: Option<StoredTokens>,
     http_client: Arc<dyn HttpClient>,
     auth_task: Option<Task<()>>,
-    fetch_models_task: Option<Task<()>>,
-    catalog: OAuthModelCatalog,
 }
 
 impl State {
@@ -160,51 +70,13 @@ impl State {
     }
 
     fn current_token(&self) -> Option<String> {
-        self.stored_tokens.as_ref().map(|t| t.access_token.clone())
-    }
-
-    fn start_fetch_models(&mut self, cx: &mut Context<Self>) {
-        let Some(access_token) = self.current_token() else {
-            self.catalog = fallback_catalog();
-            self.fetch_models_task = None;
-            cx.notify();
-            return;
-        };
-
-        let http_client = self.http_client.clone();
-        let version = AppVersion::global(cx);
-        let client_version = format!("{}.{}.{}", version.major, version.minor, version.patch);
-        self.fetch_models_task = Some(cx.spawn(async move |this, cx| {
-            match fetch_model_catalog(http_client, access_token, client_version).await {
-                Ok(catalog) => {
-                    this.update(cx, |state, cx| {
-                        state.catalog = catalog;
-                        state.fetch_models_task = None;
-                        cx.notify();
-                    })
-                    .log_err();
-                }
-                Err(err) => {
-                    log::warn!(
-                        "Failed to fetch ChatGPT OAuth models, using fallback catalog: {err}"
-                    );
-                    this.update(cx, |state, cx| {
-                        state.catalog = fallback_catalog();
-                        state.fetch_models_task = None;
-                        cx.notify();
-                    })
-                    .log_err();
-                }
-            }
-        }));
-        cx.notify();
+        self.stored_tokens
+            .as_ref()
+            .map(|t| t.access_token.clone())
     }
 
     fn authenticate(&mut self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
         if self.is_authenticated() {
-            if self.fetch_models_task.is_none() {
-                self.start_fetch_models(cx);
-            }
             return Task::ready(Ok(()));
         }
         let load_task = self.load(cx);
@@ -232,7 +104,12 @@ impl State {
                             Ok(new_tokens) => {
                                 let token_bytes = serde_json::to_vec(&new_tokens)?;
                                 credentials_provider
-                                    .write_credentials(KEYCHAIN_URL, "Bearer", &token_bytes, cx)
+                                    .write_credentials(
+                                        KEYCHAIN_URL,
+                                        "Bearer",
+                                        &token_bytes,
+                                        cx,
+                                    )
                                     .await
                                     .log_err();
                                 new_tokens
@@ -261,7 +138,6 @@ impl State {
 
             this.update(cx, |state, cx| {
                 state.stored_tokens = Some(tokens);
-                state.start_fetch_models(cx);
                 cx.notify();
             })
             .ok();
@@ -295,7 +171,11 @@ impl State {
         let credentials_provider = <dyn CredentialsProvider>::global(cx);
 
         let task = cx.spawn(async move |this, cx| {
-            let code = match cx.background_executor().spawn(listen_for_callback()).await {
+            let code = match cx
+                .background_executor()
+                .spawn(listen_for_callback())
+                .await
+            {
                 Ok(code) => code,
                 Err(err) => {
                     log::error!("OpenAI OAuth callback error: {err}");
@@ -342,7 +222,6 @@ impl State {
             this.update(cx, |state, cx| {
                 state.stored_tokens = Some(tokens);
                 state.auth_task = None;
-                state.start_fetch_models(cx);
                 cx.notify();
             })
             .log_err();
@@ -355,8 +234,6 @@ impl State {
     fn reset(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
         self.stored_tokens = None;
         self.auth_task = None;
-        self.fetch_models_task = None;
-        self.catalog = fallback_catalog();
         cx.notify();
         let credentials_provider = <dyn CredentialsProvider>::global(cx);
         cx.spawn(async move |_, cx| {
@@ -373,31 +250,19 @@ impl OpenAiOAuthLanguageModelProvider {
             stored_tokens: None,
             http_client: http_client.clone(),
             auth_task: None,
-            fetch_models_task: None,
-            catalog: fallback_catalog(),
         });
 
         Self { http_client, state }
     }
 
-    fn create_language_model(&self, model: OAuthModel) -> Arc<dyn LanguageModel> {
+    fn create_language_model(&self, model: open_ai::Model) -> Arc<dyn LanguageModel> {
         Arc::new(OpenAiOAuthLanguageModel {
-            id: LanguageModelId::from(model.id.to_string()),
+            id: LanguageModelId::from(model.id().to_string()),
             model,
             state: self.state.clone(),
             http_client: self.http_client.clone(),
             request_limiter: RateLimiter::new(4),
         })
-    }
-
-    fn find_model(&self, model_id: &str, cx: &App) -> Option<OAuthModel> {
-        self.state
-            .read(cx)
-            .catalog
-            .models
-            .iter()
-            .find(|model| model.id.as_ref() == model_id)
-            .cloned()
     }
 }
 
@@ -422,36 +287,25 @@ impl LanguageModelProvider for OpenAiOAuthLanguageModelProvider {
         IconOrSvg::Icon(IconName::AiOpenAi)
     }
 
-    fn default_model(&self, cx: &App) -> Option<Arc<dyn LanguageModel>> {
-        let model_id = self.state.read(cx).catalog.default_model.clone()?;
-        self.find_model(&model_id, cx)
-            .map(|model| self.create_language_model(model))
+    fn default_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
+        Some(self.create_language_model(open_ai::Model::default()))
     }
 
-    fn default_fast_model(&self, cx: &App) -> Option<Arc<dyn LanguageModel>> {
-        let model_id = self.state.read(cx).catalog.default_fast_model.clone()?;
-        self.find_model(&model_id, cx)
-            .map(|model| self.create_language_model(model))
+    fn default_fast_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
+        Some(self.create_language_model(open_ai::Model::default_fast()))
     }
 
-    fn recommended_models(&self, cx: &App) -> Vec<Arc<dyn LanguageModel>> {
-        self.state
-            .read(cx)
-            .catalog
-            .recommended_models
-            .iter()
-            .filter_map(|model_id| self.find_model(model_id, cx))
-            .map(|model| self.create_language_model(model))
-            .collect()
-    }
-
-    fn provided_models(&self, cx: &App) -> Vec<Arc<dyn LanguageModel>> {
-        self.state
-            .read(cx)
-            .catalog
-            .models
-            .iter()
-            .cloned()
+    fn provided_models(&self, _cx: &App) -> Vec<Arc<dyn LanguageModel>> {
+        // Return hardcoded models
+        // TODO: Fetch models from OpenAI API /v1/models endpoint
+        let mut models = BTreeMap::default();
+        for model in open_ai::Model::iter() {
+            if !matches!(model, open_ai::Model::Custom { .. }) {
+                models.insert(model.id().to_string(), model);
+            }
+        }
+        models
+            .into_values()
             .map(|model| self.create_language_model(model))
             .collect()
     }
@@ -481,20 +335,50 @@ impl LanguageModelProvider for OpenAiOAuthLanguageModelProvider {
 
 struct OpenAiOAuthLanguageModel {
     id: LanguageModelId,
-    model: OAuthModel,
+    model: open_ai::Model,
     state: Entity<State>,
     http_client: Arc<dyn HttpClient>,
     request_limiter: RateLimiter,
 }
 
 impl OpenAiOAuthLanguageModel {
+    fn stream_completion_inner(
+        &self,
+        request: open_ai::Request,
+        cx: &AsyncApp,
+    ) -> BoxFuture<
+        'static,
+        Result<futures::stream::BoxStream<'static, Result<open_ai::ResponseStreamEvent>>>,
+    > {
+        let http_client = self.http_client.clone();
+        let token = self.state.read_with(cx, |state, _| state.current_token());
+        let future = self.request_limiter.stream(async move {
+            let provider = PROVIDER_NAME;
+            let Some(token) = token else {
+                return Err(language_model::LanguageModelCompletionError::NoApiKey { provider });
+            };
+            let response = open_ai::stream_completion(
+                http_client.as_ref(),
+                provider.0.as_str(),
+                OPEN_AI_API_URL,
+                &token,
+                request,
+            )
+            .await?;
+            Ok(response)
+        });
+        async move { Ok(future.await?.boxed()) }.boxed()
+    }
+
     fn stream_response_inner(
         &self,
         request: open_ai::responses::Request,
         cx: &AsyncApp,
     ) -> BoxFuture<
         'static,
-        Result<futures::stream::BoxStream<'static, Result<open_ai::responses::StreamEvent>>>,
+        Result<
+            futures::stream::BoxStream<'static, Result<open_ai::responses::StreamEvent>>,
+        >,
     > {
         let http_client = self.http_client.clone();
         let token = self.state.read_with(cx, |state, _| state.current_token());
@@ -506,7 +390,7 @@ impl OpenAiOAuthLanguageModel {
             let response = open_ai::responses::stream_response(
                 http_client.as_ref(),
                 provider.0.as_str(),
-                CHATGPT_CODEX_API_URL,
+                OPEN_AI_API_URL,
                 &token,
                 request,
             )
@@ -523,7 +407,7 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     }
 
     fn name(&self) -> LanguageModelName {
-        LanguageModelName::from(self.model.display_name.to_string())
+        LanguageModelName::from(self.model.display_name().to_string())
     }
 
     fn provider_id(&self) -> LanguageModelProviderId {
@@ -535,14 +419,38 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     }
 
     fn supports_tools(&self) -> bool {
-        self.model.supports_tools
+        true
     }
 
     fn supports_images(&self) -> bool {
-        self.model.supports_images
+        use open_ai::Model;
+        match &self.model {
+            Model::FourOmni
+            | Model::FourOmniMini
+            | Model::FourPointOneNano
+            | Model::Five
+            | Model::FiveCodex
+            | Model::FiveMini
+            | Model::FiveNano
+            | Model::FivePointOne
+            | Model::FivePointTwo
+            | Model::FivePointTwoCodex
+            | Model::FivePointFour
+            | Model::FivePointFourPro
+            | Model::O1
+            | Model::O3 => true,
+            Model::ThreePointFiveTurbo
+            | Model::Four
+            | Model::FourTurbo
+            | Model::O3Mini
+            | Model::Custom { .. } => false,
+        }
     }
 
-    fn supports_tool_choice(&self, choice: language_model::LanguageModelToolChoice) -> bool {
+    fn supports_tool_choice(
+        &self,
+        choice: language_model::LanguageModelToolChoice,
+    ) -> bool {
         use language_model::LanguageModelToolChoice;
         match choice {
             LanguageModelToolChoice::Auto => true,
@@ -552,7 +460,7 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     }
 
     fn supports_thinking(&self) -> bool {
-        self.model.supports_thinking
+        self.model.reasoning_effort().is_some()
     }
 
     fn supports_split_token_display(&self) -> bool {
@@ -560,19 +468,15 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     }
 
     fn telemetry_id(&self) -> String {
-        format!("openai-oauth/{}", self.model.id)
-    }
-
-    fn is_latest(&self) -> bool {
-        self.model.is_latest
+        format!("openai-oauth/{}", self.model.id())
     }
 
     fn max_token_count(&self) -> u64 {
-        self.model.max_token_count
+        self.model.max_token_count()
     }
 
     fn max_output_tokens(&self) -> Option<u64> {
-        self.model.max_output_tokens
+        self.model.max_output_tokens()
     }
 
     fn count_tokens(
@@ -580,7 +484,7 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
         request: LanguageModelRequest,
         cx: &App,
     ) -> BoxFuture<'static, Result<u64>> {
-        count_open_ai_tokens(request, self.model.as_open_ai_model(), cx)
+        count_open_ai_tokens(request, self.model.clone(), cx)
     }
 
     fn stream_completion(
@@ -597,21 +501,37 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
             LanguageModelCompletionError,
         >,
     > {
-        let model = self.model.as_open_ai_model();
-        let open_ai_request = into_open_ai_response(
-            request,
-            model.id(),
-            self.model.supports_parallel_tool_calls,
-            false,
-            self.max_output_tokens(),
-            model.reasoning_effort(),
-        );
-        let completions = self.stream_response_inner(open_ai_request, cx);
-        async move {
-            let mapper = OpenAiResponseEventMapper::new();
-            Ok(mapper.map_stream(completions.await?).boxed())
+        if self.model.supports_chat_completions() {
+            let open_ai_request = into_open_ai(
+                request,
+                self.model.id(),
+                self.model.supports_parallel_tool_calls(),
+                self.model.supports_prompt_cache_key(),
+                self.max_output_tokens(),
+                self.model.reasoning_effort(),
+            );
+            let completions = self.stream_completion_inner(open_ai_request, cx);
+            async move {
+                let mapper = OpenAiEventMapper::new();
+                Ok(mapper.map_stream(completions.await?).boxed())
+            }
+            .boxed()
+        } else {
+            let open_ai_request = into_open_ai_response(
+                request,
+                self.model.id(),
+                self.model.supports_parallel_tool_calls(),
+                self.model.supports_prompt_cache_key(),
+                self.max_output_tokens(),
+                self.model.reasoning_effort(),
+            );
+            let completions = self.stream_response_inner(open_ai_request, cx);
+            async move {
+                let mapper = OpenAiResponseEventMapper::new();
+                Ok(mapper.map_stream(completions.await?).boxed())
+            }
+            .boxed()
         }
-        .boxed()
     }
 }
 
@@ -642,12 +562,21 @@ impl ConfigurationView {
         }
     }
 
-    fn sign_in(&mut self, _: &gpui::ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        self.state
-            .update(cx, |state, cx| state.start_oauth_flow(cx));
+    fn sign_in(
+        &mut self,
+        _: &gpui::ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.state.update(cx, |state, cx| state.start_oauth_flow(cx));
     }
 
-    fn sign_out(&mut self, _: &gpui::ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn sign_out(
+        &mut self,
+        _: &gpui::ClickEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.state
             .update(cx, |state, cx| state.reset(cx))
             .detach_and_log_err(cx);
@@ -839,8 +768,8 @@ async fn do_token_request(
         ));
     }
 
-    let json: serde_json::Value =
-        serde_json::from_str(&body).map_err(|e| anyhow!("Failed to parse token response: {e}"))?;
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| anyhow!("Failed to parse token response: {e}"))?;
 
     let access_token = json["access_token"]
         .as_str()
@@ -878,351 +807,4 @@ fn percent_encode(s: &str) -> String {
         }
     }
     encoded
-}
-
-async fn fetch_model_catalog(
-    http_client: Arc<dyn HttpClient>,
-    access_token: String,
-    client_version: String,
-) -> Result<OAuthModelCatalog> {
-    let mut url = Url::parse(CHATGPT_CODEX_MODELS_URL)?;
-    url.query_pairs_mut()
-        .append_pair("client_version", &client_version);
-
-    let request = Request::builder()
-        .method(Method::GET)
-        .uri(url.as_str())
-        .header("Authorization", format!("Bearer {access_token}"))
-        .header("Accept", "application/json")
-        .body(AsyncBody::empty())?;
-
-    let mut response = http_client.send(request).await?;
-    let mut body = String::new();
-    response.body_mut().read_to_string(&mut body).await?;
-
-    if !response.status().is_success() {
-        return Err(anyhow!(
-            "ChatGPT/Codex models endpoint returned {}: {}",
-            response.status(),
-            body
-        ));
-    }
-
-    parse_model_catalog_response(&body)
-}
-
-fn parse_model_catalog_response(body: &str) -> Result<OAuthModelCatalog> {
-    let json: serde_json::Value = serde_json::from_str(body)
-        .map_err(|err| anyhow!("Failed to parse ChatGPT/Codex models response: {err}"))?;
-
-    let root = json
-        .as_object()
-        .ok_or_else(|| anyhow!("ChatGPT/Codex models response must be a JSON object"))?;
-
-    let models_value = root
-        .get("models")
-        .and_then(|value| value.as_array())
-        .ok_or_else(|| anyhow!("ChatGPT/Codex models response missing `models` array"))?;
-
-    let mut models = Vec::new();
-    let mut seen_model_ids = HashSet::default();
-    for value in models_value {
-        let Some(model) = parse_oauth_model(value) else {
-            continue;
-        };
-        if seen_model_ids.insert(model.id.to_string()) {
-            models.push(model);
-        }
-    }
-
-    if models.is_empty() {
-        return Err(anyhow!(
-            "ChatGPT/Codex models response did not contain any valid models"
-        ));
-    }
-
-    let default_model = root
-        .get("default_model")
-        .and_then(model_id_from_value)
-        .or_else(|| models.first().map(|model| model.id.to_string()));
-    let default_fast_model = root
-        .get("default_fast_model")
-        .and_then(model_id_from_value)
-        .or_else(|| {
-            models
-                .iter()
-                .map(|model| model.id.to_string())
-                .find(|id| id.contains("mini") || id.contains("fast"))
-        })
-        .or_else(|| default_model.clone());
-    let recommended_models = root
-        .get("recommended_models")
-        .and_then(|value| value.as_array())
-        .map(|recommended| {
-            let allowed_ids = models
-                .iter()
-                .map(|model| model.id.as_ref())
-                .collect::<HashSet<_>>();
-            let mut seen_ids = HashSet::default();
-
-            recommended
-                .iter()
-                .filter_map(model_id_from_value)
-                .filter(|id| allowed_ids.contains(id.as_str()) && seen_ids.insert(id.clone()))
-                .collect()
-        })
-        .unwrap_or_else(|| {
-            default_model
-                .iter()
-                .cloned()
-                .chain(default_fast_model.iter().cloned())
-                .collect()
-        });
-
-    models.sort_by(oauth_model_sort_key);
-
-    Ok(OAuthModelCatalog {
-        models,
-        default_model,
-        default_fast_model,
-        recommended_models,
-    })
-}
-
-fn parse_oauth_model(value: &serde_json::Value) -> Option<OAuthModel> {
-    let object = value.as_object()?;
-    let id = object
-        .get("id")
-        .or_else(|| object.get("slug"))
-        .and_then(|value| value.as_str())?;
-    let display_name = normalize_model_display_name(id);
-
-    Some(OAuthModel {
-        id: Arc::from(id),
-        display_name: Arc::from(display_name),
-        max_token_count: object
-            .get("max_token_count")
-            .or_else(|| object.get("max_tokens"))
-            .or_else(|| object.get("context_window"))
-            .and_then(value_as_u64)
-            .unwrap_or(272_000),
-        max_output_tokens: object
-            .get("max_output_tokens")
-            .or_else(|| object.get("max_completion_tokens"))
-            .and_then(value_as_u64),
-        supports_tools: object
-            .get("supports_tools")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(true),
-        supports_images: object
-            .get("supports_images")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false),
-        supports_thinking: object
-            .get("supports_thinking")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false),
-        supports_parallel_tool_calls: object
-            .get("supports_parallel_tool_calls")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false),
-        supports_chat_completions: object
-            .get("supports_chat_completions")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(true),
-        reasoning_effort: None,
-        is_latest: object
-            .get("is_latest")
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false),
-    })
-}
-
-fn model_id_from_value(value: &serde_json::Value) -> Option<String> {
-    match value {
-        serde_json::Value::String(id) => Some(id.clone()),
-        serde_json::Value::Object(object) => object
-            .get("id")
-            .or_else(|| object.get("slug"))
-            .and_then(|value| value.as_str())
-            .map(ToOwned::to_owned),
-        _ => None,
-    }
-}
-
-fn value_as_u64(value: &serde_json::Value) -> Option<u64> {
-    value
-        .as_u64()
-        .or_else(|| value.as_str().and_then(|value| value.parse().ok()))
-}
-
-fn normalize_model_display_name(id: &str) -> String {
-    id.split('-')
-        .map(|part| match part {
-            "gpt" => "GPT".to_string(),
-            "codex" => "Codex".to_string(),
-            "mini" => "Mini".to_string(),
-            "max" => "Max".to_string(),
-            "nano" => "Nano".to_string(),
-            "fast" => "Fast".to_string(),
-            other => other.to_uppercase(),
-        })
-        .collect::<Vec<_>>()
-        .join("-")
-}
-
-fn oauth_model_sort_key(a: &OAuthModel, b: &OAuthModel) -> std::cmp::Ordering {
-    parse_model_sort_key(&a.id)
-        .cmp(&parse_model_sort_key(&b.id))
-        .reverse()
-        .then_with(|| a.id.cmp(&b.id))
-}
-
-fn parse_model_sort_key(id: &str) -> (u32, u32, u32, i32) {
-    let without_prefix = id.strip_prefix("gpt-").unwrap_or(id);
-    let mut parts = without_prefix.split('-');
-    let version = parts.next().unwrap_or_default();
-    let variant = parts.collect::<Vec<_>>();
-
-    let mut version_parts = version.split('.');
-    let major = version_parts
-        .next()
-        .and_then(|part| part.parse::<u32>().ok())
-        .unwrap_or(0);
-    let minor = version_parts
-        .next()
-        .and_then(|part| part.parse::<u32>().ok())
-        .unwrap_or(0);
-    let patch = version_parts
-        .next()
-        .and_then(|part| part.parse::<u32>().ok())
-        .unwrap_or(0);
-
-    let variant_rank = match variant.as_slice() {
-        [] => 50,
-        ["mini"] => 40,
-        ["codex"] => 30,
-        ["codex", "max"] => 20,
-        ["codex", "mini"] => 10,
-        _ => 0,
-    };
-
-    (major, minor, patch, variant_rank)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_chatgpt_codex_catalog() {
-        let catalog = parse_model_catalog_response(
-            r#"{
-                "models": [
-                    {
-                        "id": "gpt-5",
-                        "display_name": "GPT-5",
-                        "max_token_count": 272000,
-                        "max_output_tokens": 128000,
-                        "supports_tools": true,
-                        "supports_images": true,
-                        "supports_parallel_tool_calls": true,
-                        "supports_chat_completions": true,
-                        "is_latest": true
-                    },
-                    {
-                        "id": "gpt-5-codex",
-                        "display_name": "GPT-5 Codex",
-                        "max_token_count": 272000,
-                        "max_output_tokens": 128000,
-                        "supports_tools": true,
-                        "supports_chat_completions": false
-                    }
-                ],
-                "default_model": "gpt-5",
-                "default_fast_model": "gpt-5",
-                "recommended_models": ["gpt-5-codex"]
-            }"#,
-        )
-        .unwrap();
-
-        assert_eq!(catalog.models.len(), 2);
-        assert_eq!(catalog.default_model.as_deref(), Some("gpt-5"));
-        assert_eq!(catalog.default_fast_model.as_deref(), Some("gpt-5"));
-        assert_eq!(catalog.recommended_models, vec!["gpt-5-codex"]);
-        assert_eq!(catalog.models[0].id.as_ref(), "gpt-5");
-        assert_eq!(catalog.models[1].id.as_ref(), "gpt-5-codex");
-        assert_eq!(catalog.models[0].display_name.as_ref(), "GPT-5");
-        assert_eq!(catalog.models[1].display_name.as_ref(), "GPT-5-Codex");
-        assert!(catalog
-            .models
-            .iter()
-            .any(|model| model.id.as_ref() == "gpt-5-codex" && !model.supports_chat_completions));
-    }
-
-    #[test]
-    fn falls_back_to_local_defaults_when_backend_omits_them() {
-        let catalog = parse_model_catalog_response(
-            r#"{
-                "models": [
-                    { "id": "gpt-5", "display_name": "GPT-5" },
-                    { "id": "gpt-5-mini", "display_name": "GPT-5 Mini" }
-                ]
-            }"#,
-        )
-        .unwrap();
-
-        assert_eq!(catalog.default_model.as_deref(), Some("gpt-5"));
-        assert_eq!(catalog.default_fast_model.as_deref(), Some("gpt-5-mini"));
-        assert_eq!(catalog.recommended_models, vec!["gpt-5", "gpt-5-mini"]);
-    }
-
-    #[test]
-    fn preserves_backend_order_while_deduplicating_models() {
-        let catalog = parse_model_catalog_response(
-            r#"{
-                "models": [
-                    { "id": "gpt-5.4", "display_name": "GPT-5.4" },
-                    { "id": "gpt-5", "display_name": "GPT-5" },
-                    { "id": "gpt-5.4", "display_name": "GPT-5.4 duplicate" }
-                ]
-            }"#,
-        )
-        .unwrap();
-
-        assert_eq!(catalog.models.len(), 2);
-        assert_eq!(catalog.models[0].id.as_ref(), "gpt-5.4");
-        assert_eq!(catalog.models[1].id.as_ref(), "gpt-5");
-    }
-
-    #[test]
-    fn sorts_models_by_version_and_variant_for_display() {
-        let catalog = parse_model_catalog_response(
-            r#"{
-                "models": [
-                    { "id": "gpt-5.1-codex-mini" },
-                    { "id": "gpt-5.4-mini" },
-                    { "id": "gpt-5.4" },
-                    { "id": "gpt-5.3-codex" }
-                ]
-            }"#,
-        )
-        .unwrap();
-
-        let ids = catalog
-            .models
-            .iter()
-            .map(|model| model.id.as_ref())
-            .collect::<Vec<_>>();
-
-        assert_eq!(
-            ids,
-            vec![
-                "gpt-5.4",
-                "gpt-5.4-mini",
-                "gpt-5.3-codex",
-                "gpt-5.1-codex-mini"
-            ]
-        );
-    }
 }

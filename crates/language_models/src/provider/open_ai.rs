@@ -300,7 +300,8 @@ impl LanguageModel for OpenAiLanguageModel {
     fn supports_images(&self) -> bool {
         use open_ai::Model;
         match &self.model {
-            Model::FourOmniMini
+            Model::FourOmni
+            | Model::FourOmniMini
             | Model::FourPointOneNano
             | Model::Five
             | Model::FiveCodex
@@ -309,6 +310,8 @@ impl LanguageModel for OpenAiLanguageModel {
             | Model::FivePointOne
             | Model::FivePointTwo
             | Model::FivePointTwoCodex
+            | Model::FivePointFour
+            | Model::FivePointFourPro
             | Model::O1
             | Model::O3 => true,
             Model::ThreePointFiveTurbo
@@ -1225,6 +1228,7 @@ pub fn count_open_ai_tokens(
             Model::ThreePointFiveTurbo
             | Model::Four
             | Model::FourTurbo
+            | Model::FourOmni
             | Model::FourOmniMini
             | Model::FourPointOneNano
             | Model::O1
@@ -1233,11 +1237,12 @@ pub fn count_open_ai_tokens(
             | Model::Five
             | Model::FiveCodex
             | Model::FiveMini
-            | Model::FiveNano => tiktoken_rs::num_tokens_from_messages(model.id(), &messages),
-            // GPT-5.1, 5.2, and 5.2-codex don't have dedicated tiktoken support; use gpt-5 tokenizer
-            Model::FivePointOne | Model::FivePointTwo | Model::FivePointTwoCodex => {
-                tiktoken_rs::num_tokens_from_messages("gpt-5", &messages)
-            }
+            | Model::FiveNano
+            | Model::FivePointOne
+            | Model::FivePointTwo
+            | Model::FivePointTwoCodex
+            | Model::FivePointFour
+            | Model::FivePointFourPro => tiktoken_rs::num_tokens_from_messages(model.id(), &messages),
         }
         .map(|tokens| tokens as u64)
     })
