@@ -2375,6 +2375,8 @@ impl GitRepository for RealGitRepository {
                 let working_directory = working_directory?;
 
                 let git = GitBinary::new(git_binary_path, working_directory, executor);
+                
+                // Restore existing files to checkpoint state
                 git.run(&[
                     "restore",
                     "--source",
@@ -2384,16 +2386,12 @@ impl GitRepository for RealGitRepository {
                 ])
                 .await?;
 
-                // TODO: We don't track binary and large files anymore,
-                //       so the following call would delete them.
-                //       Implement an alternative way to track files added by agent.
-                //
-                // git.with_temp_index(async move |git| {
-                //     git.run(&["read-tree", &checkpoint.commit_sha.to_string()])
-                //         .await?;
-                //     git.run(&["clean", "-d", "--force"]).await
-                // })
-                // .await?;
+                // Remove new files created after checkpoint
+                git.run(&[
+                    "clean",
+                    "-fd",  // -f: force, -d: include directories
+                ])
+                .await?;
 
                 Ok(())
             })
