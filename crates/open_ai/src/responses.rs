@@ -1,6 +1,7 @@
 use anyhow::{Result, anyhow};
 use futures::{AsyncBufReadExt, AsyncReadExt, StreamExt, io::BufReader, stream::BoxStream};
 use http_client::{AsyncBody, HttpClient, Method, Request as HttpRequest};
+use http_client::http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -9,6 +10,10 @@ use crate::{ReasoningEffort, RequestError, Role, ToolChoice};
 #[derive(Serialize, Debug)]
 pub struct Request {
     pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub store: Option<bool>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub input: Vec<ResponseInputItem>,
     #[serde(default)]
@@ -256,12 +261,28 @@ pub async fn stream_response(
     api_key: &str,
     request: Request,
 ) -> Result<BoxStream<'static, Result<StreamEvent>>, RequestError> {
+    stream_response_with_headers(client, provider_name, api_url, api_key, request, None).await
+}
+
+pub async fn stream_response_with_headers(
+    client: &dyn HttpClient,
+    provider_name: &str,
+    api_url: &str,
+    api_key: &str,
+    request: Request,
+    extra_headers: Option<&HeaderMap>,
+) -> Result<BoxStream<'static, Result<StreamEvent>>, RequestError> {
     let uri = format!("{api_url}/responses");
-    let request_builder = HttpRequest::builder()
+    let mut request_builder = HttpRequest::builder()
         .method(Method::POST)
         .uri(uri)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_key.trim()));
+    if let Some(headers) = extra_headers {
+        for (name, value) in headers {
+            request_builder = request_builder.header(name, value);
+        }
+    }
 
     let is_streaming = request.stream;
     let request = request_builder

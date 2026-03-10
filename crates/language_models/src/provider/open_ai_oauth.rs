@@ -1,23 +1,21 @@
 use anyhow::{Result, anyhow};
 use base64::Engine as _;
-use collections::BTreeMap;
 use credentials_provider::CredentialsProvider;
 use futures::future::BoxFuture;
 use futures::{AsyncReadExt as _, FutureExt, StreamExt};
 use gpui::{AnyView, App, AsyncApp, Context, Entity, Task, Window};
 use http_client::{AsyncBody, HttpClient, Method, Request, Url};
+use http_client::http::{HeaderMap, HeaderName, HeaderValue};
 use language_model::{
     AuthenticateError, IconOrSvg, LanguageModel, LanguageModelCompletionError,
     LanguageModelCompletionEvent, LanguageModelId, LanguageModelName, LanguageModelProvider,
     LanguageModelProviderId, LanguageModelProviderName, LanguageModelProviderState,
     LanguageModelRequest, RateLimiter,
 };
-use open_ai::OPEN_AI_API_URL;
 use rand::RngCore as _;
 use sha2::Digest as _;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use strum::IntoEnumIterator;
 use ui::{ConfiguredApiCard, prelude::*};
 use util::ResultExt;
 
@@ -35,10 +33,14 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const SCOPES: &str = "openid profile email offline_access";
 const KEYCHAIN_URL: &str = "https://auth.openai.com/oauth";
+const CHATGPT_API_URL: &str = "https://chatgpt.com/backend-api/codex";
+const CHATGPT_OAUTH_DEFAULT_INSTRUCTIONS: &str = "You are ChatGPT.";
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct StoredTokens {
     access_token: String,
+    #[serde(default)]
+    account_id: Option<String>,
     refresh_token: Option<String>,
     expires_at: u64,
 }
@@ -75,6 +77,12 @@ impl State {
             .map(|t| t.access_token.clone())
     }
 
+    fn current_account_id(&self) -> Option<String> {
+        self.stored_tokens
+            .as_ref()
+            .and_then(|t| t.account_id.clone())
+    }
+
     fn authenticate(&mut self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
         if self.is_authenticated() {
             return Task::ready(Ok(()));
@@ -101,7 +109,10 @@ impl State {
                 match tokens.refresh_token.clone() {
                     Some(refresh_token) => {
                         match refresh_access_token(http_client, refresh_token, cx).await {
-                            Ok(new_tokens) => {
+                            Ok(mut new_tokens) => {
+                                if new_tokens.account_id.is_none() {
+                                    new_tokens.account_id = tokens.account_id.clone();
+                                }
                                 let token_bytes = serde_json::to_vec(&new_tokens)?;
                                 credentials_provider
                                     .write_credentials(
@@ -288,24 +299,16 @@ impl LanguageModelProvider for OpenAiOAuthLanguageModelProvider {
     }
 
     fn default_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
-        Some(self.create_language_model(open_ai::Model::default()))
+        Some(self.create_language_model(chatgpt_oauth_default_model()))
     }
 
     fn default_fast_model(&self, _cx: &App) -> Option<Arc<dyn LanguageModel>> {
-        Some(self.create_language_model(open_ai::Model::default_fast()))
+        Some(self.create_language_model(chatgpt_oauth_default_fast_model()))
     }
 
     fn provided_models(&self, _cx: &App) -> Vec<Arc<dyn LanguageModel>> {
-        // Return hardcoded models
-        // TODO: Fetch models from OpenAI API /v1/models endpoint
-        let mut models = BTreeMap::default();
-        for model in open_ai::Model::iter() {
-            if !matches!(model, open_ai::Model::Custom { .. }) {
-                models.insert(model.id().to_string(), model);
-            }
-        }
-        models
-            .into_values()
+        chatgpt_oauth_models()
+            .into_iter()
             .map(|model| self.create_language_model(model))
             .collect()
     }
@@ -351,20 +354,33 @@ impl OpenAiOAuthLanguageModel {
         Result<futures::stream::BoxStream<'static, Result<open_ai::ResponseStreamEvent>>>,
     > {
         let http_client = self.http_client.clone();
-        let token = self.state.read_with(cx, |state, _| state.current_token());
+        let model_id = request.model.clone();
+        let (token, account_id) = self
+            .state
+            .read_with(cx, |state, _| (state.current_token(), state.current_account_id()));
         let future = self.request_limiter.stream(async move {
             let provider = PROVIDER_NAME;
             let Some(token) = token else {
                 return Err(language_model::LanguageModelCompletionError::NoApiKey { provider });
             };
-            let response = open_ai::stream_completion(
+            let headers = chatgpt_account_headers(account_id.as_deref());
+            let response = open_ai::stream_completion_with_headers(
                 http_client.as_ref(),
                 provider.0.as_str(),
-                OPEN_AI_API_URL,
+                CHATGPT_API_URL,
                 &token,
                 request,
+                Some(&headers),
             )
-            .await?;
+            .await
+            .map_err(|err| {
+                log::error!(
+                    "OpenAI OAuth chat/completions failed for model {}: {:?}",
+                    model_id,
+                    err
+                );
+                err
+            })?;
             Ok(response)
         });
         async move { Ok(future.await?.boxed()) }.boxed()
@@ -372,7 +388,7 @@ impl OpenAiOAuthLanguageModel {
 
     fn stream_response_inner(
         &self,
-        request: open_ai::responses::Request,
+        mut request: open_ai::responses::Request,
         cx: &AsyncApp,
     ) -> BoxFuture<
         'static,
@@ -380,21 +396,36 @@ impl OpenAiOAuthLanguageModel {
             futures::stream::BoxStream<'static, Result<open_ai::responses::StreamEvent>>,
         >,
     > {
+        normalize_chatgpt_responses_request(&mut request);
+
         let http_client = self.http_client.clone();
-        let token = self.state.read_with(cx, |state, _| state.current_token());
+        let model_id = request.model.clone();
+        let (token, account_id) = self
+            .state
+            .read_with(cx, |state, _| (state.current_token(), state.current_account_id()));
         let provider = PROVIDER_NAME;
         let future = self.request_limiter.stream(async move {
             let Some(token) = token else {
                 return Err(language_model::LanguageModelCompletionError::NoApiKey { provider });
             };
-            let response = open_ai::responses::stream_response(
+            let headers = chatgpt_account_headers(account_id.as_deref());
+            let response = open_ai::responses::stream_response_with_headers(
                 http_client.as_ref(),
                 provider.0.as_str(),
-                OPEN_AI_API_URL,
+                CHATGPT_API_URL,
                 &token,
                 request,
+                Some(&headers),
             )
-            .await?;
+            .await
+            .map_err(|err| {
+                log::error!(
+                    "OpenAI OAuth responses failed for model {}: {:?}",
+                    model_id,
+                    err
+                );
+                err
+            })?;
             Ok(response)
         });
         async move { Ok(future.await?.boxed()) }.boxed()
@@ -423,28 +454,10 @@ impl LanguageModel for OpenAiOAuthLanguageModel {
     }
 
     fn supports_images(&self) -> bool {
-        use open_ai::Model;
-        match &self.model {
-            Model::FourOmni
-            | Model::FourOmniMini
-            | Model::FourPointOneNano
-            | Model::Five
-            | Model::FiveCodex
-            | Model::FiveMini
-            | Model::FiveNano
-            | Model::FivePointOne
-            | Model::FivePointTwo
-            | Model::FivePointTwoCodex
-            | Model::FivePointFour
-            | Model::FivePointFourPro
-            | Model::O1
-            | Model::O3 => true,
-            Model::ThreePointFiveTurbo
-            | Model::Four
-            | Model::FourTurbo
-            | Model::O3Mini
-            | Model::Custom { .. } => false,
-        }
+        !matches!(
+            self.model.id(),
+            "gpt-5.1-codex-max" | "gpt-5.1-codex-mini" | "gpt-5.2-codex" | "gpt-5.3-codex"
+        )
     }
 
     fn supports_tool_choice(
@@ -775,6 +788,15 @@ async fn do_token_request(
         .as_str()
         .ok_or_else(|| anyhow!("Token response missing access_token"))?
         .to_owned();
+    let account_id = json["account_id"]
+        .as_str()
+        .map(str::to_owned)
+        .or_else(|| {
+            json["id_token"]
+                .as_str()
+                .and_then(extract_chatgpt_account_id_from_jwt)
+        })
+        .or_else(|| extract_chatgpt_account_id_from_jwt(&access_token));
 
     let refresh_token = json["refresh_token"].as_str().map(str::to_owned);
 
@@ -787,9 +809,117 @@ async fn do_token_request(
 
     Ok(StoredTokens {
         access_token,
+        account_id,
         refresh_token,
         expires_at,
     })
+}
+
+fn chatgpt_oauth_default_model() -> open_ai::Model {
+    chatgpt_oauth_model("gpt-5.4")
+}
+
+fn chatgpt_oauth_default_fast_model() -> open_ai::Model {
+    chatgpt_oauth_model("gpt-5.2-codex")
+}
+
+fn chatgpt_oauth_models() -> Vec<open_ai::Model> {
+    vec![
+        chatgpt_oauth_model("gpt-5.1-codex-max"),
+        chatgpt_oauth_model("gpt-5.1-codex-mini"),
+        chatgpt_oauth_model("gpt-5.2"),
+        chatgpt_oauth_model("gpt-5.2-codex"),
+        chatgpt_oauth_model("gpt-5.3-codex"),
+        chatgpt_oauth_model("gpt-5.4"),
+    ]
+}
+
+fn chatgpt_oauth_model(model_id: &str) -> open_ai::Model {
+    open_ai::Model::Custom {
+        name: model_id.to_string(),
+        display_name: Some(model_id.to_string()),
+        max_tokens: 400_000,
+        max_output_tokens: Some(128_000),
+        max_completion_tokens: Some(128_000),
+        reasoning_effort: None,
+        supports_chat_completions: false,
+    }
+}
+
+fn normalize_chatgpt_responses_request(request: &mut open_ai::responses::Request) {
+    use open_ai::responses::{ResponseInputContent, ResponseInputItem};
+
+    request.store = Some(false);
+    request.max_output_tokens = None;
+
+    let mut system_instructions = Vec::new();
+    request.input.retain(|item| match item {
+        ResponseInputItem::Message(message) if message.role == open_ai::Role::System => {
+            for content in &message.content {
+                match content {
+                    ResponseInputContent::Text { text } | ResponseInputContent::OutputText { text, .. } => {
+                        if !text.trim().is_empty() {
+                            system_instructions.push(text.clone());
+                        }
+                    }
+                    ResponseInputContent::Refusal { refusal } => {
+                        if !refusal.trim().is_empty() {
+                            system_instructions.push(refusal.clone());
+                        }
+                    }
+                    ResponseInputContent::Image { .. } => {}
+                }
+            }
+            false
+        }
+        _ => true,
+    });
+
+    if !system_instructions.is_empty() {
+        let merged_system = system_instructions.join("\n\n");
+        let current = request.instructions.take().unwrap_or_default();
+        request.instructions = if current.trim().is_empty() {
+            Some(merged_system)
+        } else {
+            Some(format!("{current}\n\n{merged_system}"))
+        };
+    }
+
+    if request
+        .instructions
+        .as_ref()
+        .is_none_or(|instructions| instructions.trim().is_empty())
+    {
+        request.instructions = Some(CHATGPT_OAUTH_DEFAULT_INSTRUCTIONS.to_string());
+    }
+}
+
+fn chatgpt_account_headers(account_id: Option<&str>) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    let Some(account_id) = account_id.filter(|id| !id.trim().is_empty()) else {
+        return headers;
+    };
+    let Ok(header_name) = HeaderName::from_bytes(b"ChatGPT-Account-ID") else {
+        return headers;
+    };
+    let Ok(header_value) = HeaderValue::from_str(account_id) else {
+        return headers;
+    };
+    headers.insert(header_name, header_value);
+    headers
+}
+
+fn extract_chatgpt_account_id_from_jwt(token: &str) -> Option<String> {
+    let payload_segment = token.split('.').nth(1)?;
+    let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload_segment)
+        .ok()?;
+    let payload_json: serde_json::Value = serde_json::from_slice(&payload).ok()?;
+    payload_json
+        .get("https://api.openai.com/auth")?
+        .get("chatgpt_account_id")?
+        .as_str()
+        .map(str::to_owned)
 }
 
 fn percent_encode(s: &str) -> String {

@@ -586,6 +586,8 @@ pub fn into_open_ai_response(
 
     ResponseRequest {
         model: model_id.into(),
+        instructions: None,
+        store: None,
         input: input_items,
         stream,
         temperature,

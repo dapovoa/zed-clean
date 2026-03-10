@@ -276,7 +276,10 @@ impl LanguageModelProvider for OllamaLanguageModelProvider {
     }
 
     fn is_authenticated(&self, cx: &App) -> bool {
-        self.state.read(cx).is_authenticated()
+        let has_configured_models = !OllamaLanguageModelProvider::settings(cx)
+            .available_models
+            .is_empty();
+        has_configured_models && self.state.read(cx).is_authenticated()
     }
 
     fn authenticate(&self, cx: &mut App) -> Task<Result<(), AuthenticateError>> {

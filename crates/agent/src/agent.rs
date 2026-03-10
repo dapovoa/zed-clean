@@ -100,22 +100,12 @@ impl LanguageModels {
     }
 
     fn refresh_list(&mut self, cx: &App) {
-        let mut providers = LanguageModelRegistry::global(cx)
+        let providers = LanguageModelRegistry::global(cx)
             .read(cx)
             .visible_providers()
             .into_iter()
             .filter(|provider| provider.is_authenticated(cx))
             .collect::<Vec<_>>();
-
-        // If any OpenAI-compatible provider is configured, exclude the official OpenAI provider
-        // to avoid confusion (compatible != official OpenAI)
-        let has_openai_compatible = providers
-            .iter()
-            .any(|p| p.id().0.contains("openai_compatible") || p.id().0.contains("openai-compatible"));
-        
-        if has_openai_compatible {
-            providers.retain(|p| p.id().0 != "openai");
-        }
 
         let mut language_model_list = IndexMap::default();
         let mut recommended_models = HashSet::default();

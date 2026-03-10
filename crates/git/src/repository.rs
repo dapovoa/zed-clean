@@ -887,6 +887,7 @@ impl RealGitRepository {
 #[derive(Clone, Debug)]
 pub struct GitRepositoryCheckpoint {
     pub commit_sha: Oid,
+    pub baseline_untracked_files: HashSet<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -2342,6 +2343,8 @@ impl GitRepository for RealGitRepository {
                 let mut git = GitBinary::new(git_binary_path, working_directory.clone(), executor)
                     .envs(checkpoint_author_envs());
                 git.with_temp_index(async |git| {
+                    let baseline_untracked_files =
+                        git.list_untracked_files().await?.into_iter().collect();
                     let head_sha = git.run(&["rev-parse", "HEAD"]).await.ok();
                     let mut excludes = exclude_files(git).await?;
 
@@ -2358,6 +2361,7 @@ impl GitRepository for RealGitRepository {
 
                     Ok(GitRepositoryCheckpoint {
                         commit_sha: checkpoint_sha.parse()?,
+                        baseline_untracked_files,
                     })
                 })
                 .await
@@ -2386,12 +2390,32 @@ impl GitRepository for RealGitRepository {
                 ])
                 .await?;
 
-                // Remove new files created after checkpoint
-                git.run(&[
-                    "clean",
-                    "-fd",  // -f: force, -d: include directories
-                ])
-                .await?;
+                // Remove only untracked files created after the checkpoint.
+                // This avoids deleting user files that already existed when the checkpoint
+                // was taken.
+                let current_untracked_files = git.list_untracked_files().await?;
+                for path in current_untracked_files {
+                    if checkpoint.baseline_untracked_files.contains(&path) {
+                        continue;
+                    }
+
+                    // Git status should return safe repo-relative paths, but guard anyway
+                    // against accidental traversal.
+                    if !is_safe_repo_relative_path(&path) {
+                        continue;
+                    }
+
+                    let full_path = git.working_directory.join(&path);
+                    match smol::fs::metadata(&full_path).await {
+                        Ok(metadata) if metadata.is_dir() => {
+                            smol::fs::remove_dir_all(&full_path).await?;
+                        }
+                        Ok(_) => {
+                            smol::fs::remove_file(&full_path).await?;
+                        }
+                        Err(_) => {}
+                    }
+                }
 
                 Ok(())
             })
@@ -2798,6 +2822,16 @@ fn git_status_args(path_prefixes: &[RepoPath]) -> Vec<OsString> {
         }
     }));
     args
+}
+
+fn is_safe_repo_relative_path(path: &Path) -> bool {
+    if path.is_absolute() {
+        return false;
+    }
+
+    !path
+        .components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
 }
 
 /// Temporarily git-ignore commonly ignored files and files over 2MB
@@ -3308,13 +3342,12 @@ mod tests {
                 .unwrap(),
             "1"
         );
-        // See TODO above
-        // assert_eq!(
-        //     smol::fs::read_to_string(repo_dir.path().join("new_file_after_checkpoint"))
-        //         .await
-        //         .ok(),
-        //     None
-        // );
+        assert_eq!(
+            smol::fs::read_to_string(repo_dir.path().join("new_file_after_checkpoint"))
+                .await
+                .ok(),
+            None
+        );
     }
 
     #[gpui::test]
@@ -3354,13 +3387,12 @@ mod tests {
                 .unwrap(),
             "foo"
         );
-        // See TODOs above
-        // assert_eq!(
-        //     smol::fs::read_to_string(repo_dir.path().join("baz"))
-        //         .await
-        //         .ok(),
-        //     None
-        // );
+        assert_eq!(
+            smol::fs::read_to_string(repo_dir.path().join("baz"))
+                .await
+                .ok(),
+            None
+        );
     }
 
     #[gpui::test]
