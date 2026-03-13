@@ -206,6 +206,7 @@ impl RenderOnce for ThreadItem {
                             .child(title_label)
                             .when_some(self.tooltip, |this, tooltip| this.tooltip(tooltip)),
                     )
+<<<<<<< HEAD
                     .when(running_or_action, |this| {
                         this.child(
                             h_flex()
@@ -216,7 +217,7 @@ impl RenderOnce for ThreadItem {
                                             .child(SpinnerLabel::new().color(Color::Accent)),
                                     )
                                 })
-                                .when(self.hovered, |this| {
+                                .when(self.hovered || self.selected, |this| {
                                     this.when_some(self.action_slot, |this, slot| this.child(slot))
                                 }),
                         )
@@ -243,26 +244,6 @@ impl RenderOnce for ThreadItem {
                         .gap_1p5()
                         .child(icon_container()) // Icon Spacing
                         .child(worktree_label)
-                        // TODO: Uncomment the elements below when we're ready to expose this data
-                        // .child(dot_separator())
-                        // .child(
-                        //     Label::new(self.timestamp)
-                        //         .size(LabelSize::Small)
-                        //         .color(Color::Muted),
-                        // )
-                        // .child(
-                        //     Label::new("•")
-                        //         .size(LabelSize::Small)
-                        //         .color(Color::Muted)
-                        //         .alpha(0.5),
-                        // )
-                        // .when(has_no_changes, |this| {
-                        //     this.child(
-                        //         Label::new("No Changes")
-                        //             .size(LabelSize::Small)
-                        //             .color(Color::Muted),
-                        //     )
-                        // })
                         .when(self.added.is_some() || self.removed.is_some(), |this| {
                             this.child(DiffStat::new(
                                 self.id,
