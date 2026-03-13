@@ -1084,39 +1084,9 @@ impl AcpServerView {
                     entry_view_state.update(cx, |view_state, cx| {
                         view_state.sync_entry(index, thread, window, cx)
                     });
-                    // Auto-expand any new Thought chunks in this entry.
-                    let thought_chunk_indices: Vec<usize> = thread
-                        .read(cx)
-                        .entries()
-                        .get(index)
-                        .and_then(|entry| {
-                            if let AgentThreadEntry::AssistantMessage(msg) = entry {
-                                Some(
-                                    msg.chunks
-                                        .iter()
-                                        .enumerate()
-                                        .filter(|(_, c)| {
-                                            matches!(c, AssistantMessageChunk::Thought { .. })
-                                        })
-                                        .map(|(ix, _)| ix)
-                                        .collect(),
-                                )
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or_default();
-                    if !thought_chunk_indices.is_empty() {
-                        let now = Instant::now();
-                        active.update(cx, |active, _cx| {
-                            for chunk_ix in thought_chunk_indices {
-                                let key = (index, chunk_ix);
-                                if !active.thinking_block_started_at.contains_key(&key) {
-                                    active.thinking_block_started_at.insert(key, now);
-                                }
-                            }
-                        });
-                    }
+                    active.update(cx, |active, cx| {
+                        active.auto_expand_streaming_thought(cx);
+                    });
                 }
             }
             AcpThreadEvent::EntriesRemoved(range) => {
@@ -1147,16 +1117,7 @@ impl AcpServerView {
                 if let Some(active) = self.thread_view(&thread_id) {
                     active.update(cx, |active, _cx| {
                         active.thread_retry_status.take();
-                        // Calculate duration for each thinking block and auto-collapse.
-                        let now = Instant::now();
-                        for &key in &active.expanded_thinking_blocks {
-                            if let Some(&started_at) = active.thinking_block_started_at.get(&key) {
-                                active
-                                    .thinking_block_durations
-                                    .insert(key, now.duration_since(started_at));
-                            }
-                        }
-                        active.expanded_thinking_blocks.clear();
+                        active.clear_auto_expand_tracking();
                     });
                 }
                 if is_subagent {
