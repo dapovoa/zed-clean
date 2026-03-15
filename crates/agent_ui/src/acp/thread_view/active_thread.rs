@@ -2458,12 +2458,18 @@ impl AcpThreadView {
                 .justify_between()
                 .gap_1()
                 .border_b_1()
-                .border_color(cx.theme().colors().border)
-                .bg(cx.theme().colors().editor_background.opacity(0.2))
+                .border_color(cx.theme().colors().border_variant)
+                .bg(cx.theme().colors().surface_background)
                 .child(
                     h_flex()
                         .flex_1()
-                        .gap_2()
+                        .items_center()
+                        .gap_1p5()
+                        .child(
+                            Label::new("Subagent")
+                                .size(LabelSize::XSmall)
+                                .color(Color::Disabled),
+                        )
                         .child(
                             Icon::new(IconName::ForwardArrowUp)
                                 .size(IconSize::Small)
