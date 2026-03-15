@@ -78,11 +78,16 @@ impl ThreadSidebarToggle {
 
 impl RenderOnce for ThreadSidebarToggle {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let sidebar_icon = match (self.sidebar_selected, self.flipped) {
-            (true, false) => IconName::ThreadsSidebarLeftOpen,
-            (false, false) => IconName::ThreadsSidebarLeftClosed,
-            (true, true) => IconName::ThreadsSidebarRightOpen,
-            (false, true) => IconName::ThreadsSidebarRightClosed,
+        let sidebar_icon = if self.flipped {
+            if self.sidebar_selected {
+                IconName::ChevronRight
+            } else {
+                IconName::ChevronLeft
+            }
+        } else if self.sidebar_selected {
+            IconName::ChevronLeft
+        } else {
+            IconName::ChevronRight
         };
 
         h_flex()
