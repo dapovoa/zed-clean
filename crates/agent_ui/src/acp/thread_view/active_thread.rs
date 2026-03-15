@@ -7274,6 +7274,25 @@ impl AcpThreadView {
                         })),
                 )
             })
+            .when(!render_history, |this| {
+                this.justify_end().child(
+                    v_flex()
+                        .px_4()
+                        .pb_6()
+                        .items_center()
+                        .gap_1()
+                        .child(
+                            Label::new("No recent threads")
+                                .size(LabelSize::Small)
+                                .color(Color::Muted),
+                        )
+                        .child(
+                            Label::new("Start a new thread to get going")
+                                .size(LabelSize::XSmall)
+                                .color(Color::Disabled),
+                        ),
+                )
+            })
             .into_any()
     }
 
