@@ -1826,7 +1826,7 @@ impl GitRepository for RealGitRepository {
 
                 let output = new_command(&git_binary_path)
                     .current_dir(&working_directory?)
-                    .args(["diff"])
+                    .args(["diff", "--no-ext-diff"])
                     .args(args)
                     .output()
                     .await?;
@@ -2451,6 +2451,7 @@ impl GitRepository for RealGitRepository {
                 let git = GitBinary::new(git_binary_path, working_directory, executor);
                 git.run(&[
                     "diff",
+                    "--no-ext-diff",
                     "--find-renames",
                     "--patch",
                     &base_checkpoint.commit_sha.to_string(),
