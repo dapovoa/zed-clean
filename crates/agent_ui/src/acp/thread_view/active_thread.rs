@@ -400,7 +400,6 @@ impl AcpThreadView {
             thinking_block_durations: HashMap::default(),
             expanded_subagents: HashSet::default(),
             auto_expanded_thinking_block: None,
-            expanded_subagents: HashSet::default(),
             subagent_scroll_handles: RefCell::new(HashMap::default()),
             edits_expanded: false,
             plan_expanded: false,
@@ -4392,19 +4391,6 @@ impl AcpThreadView {
             .entry(entry_ix)
             .and_then(|entry| entry.scroll_handle_for_assistant_message_chunk(chunk_ix));
 
-        let thinking_content = div()
-            .id(("thinking-content", chunk_ix))
-            .when_some(scroll_handle, |this, scroll_handle| {
-                this.track_scroll(&scroll_handle)
-            })
-            .text_ui_sm(cx)
-            .overflow_hidden()
-            .p_1()
-            .child(self.render_markdown(
-                chunk,
-                MarkdownStyle::themed(MarkdownFont::Agent, window, cx),
-            ));
-
         // Flat inline header row — no background card, chevron right next to text.
         let header_row = h_flex()
             .id(SharedString::from(format!(
@@ -4464,8 +4450,6 @@ impl AcpThreadView {
                         .ml_4()
                         .pl_2()
                         .id(("thinking-content", chunk_ix))
-                        .ml_4()
-                        .pl_2()
                         .border_l_1()
                         .border_color(self.tool_card_border_color(cx))
                         .when_some(scroll_handle, |this, scroll_handle| {
