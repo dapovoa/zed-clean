@@ -206,7 +206,6 @@ impl RenderOnce for ThreadItem {
                             .child(title_label)
                             .when_some(self.tooltip, |this, tooltip| this.tooltip(tooltip)),
                     )
-<<<<<<< HEAD
                     .when(running_or_action, |this| {
                         this.child(
                             h_flex()
