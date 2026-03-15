@@ -95,7 +95,7 @@ impl RenderOnce for ThreadSidebarToggle {
             .rounded_sm()
             .gap_px()
             .border_1()
-            .border_color(cx.theme().colors().border)
+            .border_color(cx.theme().colors().border_variant)
             .when(self.flipped, |this| this.flex_row_reverse())
             .child(
                 IconButton::new("sidebar-toggle", sidebar_icon)
@@ -106,7 +106,7 @@ impl RenderOnce for ThreadSidebarToggle {
                         this.on_click(handler)
                     }),
             )
-            .child(div().h_4().w_px().bg(cx.theme().colors().border))
+            .child(div().h_4().w_px().bg(cx.theme().colors().border_variant))
             .child(
                 IconButton::new("thread-toggle", IconName::Thread)
                     .icon_size(IconSize::Small)

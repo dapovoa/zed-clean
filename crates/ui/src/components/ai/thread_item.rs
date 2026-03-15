@@ -163,7 +163,8 @@ impl RenderOnce for ThreadItem {
             icon_container().child(agent_icon)
         };
 
-        let running_or_action = self.running || (self.hovered && self.action_slot.is_some());
+        let running_or_action =
+            self.running || ((self.hovered || self.selected) && self.action_slot.is_some());
 
         // let has_no_changes = self.added.is_none() && self.removed.is_none();
 
