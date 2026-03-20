@@ -234,7 +234,6 @@ members = [
     #
 
     "tooling/perf",
-    "tooling/xtask",
 ]
 default-members = ["crates/zed"]
 
@@ -910,17 +909,7 @@ declare_interior_mutable_const = "deny"
 redundant_clone = "deny"
 disallowed_methods = "deny"
 
-# We currently do not restrict any style rules
-# as it slows down shipping code to Zed.
-#
-# Running ./script/clippy can take several minutes, and so it's
-# common to skip that step and let CI do it. Any unexpected failures
-# (which also take minutes to discover) thus require switching back
-# to an old branch, manual fixing, and re-pushing.
-#
-# In the future we could improve this by either making sure
-# Zed can surface clippy errors in diagnostics (in addition to the
-# rust-analyzer errors), or by having CI fix style nits automatically.
+# We currently do not restrict style rules at the workspace level.
 style = { level = "allow", priority = -1 }
 
 # Individual rules that have violations in the codebase:
