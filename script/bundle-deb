@@ -54,13 +54,26 @@ mkdir -p \
   "${pkg_dir}/opt" \
   "${pkg_dir}/usr/bin" \
   "${pkg_dir}/usr/share/applications" \
+  "${pkg_dir}/usr/share/icons/hicolor/512x512/apps" \
+  "${pkg_dir}/usr/share/icons/hicolor/1024x1024/apps" \
   "${pkg_dir}/usr/share/doc/${package_name}"
 
 tar -xzf "${archive}" -C "${pkg_dir}/opt"
 
 ln -s "${app_dir}/bin/zed" "${pkg_dir}/usr/bin/zed"
-ln -s "${app_dir}/share/applications/${app_id}.desktop" \
+cp "${pkg_dir}${app_dir}/share/applications/${app_id}.desktop" \
   "${pkg_dir}/usr/share/applications/${app_id}.desktop"
+sed -i "s|^Exec=zed|Exec=${app_dir}/bin/zed|g" \
+  "${pkg_dir}/usr/share/applications/${app_id}.desktop"
+sed -i "s|^TryExec=zed|TryExec=${app_dir}/bin/zed|g" \
+  "${pkg_dir}/usr/share/applications/${app_id}.desktop"
+sed -i "s|^Icon=zed|Icon=${app_id}|g" \
+  "${pkg_dir}/usr/share/applications/${app_id}.desktop"
+
+cp "${pkg_dir}${app_dir}/share/icons/hicolor/512x512/apps/zed.png" \
+  "${pkg_dir}/usr/share/icons/hicolor/512x512/apps/${app_id}.png"
+cp "${pkg_dir}${app_dir}/share/icons/hicolor/1024x1024/apps/zed.png" \
+  "${pkg_dir}/usr/share/icons/hicolor/1024x1024/apps/${app_id}.png"
 
 cp assets/licenses.md "${pkg_dir}/usr/share/doc/${package_name}/copyright"
 
