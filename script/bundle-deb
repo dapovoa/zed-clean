@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+target_dir="${CARGO_TARGET_DIR:-target}"
+arch="$(uname -m)"
+deb_arch="$arch"
+
+case "$arch" in
+  x86_64) deb_arch="amd64" ;;
+  aarch64) deb_arch="arm64" ;;
+esac
+
+version="$(
+  sed -n '/^\[package\]/,/^\[/s/^version = "\(.*\)"/\1/p' crates/zed/Cargo.toml | head -n1
+)"
+channel=$(<crates/zed/RELEASE_CHANNEL)
+
+suffix=""
+package_name="zed"
+app_name="Zed"
+app_id="dev.zed.Zed"
+
+case "$channel" in
+  preview)
+    suffix="-preview"
+    package_name="zed-preview"
+    app_name="Zed Preview"
+    app_id="dev.zed.Zed-Preview"
+    ;;
+  nightly)
+    suffix="-nightly"
+    package_name="zed-nightly"
+    app_name="Zed Nightly"
+    app_id="dev.zed.Zed-Nightly"
+    ;;
+  dev)
+    suffix="-dev"
+    package_name="zed-dev"
+    app_name="Zed Dev"
+    app_id="dev.zed.Zed-Dev"
+    ;;
+esac
+
+script/bundle-linux
+
+archive="${target_dir}/release/zed-linux-${arch}.tar.gz"
+temp_dir=$(mktemp -d)
+pkg_dir="${temp_dir}/${package_name}"
+app_dir="/opt/zed${suffix}.app"
+
+mkdir -p \
+  "${pkg_dir}/DEBIAN" \
+  "${pkg_dir}/opt" \
+  "${pkg_dir}/usr/bin" \
+  "${pkg_dir}/usr/share/applications" \
+  "${pkg_dir}/usr/share/doc/${package_name}"
+
+tar -xzf "${archive}" -C "${pkg_dir}/opt"
+
+ln -s "${app_dir}/bin/zed" "${pkg_dir}/usr/bin/zed"
+ln -s "${app_dir}/share/applications/${app_id}.desktop" \
+  "${pkg_dir}/usr/share/applications/${app_id}.desktop"
+
+cp assets/licenses.md "${pkg_dir}/usr/share/doc/${package_name}/copyright"
+
+installed_size="$(du -sk "${pkg_dir}" | cut -f1)"
+
+cat > "${pkg_dir}/DEBIAN/control" <<EOF
+Package: ${package_name}
+Version: ${version}
+Section: editors
+Priority: optional
+Architecture: ${deb_arch}
+Maintainer: dapovoa
+Installed-Size: ${installed_size}
+Depends: libc6, libasound2, libfontconfig1, libxkbcommon0, libwayland-client0, libx11-xcb1
+Description: ${app_name}
+ A Linux-first personal fork of Zed with custom agent and chat UI.
+EOF
+
+deb_path="${target_dir}/release/zed-linux-${arch}.deb"
+rm -f "${deb_path}"
+dpkg-deb --build "${pkg_dir}" "${deb_path}"
+
+echo "Created ${deb_path}"

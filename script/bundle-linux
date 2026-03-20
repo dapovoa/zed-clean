@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+channel=$(<crates/zed/RELEASE_CHANNEL)
+target_dir="${CARGO_TARGET_DIR:-target}"
+arch="$(uname -m)"
+
+suffix=""
+app_name="Zed"
+app_id="dev.zed.Zed"
+icon_path="crates/zed/resources/app-icon.png"
+icon_2x_path="crates/zed/resources/app-icon@2x.png"
+
+case "$channel" in
+  preview)
+    suffix="-preview"
+    app_name="Zed Preview"
+    app_id="dev.zed.Zed-Preview"
+    icon_path="crates/zed/resources/app-icon-preview.png"
+    icon_2x_path="crates/zed/resources/app-icon-preview@2x.png"
+    ;;
+  nightly)
+    suffix="-nightly"
+    app_name="Zed Nightly"
+    app_id="dev.zed.Zed-Nightly"
+    icon_path="crates/zed/resources/app-icon-nightly.png"
+    icon_2x_path="crates/zed/resources/app-icon-nightly@2x.png"
+    ;;
+  dev)
+    suffix="-dev"
+    app_name="Zed Dev"
+    app_id="dev.zed.Zed-Dev"
+    icon_path="crates/zed/resources/app-icon-dev.png"
+    icon_2x_path="crates/zed/resources/app-icon-dev@2x.png"
+    ;;
+esac
+
+export RELEASE_VERSION="$(
+  sed -n '/^\[package\]/,/^\[/s/^version = "\(.*\)"/\1/p' crates/zed/Cargo.toml | head -n1
+)"
+
+export CC="${CC:-$(command -v clang || true)}"
+export RUSTFLAGS="${RUSTFLAGS:-} -C link-args=-Wl,--disable-new-dtags,-rpath,\$ORIGIN/../lib"
+
+cargo build --release --package zed --package cli
+
+find_libs() {
+  ldd "${target_dir}/release/zed" \
+    | awk '/=> \// { print $3 }' \
+    | grep -vE '/lib(stdc\+\+|c|gcc_s|m|pthread|dl|asound)\.so'
+}
+
+temp_dir=$(mktemp -d)
+zed_dir="${temp_dir}/zed${suffix}.app"
+
+mkdir -p \
+  "${zed_dir}/bin" \
+  "${zed_dir}/libexec" \
+  "${zed_dir}/lib" \
+  "${zed_dir}/share/applications" \
+  "${zed_dir}/share/icons/hicolor/512x512/apps" \
+  "${zed_dir}/share/icons/hicolor/1024x1024/apps"
+
+cp "${target_dir}/release/zed" "${zed_dir}/libexec/zed-editor"
+cp "${target_dir}/release/cli" "${zed_dir}/bin/zed"
+
+libs="$(find_libs || true)"
+if [[ -n "${libs}" ]]; then
+  # shellcheck disable=SC2086
+  cp ${libs} "${zed_dir}/lib/"
+fi
+
+cp "${icon_path}" "${zed_dir}/share/icons/hicolor/512x512/apps/zed.png"
+cp "${icon_2x_path}" "${zed_dir}/share/icons/hicolor/1024x1024/apps/zed.png"
+
+cat > "${zed_dir}/share/applications/${app_id}.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=${app_name}
+GenericName=Text Editor
+Comment=A high-performance code editor.
+TryExec=zed
+StartupNotify=true
+Exec=zed %U
+Icon=zed
+Categories=Utility;TextEditor;Development;IDE;
+Keywords=zed;
+MimeType=text/plain;application/x-zerosize;x-scheme-handler/zed;
+Actions=NewWorkspace;
+
+[Desktop Action NewWorkspace]
+Exec=zed --new %U
+Name=Open a new workspace
+EOF
+
+cp assets/licenses.md "${zed_dir}/licenses.md"
+
+archive="zed-linux-${arch}.tar.gz"
+rm -f "${target_dir}/release/${archive}"
+tar -czf "${target_dir}/release/${archive}" -C "${temp_dir}" "zed${suffix}.app"
+
+echo "Created ${target_dir}/release/${archive}"
