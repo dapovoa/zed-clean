@@ -35,6 +35,7 @@ pub enum AgentThreadStatus {
 struct AgentThreadInfo {
     title: SharedString,
     status: AgentThreadStatus,
+    generating_title: bool,
 }
 
 const LAST_THREAD_TITLES_KEY: &str = "sidebar-last-thread-titles";
@@ -97,6 +98,7 @@ impl WorkspaceThreadEntry {
             Some(AgentThreadInfo {
                 title: SharedString::from(title.clone()),
                 status: AgentThreadStatus::Completed,
+                generating_title: false,
             })
         });
 
@@ -117,7 +119,12 @@ impl WorkspaceThreadEntry {
             ThreadStatus::Generating => AgentThreadStatus::Running,
             ThreadStatus::Idle => AgentThreadStatus::Completed,
         };
-        Some(AgentThreadInfo { title, status })
+        let generating_title = status == AgentThreadStatus::Running && title.is_empty();
+        Some(AgentThreadInfo {
+            title,
+            status,
+            generating_title,
+        })
     }
 }
 
@@ -555,6 +562,9 @@ impl PickerDelegate for WorkspacePickerDelegate {
 
                 let has_notification = self.notified_workspaces.contains(&workspace_index);
                 let thread_subtitle = thread_info.as_ref().map(|info| info.title.clone());
+                let generating_title = thread_info
+                    .as_ref()
+                    .is_some_and(|info| info.generating_title);
                 let running = matches!(
                     thread_info,
                     Some(AgentThreadInfo {
@@ -571,6 +581,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     .icon(IconName::Folder)
                     .running(running)
                     .generation_done(has_notification)
+                    .generating_title(generating_title)
                     .selected(selected)
                     .worktree(worktree_label.clone())
                     .worktree_highlight_positions(positions.clone())

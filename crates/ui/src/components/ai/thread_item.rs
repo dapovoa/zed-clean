@@ -3,7 +3,8 @@ use crate::{
     prelude::*,
 };
 
-use gpui::{AnyView, ClickEvent, SharedString};
+use gpui::{Animation, AnimationExt, AnyView, ClickEvent, SharedString, pulsating_between};
+use std::time::Duration;
 
 #[derive(IntoElement, RegisterComponent)]
 pub struct ThreadItem {
@@ -13,6 +14,7 @@ pub struct ThreadItem {
     timestamp: SharedString,
     running: bool,
     generation_done: bool,
+    generating_title: bool,
     selected: bool,
     hovered: bool,
     added: Option<usize>,
@@ -35,6 +37,7 @@ impl ThreadItem {
             timestamp: "".into(),
             running: false,
             generation_done: false,
+            generating_title: false,
             selected: false,
             hovered: false,
             added: None,
@@ -66,6 +69,11 @@ impl ThreadItem {
 
     pub fn generation_done(mut self, generation_done: bool) -> Self {
         self.generation_done = generation_done;
+        self
+    }
+
+    pub fn generating_title(mut self, generating_title: bool) -> Self {
+        self.generating_title = generating_title;
         self
     }
 
@@ -170,7 +178,19 @@ impl RenderOnce for ThreadItem {
 
         let title = self.title;
         let highlight_positions = self.highlight_positions;
-        let title_label = if highlight_positions.is_empty() {
+        let title_label = if self.generating_title {
+            Label::new("New Thread…")
+                .color(Color::Muted)
+                .truncate()
+                .with_animation(
+                    "generating-title",
+                    Animation::new(Duration::from_secs(2))
+                        .repeat()
+                        .with_easing(pulsating_between(0.4, 0.8)),
+                    |label, delta| label.alpha(delta),
+                )
+                .into_any_element()
+        } else if highlight_positions.is_empty() {
             Label::new(title).truncate().into_any_element()
         } else {
             HighlightedLabel::new(title, highlight_positions)
