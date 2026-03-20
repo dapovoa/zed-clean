@@ -90,6 +90,25 @@ fn all_models(cx: &App) -> GroupedModels {
     GroupedModels::new(all, recommended)
 }
 
+fn should_hide_model_from_default_openai_oauth_list(
+    model: &ModelInfo,
+    recommended_ids: &HashSet<(LanguageModelProviderId, LanguageModelId)>,
+    active_model: Option<&ConfiguredModel>,
+) -> bool {
+    if model.model.provider_id().0.as_ref() != "openai-oauth" {
+        return false;
+    }
+
+    let key = (model.model.provider_id(), model.model.id());
+    let is_recommended = recommended_ids.contains(&key);
+    let is_active = active_model.is_some_and(|active_model| {
+        active_model.provider.id() == model.model.provider_id()
+            && active_model.model.id() == model.model.id()
+    });
+
+    is_recommended || (!model.is_favorite && !is_active)
+}
+
 type FavoritesIndex = HashMap<LanguageModelProviderId, HashSet<LanguageModelId>>;
 
 #[derive(Clone)]
@@ -503,11 +522,24 @@ impl PickerDelegate for LanguageModelPickerDelegate {
             .cloned()
             .collect::<Vec<_>>();
 
+        let recommended_ids = recommended_models
+            .iter()
+            .map(|model| (model.model.provider_id(), model.model.id()))
+            .collect::<HashSet<_>>();
+
         let available_models = all_models
             .all
             .values()
             .flat_map(|models| models.iter())
             .filter(|m| configured_provider_ids.contains(&m.model.provider_id()))
+            .filter(|m| {
+                !query.trim().is_empty()
+                    || !should_hide_model_from_default_openai_oauth_list(
+                        m,
+                        &recommended_ids,
+                        active_model.as_ref(),
+                    )
+            })
             .cloned()
             .collect::<Vec<_>>();
 

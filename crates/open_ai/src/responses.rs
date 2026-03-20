@@ -9,6 +9,9 @@ use crate::{ReasoningEffort, RequestError, Role, ToolChoice};
 #[derive(Serialize, Debug)]
 pub struct Request {
     pub model: String,
+    pub store: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub input: Vec<ResponseInputItem>,
     #[serde(default)]

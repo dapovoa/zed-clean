@@ -61,8 +61,12 @@ pub struct State {
 }
 
 impl State {
-    fn is_authenticated(&self) -> bool {
-        !self.fetched_models.is_empty()
+    fn is_authenticated(&self, cx: &App) -> bool {
+        self.is_configured(cx) && !self.fetched_models.is_empty()
+    }
+
+    fn is_configured(&self, cx: &App) -> bool {
+        self.api_key_state.has_key() || OllamaLanguageModelProvider::has_saved_settings(cx)
     }
 
     fn set_api_key(&mut self, api_key: Option<String>, cx: &mut Context<Self>) -> Task<Result<()>> {
@@ -81,6 +85,13 @@ impl State {
     }
 
     fn authenticate(&mut self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
+        if !self.is_configured(cx) {
+            self.fetched_models.clear();
+            self.fetch_model_task = None;
+            cx.notify();
+            return Task::ready(Ok(()));
+        }
+
         let api_url = OllamaLanguageModelProvider::api_url(cx);
         let task = self
             .api_key_state
@@ -164,9 +175,14 @@ impl OllamaLanguageModelProvider {
             state: cx.new(|cx| {
                 cx.observe_global::<SettingsStore>({
                     let mut last_settings = OllamaLanguageModelProvider::settings(cx).clone();
+                    let mut last_has_saved_settings =
+                        OllamaLanguageModelProvider::has_saved_settings(cx);
                     move |this: &mut State, cx| {
                         let current_settings = OllamaLanguageModelProvider::settings(cx);
                         let settings_changed = current_settings != &last_settings;
+                        let has_saved_settings =
+                            OllamaLanguageModelProvider::has_saved_settings(cx);
+                        let saved_settings_changed = has_saved_settings != last_has_saved_settings;
                         if settings_changed {
                             let url_changed = last_settings.api_url != current_settings.api_url;
                             last_settings = current_settings.clone();
@@ -174,6 +190,13 @@ impl OllamaLanguageModelProvider {
                                 this.fetched_models.clear();
                                 this.authenticate(cx).detach();
                             }
+                        }
+                        if saved_settings_changed {
+                            last_has_saved_settings = has_saved_settings;
+                            this.fetched_models.clear();
+                            this.authenticate(cx).detach();
+                        }
+                        if settings_changed || saved_settings_changed {
                             cx.notify();
                         }
                     }
@@ -206,6 +229,24 @@ impl OllamaLanguageModelProvider {
 
     fn has_custom_url(cx: &App) -> bool {
         Self::settings(cx).api_url != OLLAMA_API_URL
+    }
+
+    fn has_saved_settings(cx: &App) -> bool {
+        cx.try_global::<SettingsStore>()
+            .and_then(|store| store.raw_user_settings())
+            .is_some_and(|user_settings| {
+                user_settings
+                    .content
+                    .language_models
+                    .as_ref()
+                    .and_then(|language_models| language_models.ollama.as_ref())
+                    .is_some_and(|ollama| {
+                        ollama.api_url.is_some()
+                            || ollama.auto_discover.is_some()
+                            || ollama.context_window.is_some()
+                            || ollama.available_models.is_some()
+                    })
+            })
     }
 }
 
@@ -279,7 +320,7 @@ impl LanguageModelProvider for OllamaLanguageModelProvider {
     }
 
     fn is_authenticated(&self, cx: &App) -> bool {
-        self.state.read(cx).is_authenticated()
+        self.state.read(cx).is_authenticated(cx)
     }
 
     fn authenticate(&self, cx: &mut App) -> Task<Result<(), AuthenticateError>> {
@@ -938,7 +979,7 @@ impl ConfigurationView {
 
 impl Render for ConfigurationView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let is_authenticated = self.state.read(cx).is_authenticated();
+        let is_authenticated = self.state.read(cx).is_authenticated(cx);
 
         v_flex()
             .gap_2()

@@ -567,7 +567,15 @@ pub fn into_open_ai_response(
     } = request;
 
     let mut input_items = Vec::new();
+    let mut instructions = Vec::new();
     for (index, message) in messages.into_iter().enumerate() {
+        if message.role == Role::System {
+            if let Some(instruction) = system_message_to_instruction(&message) {
+                instructions.push(instruction);
+            }
+            continue;
+        }
+
         append_message_to_response_items(message, index, &mut input_items);
     }
 
@@ -583,6 +591,12 @@ pub fn into_open_ai_response(
 
     ResponseRequest {
         model: model_id.into(),
+        store: false,
+        instructions: if instructions.is_empty() {
+            None
+        } else {
+            Some(instructions.join("\n\n"))
+        },
         input: input_items,
         stream,
         temperature,
@@ -606,6 +620,34 @@ pub fn into_open_ai_response(
         },
         reasoning: reasoning_effort.map(|effort| open_ai::responses::ReasoningConfig { effort }),
     }
+}
+
+fn system_message_to_instruction(message: &LanguageModelRequestMessage) -> Option<String> {
+    let mut parts = Vec::new();
+
+    for content in &message.content {
+        match content {
+            MessageContent::Text(text) => {
+                let text = text.trim();
+                if !text.is_empty() {
+                    parts.push(text.to_string());
+                }
+            }
+            MessageContent::Thinking { .. } | MessageContent::RedactedThinking(_) => {}
+            MessageContent::Image(_) => parts.push("[system image omitted]".to_string()),
+            MessageContent::ToolUse(tool_use) => {
+                parts.push(format!("[system tool call {} omitted]", tool_use.name))
+            }
+            MessageContent::ToolResult(tool_result) => {
+                parts.push(format!(
+                    "[system tool result {} omitted]",
+                    tool_result.tool_use_id
+                ));
+            }
+        }
+    }
+
+    (!parts.is_empty()).then(|| parts.join("\n"))
 }
 
 fn append_message_to_response_items(

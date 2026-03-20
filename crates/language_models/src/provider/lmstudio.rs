@@ -51,8 +51,12 @@ pub struct State {
 }
 
 impl State {
-    fn is_authenticated(&self) -> bool {
-        !self.available_models.is_empty()
+    fn is_authenticated(&self, cx: &App) -> bool {
+        self.is_configured(cx) && !self.available_models.is_empty()
+    }
+
+    fn is_configured(&self, cx: &App) -> bool {
+        LmStudioLanguageModelProvider::has_saved_settings(cx)
     }
 
     fn fetch_models(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
@@ -95,7 +99,14 @@ impl State {
     }
 
     fn authenticate(&mut self, cx: &mut Context<Self>) -> Task<Result<(), AuthenticateError>> {
-        if self.is_authenticated() {
+        if !self.is_configured(cx) {
+            self.available_models.clear();
+            self.fetch_model_task = None;
+            cx.notify();
+            return Task::ready(Ok(()));
+        }
+
+        if self.is_authenticated(cx) {
             return Task::ready(Ok(()));
         }
 
@@ -134,11 +145,21 @@ impl LmStudioLanguageModelProvider {
             state: cx.new(|cx| {
                 let subscription = cx.observe_global::<SettingsStore>({
                     let mut settings = AllLanguageModelSettings::get_global(cx).lmstudio.clone();
+                    let mut last_has_saved_settings =
+                        LmStudioLanguageModelProvider::has_saved_settings(cx);
                     move |this: &mut State, cx| {
                         let new_settings = &AllLanguageModelSettings::get_global(cx).lmstudio;
+                        let has_saved_settings =
+                            LmStudioLanguageModelProvider::has_saved_settings(cx);
+                        let saved_settings_changed = has_saved_settings != last_has_saved_settings;
                         if &settings != new_settings {
                             settings = new_settings.clone();
                             this.restart_fetch_models_task(cx);
+                            cx.notify();
+                        } else if saved_settings_changed {
+                            last_has_saved_settings = has_saved_settings;
+                            this.available_models.clear();
+                            this.authenticate(cx).detach();
                             cx.notify();
                         }
                     }
@@ -152,9 +173,27 @@ impl LmStudioLanguageModelProvider {
                 }
             }),
         };
-        this.state
-            .update(cx, |state, cx| state.restart_fetch_models_task(cx));
+        this.state.update(cx, |state, cx| {
+            if state.is_configured(cx) {
+                state.restart_fetch_models_task(cx);
+            }
+        });
         this
+    }
+
+    fn has_saved_settings(cx: &App) -> bool {
+        cx.try_global::<SettingsStore>()
+            .and_then(|store| store.raw_user_settings())
+            .is_some_and(|user_settings| {
+                user_settings
+                    .content
+                    .language_models
+                    .as_ref()
+                    .and_then(|language_models| language_models.lmstudio.as_ref())
+                    .is_some_and(|lmstudio| {
+                        lmstudio.api_url.is_some() || lmstudio.available_models.is_some()
+                    })
+            })
     }
 }
 
@@ -231,7 +270,7 @@ impl LanguageModelProvider for LmStudioLanguageModelProvider {
     }
 
     fn is_authenticated(&self, cx: &App) -> bool {
-        self.state.read(cx).is_authenticated()
+        self.state.read(cx).is_authenticated(cx)
     }
 
     fn authenticate(&self, cx: &mut App) -> Task<Result<(), AuthenticateError>> {
@@ -670,7 +709,7 @@ impl ConfigurationView {
 
 impl Render for ConfigurationView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let is_authenticated = self.state.read(cx).is_authenticated();
+        let is_authenticated = self.state.read(cx).is_authenticated(cx);
 
         let lmstudio_intro = "Run local LLMs like Llama, Phi, and Qwen.";
 
