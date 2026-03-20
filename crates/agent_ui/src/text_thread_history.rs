@@ -16,10 +16,19 @@ use ui::{
 };
 
 const DEFAULT_TITLE: &SharedString = &SharedString::new_static("New Thread");
+const PENDING_TITLE: &SharedString = &SharedString::new_static("New Thread…");
 
 fn thread_title(entry: &SavedTextThreadMetadata) -> &SharedString {
     if entry.title.is_empty() {
         DEFAULT_TITLE
+    } else {
+        &entry.title
+    }
+}
+
+fn display_thread_title(entry: &SavedTextThreadMetadata) -> &SharedString {
+    if entry.title.is_empty() {
+        PENDING_TITLE
     } else {
         &entry.title
     }
@@ -412,7 +421,7 @@ impl TextThreadHistory {
             EntryTimeFormat::TimeOnly => format.format_timestamp(timestamp, self.local_timezone),
         };
 
-        let title = thread_title(entry).clone();
+        let title = display_thread_title(entry).clone();
         let full_date =
             EntryTimeFormat::DateAndTime.format_timestamp(timestamp, self.local_timezone);
 
@@ -430,9 +439,12 @@ impl TextThreadHistory {
                             .gap_2()
                             .justify_between()
                             .child(
-                                HighlightedLabel::new(thread_title(entry), highlight_positions)
-                                    .size(LabelSize::Small)
-                                    .truncate(),
+                                HighlightedLabel::new(
+                                    display_thread_title(entry),
+                                    highlight_positions,
+                                )
+                                .size(LabelSize::Small)
+                                .truncate(),
                             )
                             .child(
                                 Label::new(display_text)
@@ -451,7 +463,7 @@ impl TextThreadHistory {
                         }
                         cx.notify();
                     }))
-                    .end_slot::<IconButton>(if hovered {
+                    .end_slot::<IconButton>(if hovered || selected {
                         Some(
                             IconButton::new("delete", IconName::Trash)
                                 .shape(IconButtonShape::Square)

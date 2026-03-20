@@ -1,5 +1,5 @@
 use crate::acp::AcpServerView;
-use crate::{AgentPanel, RemoveHistory, RemoveSelectedThread};
+use crate::{AgentPanel, ExternalAgent, RemoveHistory, RemoveSelectedThread};
 use acp_thread::{AgentSessionInfo, AgentSessionList, AgentSessionListRequest, SessionListUpdate};
 use agent_client_protocol as acp;
 use chrono::{Datelike as _, Local, NaiveDate, TimeDelta, Utc};
@@ -18,6 +18,7 @@ use ui::{
 };
 
 const DEFAULT_TITLE: &SharedString = &SharedString::new_static("New Thread");
+const PENDING_TITLE: &SharedString = &SharedString::new_static("New Thread…");
 
 fn thread_title(entry: &AgentSessionInfo) -> &SharedString {
     entry
@@ -27,7 +28,16 @@ fn thread_title(entry: &AgentSessionInfo) -> &SharedString {
         .unwrap_or(DEFAULT_TITLE)
 }
 
+fn display_thread_title(entry: &AgentSessionInfo) -> &SharedString {
+    entry
+        .title
+        .as_ref()
+        .filter(|title| !title.is_empty())
+        .unwrap_or(PENDING_TITLE)
+}
+
 pub struct AcpThreadHistory {
+    current_agent: Option<ExternalAgent>,
     session_list: Option<Rc<dyn AgentSessionList>>,
     sessions: Vec<AgentSessionInfo>,
     scroll_handle: UniformListScrollHandle,
@@ -66,7 +76,10 @@ impl ListItemType {
 }
 
 pub enum ThreadHistoryEvent {
-    Open(AgentSessionInfo),
+    Open {
+        agent: ExternalAgent,
+        thread: AgentSessionInfo,
+    },
 }
 
 impl EventEmitter<ThreadHistoryEvent> for AcpThreadHistory {}
@@ -97,6 +110,7 @@ impl AcpThreadHistory {
         let scroll_handle = UniformListScrollHandle::default();
 
         let mut this = Self {
+            current_agent: None,
             session_list: None,
             sessions: Vec::new(),
             scroll_handle,
@@ -116,6 +130,10 @@ impl AcpThreadHistory {
         };
         this.set_session_list(session_list, cx);
         this
+    }
+
+    pub fn set_agent(&mut self, agent: Option<ExternalAgent>) {
+        self.current_agent = agent;
     }
 
     fn update_visible_items(&mut self, preserve_selected_item: bool, cx: &mut Context<Self>) {
@@ -522,7 +540,13 @@ impl AcpThreadHistory {
         let Some(entry) = self.get_history_entry(ix) else {
             return;
         };
-        cx.emit(ThreadHistoryEvent::Open(entry.clone()));
+        let Some(agent) = self.current_agent.clone() else {
+            return;
+        };
+        cx.emit(ThreadHistoryEvent::Open {
+            agent,
+            thread: entry.clone(),
+        });
     }
 
     fn remove_selected_thread(
@@ -635,7 +659,7 @@ impl AcpThreadHistory {
             (_, None) => "—".to_string(),
         };
 
-        let title = thread_title(entry).clone();
+        let title = display_thread_title(entry).clone();
         let full_date = entry_time
             .map(|time| {
                 EntryTimeFormat::DateAndTime.format_timestamp(time.timestamp(), self.local_timezone)
@@ -656,9 +680,12 @@ impl AcpThreadHistory {
                             .gap_2()
                             .justify_between()
                             .child(
-                                HighlightedLabel::new(thread_title(entry), highlight_positions)
-                                    .size(LabelSize::Small)
-                                    .truncate(),
+                                HighlightedLabel::new(
+                                    display_thread_title(entry),
+                                    highlight_positions,
+                                )
+                                .size(LabelSize::Small)
+                                .truncate(),
                             )
                             .child(
                                 Label::new(display_text)
@@ -678,7 +705,7 @@ impl AcpThreadHistory {
 
                         cx.notify();
                     }))
-                    .end_slot::<IconButton>(if hovered && self.supports_delete() {
+                    .end_slot::<IconButton>(if (hovered || selected) && self.supports_delete() {
                         Some(
                             IconButton::new("delete", IconName::Trash)
                                 .shape(IconButtonShape::Square)
@@ -881,7 +908,7 @@ impl AcpHistoryEntryElement {
 impl RenderOnce for AcpHistoryEntryElement {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let id = ElementId::Name(self.entry.session_id.0.clone().into());
-        let title = thread_title(&self.entry).clone();
+        let title = display_thread_title(&self.entry).clone();
         let formatted_time = self
             .entry
             .updated_at

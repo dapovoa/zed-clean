@@ -959,33 +959,23 @@ pub struct AcpThread {
     user_stopped: Arc<std::sync::atomic::AtomicBool>,
     user_stop_tx: watch::Sender<bool>,
     had_error: bool,
-    /// The user's unsent prompt text, persisted so it can be restored when reloading the thread.
-    draft_prompt: Option<Vec<acp::ContentBlock>>,
-    /// The initial scroll position for the thread view, set during session registration.
-    ui_scroll_position: Option<gpui::ListOffset>,
-    /// Buffer for smooth text streaming. Holds text that has been received from
-    /// the model but not yet revealed in the UI. A timer task drains this buffer
-    /// gradually to create a fluid typing effect instead of choppy chunk-at-a-time
-    /// updates.
+    /// Buffered model text that is revealed into Markdown over time.
     streaming_text_buffer: Option<StreamingTextBuffer>,
 }
 
 struct StreamingTextBuffer {
-    /// Text received from the model but not yet appended to the Markdown source.
+    /// Text received from the model but not yet appended to Markdown.
     pending: String,
-    /// The number of bytes to reveal per timer turn.
+    /// Number of bytes to reveal per timer tick.
     bytes_to_reveal_per_tick: usize,
-    /// The Markdown entity being streamed into.
+    /// Markdown target receiving the revealed text.
     target: Entity<Markdown>,
-    /// Timer task that periodically moves text from `pending` into `source`.
+    /// Timer that drains `pending` into `target`.
     _reveal_task: Task<()>,
 }
 
 impl StreamingTextBuffer {
-    /// The number of milliseconds between each timer tick, controlling how quickly
-    /// text is revealed.
     const TASK_UPDATE_MS: u64 = 16;
-    /// The time in milliseconds to reveal the entire pending text.
     const REVEAL_TARGET: f32 = 200.0;
 }
 
@@ -1226,8 +1216,6 @@ impl AcpThread {
             user_stopped: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             user_stop_tx,
             had_error: false,
-            draft_prompt: None,
-            ui_scroll_position: None,
             streaming_text_buffer: None,
         }
     }
@@ -1543,8 +1531,7 @@ impl AcpThread {
         }
     }
 
-    /// Add text to the streaming buffer. If the target changed (e.g. switching
-    /// from thoughts to message text), flush the old buffer first.
+    /// Queue text for gradual reveal, flushing first if the target changed.
     fn buffer_streaming_text(
         &mut self,
         markdown: &Entity<Markdown>,
@@ -1578,7 +1565,6 @@ impl AcpThread {
         });
     }
 
-    /// Flush all buffered streaming text into the Markdown entity immediately.
     fn flush_streaming_text(
         streaming_text_buffer: &mut Option<StreamingTextBuffer>,
         cx: &mut Context<Self>,
@@ -1592,9 +1578,7 @@ impl AcpThread {
         }
     }
 
-    /// Spawns a foreground task that periodically drains
-    /// `streaming_text_buffer.pending` into the target `Markdown` entity,
-    /// producing smooth, continuous text output.
+    /// Periodically reveals buffered text into the target Markdown.
     fn start_streaming_reveal(&self, cx: &mut Context<Self>) -> Task<()> {
         cx.spawn(async move |this, cx| {
             loop {
