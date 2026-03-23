@@ -515,8 +515,7 @@ pub fn into_open_ai(
         top_p: request.top_p,
         max_completion_tokens: max_output_tokens,
         parallel_tool_calls: if supports_parallel_tool_calls && !request.tools.is_empty() {
-            // Disable parallel tool calls, as the Agent currently expects a maximum of one per turn.
-            Some(false)
+            Some(supports_parallel_tool_calls)
         } else {
             None
         },
