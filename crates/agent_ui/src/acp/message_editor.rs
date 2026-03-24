@@ -51,13 +51,14 @@ pub struct MessageEditor {
     _parse_slash_command_task: Task<()>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum MessageEditorEvent {
     Send,
     SendImmediately,
     Cancel,
     Focus,
     LostFocus,
+    InputAttempted { text: Arc<str>, cursor_offset: usize },
 }
 
 impl EventEmitter<MessageEditorEvent> for MessageEditor {}
@@ -201,6 +202,21 @@ impl MessageEditor {
 
         subscriptions.push(cx.subscribe_in(&editor, window, {
             move |this, editor, event, window, cx| {
+                if let EditorEvent::InputIgnored { text } = event
+                    && editor.read(cx).read_only(cx)
+                    && !text.is_empty()
+                {
+                    let editor = editor.read(cx);
+                    let cursor_anchor = editor.selections.newest_anchor().head();
+                    let cursor_offset = cursor_anchor
+                        .to_offset(&editor.buffer().read(cx).snapshot(cx))
+                        .0;
+                    cx.emit(MessageEditorEvent::InputAttempted {
+                        text: text.clone(),
+                        cursor_offset,
+                    });
+                }
+
                 if let EditorEvent::Edited { .. } = event
                     && !editor.read(cx).read_only(cx)
                 {
@@ -1302,6 +1318,30 @@ impl MessageEditor {
 
     pub fn text(&self, cx: &App) -> String {
         self.editor.read(cx).text(cx)
+    }
+
+    pub fn set_cursor_offset(
+        &mut self,
+        offset: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.editor.update(cx, |editor, cx| {
+            let snapshot = editor.buffer().read(cx).snapshot(cx);
+            let offset = snapshot.clip_offset(MultiBufferOffset(offset), text::Bias::Left);
+            editor.change_selections(Default::default(), window, cx, |selections| {
+                selections.select_ranges([offset..offset]);
+            });
+        });
+    }
+
+    pub fn insert_text(&mut self, text: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if text.is_empty() {
+            return;
+        }
+        self.editor.update(cx, |editor, cx| {
+            editor.insert(text, window, cx);
+        });
     }
 
     pub fn set_placeholder_text(

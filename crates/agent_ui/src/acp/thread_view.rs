@@ -2088,6 +2088,76 @@ impl AcpServerView {
         .detach_and_log_err(cx);
     }
 
+    fn move_queued_message_to_main_editor(
+        &mut self,
+        index: usize,
+        inserted_text: Option<&str>,
+        cursor_offset: Option<usize>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(active) = self.active_thread() else {
+            return;
+        };
+
+        let (queued_content, queued_text, main_editor, main_is_empty, main_len_before) =
+            active.read_with(cx, |active, cx| {
+                let queued_content = active
+                    .local_queued_messages
+                    .get(index)
+                    .map(|queued| queued.content.clone());
+                let queued_text = active
+                    .queued_message_editors
+                    .get(index)
+                    .map(|editor| editor.read(cx).text(cx))
+                    .unwrap_or_default();
+                let main_editor = active.message_editor.clone();
+                let main_is_empty = main_editor.read(cx).is_empty(cx);
+                let main_len_before = main_editor.read(cx).text(cx).len();
+                (
+                    queued_content,
+                    queued_text,
+                    main_editor,
+                    main_is_empty,
+                    main_len_before,
+                )
+            });
+
+        let Some(queued_content) = queued_content else {
+            return;
+        };
+
+        if main_is_empty {
+            main_editor.update(cx, |editor, cx| {
+                editor.set_message(queued_content, window, cx);
+                if let Some(offset) = cursor_offset {
+                    editor.set_cursor_offset(offset, window, cx);
+                }
+                if let Some(text) = inserted_text {
+                    editor.insert_text(text, window, cx);
+                }
+            });
+        } else {
+            let separator = "\n\n";
+            let merged_text = format!("{separator}{queued_text}");
+            main_editor.update(cx, |editor, cx| {
+                editor.insert_text(&merged_text, window, cx);
+                if let Some(offset) = cursor_offset {
+                    editor.set_cursor_offset(main_len_before + separator.len() + offset, window, cx);
+                }
+                if let Some(text) = inserted_text {
+                    editor.insert_text(text, window, cx);
+                }
+            });
+        }
+
+        active.update(cx, |active, cx| {
+            active.remove_from_queue(index, cx);
+        });
+        self.sync_queued_message_editors(window, cx);
+        window.focus(&main_editor.focus_handle(cx), cx);
+    }
+
     fn sync_queued_message_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let needed_count = self.queued_messages_len(cx);
         let queued_messages = self.queued_message_contents(cx);
@@ -2169,6 +2239,15 @@ impl AcpServerView {
                     }
                     MessageEditorEvent::SendImmediately => {
                         this.send_queued_message_at_index(index, true, window, cx);
+                    }
+                    MessageEditorEvent::InputAttempted { text, cursor_offset } => {
+                        this.move_queued_message_to_main_editor(
+                            index,
+                            Some(text.as_ref()),
+                            Some(*cursor_offset),
+                            window,
+                            cx,
+                        );
                     }
                     _ => {}
                 },

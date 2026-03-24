@@ -449,6 +449,7 @@ impl AcpThreadView {
                 self.cancel_editing(&Default::default(), window, cx);
             }
             MessageEditorEvent::LostFocus => {}
+            MessageEditorEvent::InputAttempted { .. } => {}
         }
     }
 
@@ -557,6 +558,7 @@ impl AcpThreadView {
                 }
             }
             ViewEvent::MessageEditorEvent(_editor, MessageEditorEvent::SendImmediately) => {}
+            ViewEvent::MessageEditorEvent(_editor, MessageEditorEvent::InputAttempted { .. }) => {}
             ViewEvent::MessageEditorEvent(editor, MessageEditorEvent::Send) => {
                 // Check if the message content actually changed
                 let message_changed = self
