@@ -5973,23 +5973,9 @@ impl Repository {
                 let RepositoryState::Local(LocalRepositoryState { backend, .. }) = state else {
                     bail!("not a local repository")
                 };
-                let (snapshot, events) = this
-                    .update(&mut cx, |this, _| {
-                        this.paths_needing_status_update.clear();
-                        compute_snapshot(
-                            this.id,
-                            this.work_directory_abs_path.clone(),
-                            this.snapshot.clone(),
-                            backend.clone(),
-                        )
-                    })
-                    .await?;
+                let snapshot = compute_snapshot(this.clone(), backend.clone(), &mut cx).await?;
                 this.update(&mut cx, |this, cx| {
-                    this.snapshot = snapshot.clone();
                     this.clear_pending_ops(cx);
-                    for event in events {
-                        cx.emit(event);
-                    }
                 });
                 if let Some(updates_tx) = updates_tx {
                     updates_tx
@@ -6572,20 +6558,85 @@ fn proto_to_commit_details(proto: &proto::GitCommitDetails) -> CommitDetails {
 }
 
 async fn compute_snapshot(
-    id: RepositoryId,
-    work_directory_abs_path: Arc<Path>,
-    prev_snapshot: RepositorySnapshot,
+    this: Entity<Repository>,
     backend: Arc<dyn GitRepository>,
-) -> Result<(RepositorySnapshot, Vec<RepositoryEvent>)> {
-    let mut events = Vec::new();
-    let branches = backend.branches().await?;
-    let branch = branches.into_iter().find(|branch| branch.is_head);
-    let statuses = backend
-        .status(&[RepoPath::from_rel_path(
-            &RelPath::new(".".as_ref(), PathStyle::local()).unwrap(),
-        )])
+    cx: &mut AsyncApp,
+) -> Result<RepositorySnapshot> {
+    let (id, work_directory_abs_path, prev_snapshot) = this.update(cx, |this, _| {
+        this.paths_needing_status_update.clear();
+        (
+            this.id,
+            this.work_directory_abs_path.clone(),
+            this.snapshot.clone(),
+        )
+    });
+
+    let (branches, head_commit, remote_origin_url, remote_upstream_url) = cx
+        .background_spawn({
+            let backend = backend.clone();
+            async move {
+                let head_commit_future = {
+                    let backend = backend.clone();
+                    async move {
+                        Ok(match backend.head_sha().await {
+                            Some(head_sha) => backend.show(head_sha).await.log_err(),
+                            None => None,
+                        })
+                    }
+                };
+                let remotes_future = {
+                    let backend = backend.clone();
+                    async move {
+                        Ok::<_, anyhow::Error>(
+                            futures::future::join(
+                                backend.remote_url("origin"),
+                                backend.remote_url("upstream"),
+                            )
+                            .await,
+                        )
+                    }
+                };
+                let (branches, head_commit, remotes) =
+                    futures::future::try_join3(backend.branches(), head_commit_future, remotes_future)
+                        .await?;
+                Ok::<_, anyhow::Error>((branches, head_commit, remotes.0, remotes.1))
+            }
+        })
         .await?;
-    let stash_entries = backend.stash_entries().await?;
+
+    let branch = branches.into_iter().find(|branch| branch.is_head);
+    let snapshot = this.update(cx, |this, cx| {
+        if branch != this.snapshot.branch || head_commit != this.snapshot.head_commit {
+            cx.emit(RepositoryEvent::BranchChanged);
+        }
+        this.snapshot = RepositorySnapshot {
+            id,
+            work_directory_abs_path,
+            branch,
+            head_commit,
+            remote_origin_url,
+            remote_upstream_url,
+            scan_id: prev_snapshot.scan_id + 1,
+            ..prev_snapshot
+        };
+        this.snapshot.clone()
+    });
+
+    let (statuses, stash_entries) = cx
+        .background_spawn({
+            let backend = backend.clone();
+            async move {
+                futures::future::try_join(
+                    backend.status(&[RepoPath::from_rel_path(
+                        &RelPath::new(".".as_ref(), PathStyle::local()).unwrap(),
+                    )]),
+                    backend.stash_entries(),
+                )
+                .await
+            }
+        })
+        .await?;
+
     let statuses_by_path = SumTree::from_iter(
         statuses
             .entries
@@ -6596,46 +6647,27 @@ async fn compute_snapshot(
             }),
         (),
     );
+
     let (merge_details, merge_heads_changed) =
-        MergeDetails::load(&backend, &statuses_by_path, &prev_snapshot).await?;
+        MergeDetails::load(&backend, &statuses_by_path, &snapshot).await?;
     log::debug!("new merge details (changed={merge_heads_changed:?}): {merge_details:?}");
 
-    if merge_heads_changed {
-        events.push(RepositoryEvent::MergeHeadsChanged);
-    }
+    Ok(this.update(cx, |this, cx| {
+        if merge_heads_changed {
+            cx.emit(RepositoryEvent::MergeHeadsChanged);
+        }
+        if statuses_by_path != this.snapshot.statuses_by_path {
+            cx.emit(RepositoryEvent::StatusesChanged);
+        }
+        if stash_entries != this.snapshot.stash_entries {
+            cx.emit(RepositoryEvent::StashEntriesChanged);
+        }
 
-    if statuses_by_path != prev_snapshot.statuses_by_path {
-        events.push(RepositoryEvent::StatusesChanged)
-    }
-
-    // Useful when branch is None in detached head state
-    let head_commit = match backend.head_sha().await {
-        Some(head_sha) => backend.show(head_sha).await.log_err(),
-        None => None,
-    };
-
-    if branch != prev_snapshot.branch || head_commit != prev_snapshot.head_commit {
-        events.push(RepositoryEvent::BranchChanged);
-    }
-
-    let remote_origin_url = backend.remote_url("origin").await;
-    let remote_upstream_url = backend.remote_url("upstream").await;
-
-    let snapshot = RepositorySnapshot {
-        id,
-        statuses_by_path,
-        work_directory_abs_path,
-        path_style: prev_snapshot.path_style,
-        scan_id: prev_snapshot.scan_id + 1,
-        branch,
-        head_commit,
-        merge: merge_details,
-        remote_origin_url,
-        remote_upstream_url,
-        stash_entries,
-    };
-
-    Ok((snapshot, events))
+        this.snapshot.statuses_by_path = statuses_by_path;
+        this.snapshot.merge = merge_details;
+        this.snapshot.stash_entries = stash_entries;
+        this.snapshot.clone()
+    }))
 }
 
 fn status_from_proto(
