@@ -21,9 +21,10 @@ use crate::provider::lmstudio::LmStudioLanguageModelProvider;
 pub use crate::provider::mistral::MistralLanguageModelProvider;
 use crate::provider::ollama::OllamaLanguageModelProvider;
 use crate::provider::open_ai::OpenAiLanguageModelProvider;
-use crate::provider::open_ai_oauth::OpenAiOAuthLanguageModelProvider;
 use crate::provider::open_ai_compatible::OpenAiCompatibleLanguageModelProvider;
+use crate::provider::open_ai_oauth::OpenAiOAuthLanguageModelProvider;
 use crate::provider::open_router::OpenRouterLanguageModelProvider;
+use crate::provider::qwen_oauth::QwenOAuthLanguageModelProvider;
 use crate::provider::vercel::VercelLanguageModelProvider;
 use crate::provider::x_ai::XAiLanguageModelProvider;
 pub use crate::settings::*;
@@ -167,7 +168,17 @@ fn register_language_model_providers(
         cx,
     );
     registry.register_provider(
-        Arc::new(OpenAiOAuthLanguageModelProvider::new(client.http_client(), cx)),
+        Arc::new(OpenAiOAuthLanguageModelProvider::new(
+            client.http_client(),
+            cx,
+        )),
+        cx,
+    );
+    registry.register_provider(
+        Arc::new(QwenOAuthLanguageModelProvider::new(
+            client.http_client(),
+            cx,
+        )),
         cx,
     );
     registry.register_provider(
