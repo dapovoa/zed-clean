@@ -494,7 +494,9 @@ impl MacTextSystemState {
                     string.set_attribute(
                         cf_range,
                         kCTFontAttributeName,
-                        &font.native_font().clone_with_font_size(font_size_for_rendering.into()),
+                        &font
+                            .native_font()
+                            .clone_with_font_size(font_size_for_rendering.into()),
                     );
                 }
                 break_ligature = !break_ligature;

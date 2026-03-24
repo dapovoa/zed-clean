@@ -2140,7 +2140,7 @@ impl Thread {
                 Err(error) => {
                     // Check if this is a cancellation error
                     let error_str = error.to_string();
-                    
+
                     LanguageModelToolResult {
                         tool_use_id: tool_use.id,
                         tool_name: tool_use.name,
@@ -2148,7 +2148,7 @@ impl Thread {
                         content: LanguageModelToolResultContent::Text(Arc::from(error_str.clone())),
                         output: Some(error_str.into()),
                     }
-                },
+                }
             }
         }))
     }
@@ -2392,7 +2392,11 @@ impl Thread {
             .map(|turn| turn.tools.keys().cloned().collect())
             .unwrap_or_default();
 
-        log::debug!("Request includes {} tools: {:?}", available_tools.len(), available_tools);
+        log::debug!(
+            "Request includes {} tools: {:?}",
+            available_tools.len(),
+            available_tools
+        );
         let messages = self.build_request_messages(available_tools, cx);
         log::debug!("Request will include {} messages", messages.len());
 

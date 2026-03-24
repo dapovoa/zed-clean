@@ -8,9 +8,9 @@ use gpui::{App, AppContext as _, Context, Entity, Global, SharedString, Task};
 use http_client::HttpClient;
 use icons::IconName;
 use language::{
-    Anchor, Buffer, BufferSnapshot, EditPreview, ToPoint, language_settings::all_language_settings,
+    language_settings::all_language_settings, Anchor, Buffer, BufferSnapshot, EditPreview, ToPoint,
 };
-use language_model::{ApiKeyState, AuthenticateError, EnvVar, env_var};
+use language_model::{env_var, ApiKeyState, AuthenticateError, EnvVar};
 use serde::{Deserialize, Serialize};
 
 use std::{

@@ -742,10 +742,13 @@ impl PlatformTextSystem for NoopTextSystem {
                 .width
             / metrics.units_per_em as f32;
         let mut glyphs = Vec::new();
-        
+
         // For test platform, use the first run's font_size if available
-        let run_font_size = runs.first().map(|r| r.font_size.unwrap_or(font_size)).unwrap_or(font_size);
-        
+        let run_font_size = runs
+            .first()
+            .map(|r| r.font_size.unwrap_or(font_size))
+            .unwrap_or(font_size);
+
         for (ix, c) in text.char_indices() {
             if let Some(glyph) = self.glyph_for_char(FontId(0), c) {
                 glyphs.push(ShapedGlyph {

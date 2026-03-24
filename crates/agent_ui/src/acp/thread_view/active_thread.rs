@@ -1084,15 +1084,17 @@ impl AcpThreadView {
             }
 
             // Get the message ID before truncating (needed for restore_checkpoint)
-            let message_id: Option<acp_thread::UserMessageId> = thread.read_with(cx, |thread, _| {
-                thread.entries().get(entry_ix).and_then(|entry| {
-                    if let acp_thread::AgentThreadEntry::UserMessage(msg) = entry {
-                        Some(msg.id.clone())
-                    } else {
-                        None
-                    }
+            let message_id: Option<acp_thread::UserMessageId> = thread
+                .read_with(cx, |thread, _| {
+                    thread.entries().get(entry_ix).and_then(|entry| {
+                        if let acp_thread::AgentThreadEntry::UserMessage(msg) = entry {
+                            Some(msg.id.clone())
+                        } else {
+                            None
+                        }
+                    })
                 })
-            }).flatten();
+                .flatten();
 
             // Perform local rewind: truncate entries and reject all edits from this point
             this.update(cx, |this, cx| {

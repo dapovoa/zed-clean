@@ -1011,7 +1011,8 @@ impl LocalLspStore {
                             .update(&mut cx, |lsp_store, cx| {
                                 if lsp_store.as_local().is_some() {
                                     // Silently ignore errors during shutdown - servers may already be gone
-                                    let _ = lsp_store.unregister_server_capabilities(server_id, params, cx);
+                                    let _ = lsp_store
+                                        .unregister_server_capabilities(server_id, params, cx);
                                 }
                             })
                             .ok();

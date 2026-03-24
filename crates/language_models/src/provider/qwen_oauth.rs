@@ -162,12 +162,7 @@ impl State {
                             Ok(new_tokens) => {
                                 let token_bytes = serde_json::to_vec(&new_tokens)?;
                                 credentials_provider
-                                    .write_credentials(
-                                        KEYCHAIN_URL,
-                                        "Bearer",
-                                        &token_bytes,
-                                        cx,
-                                    )
+                                    .write_credentials(KEYCHAIN_URL, "Bearer", &token_bytes, cx)
                                     .await
                                     .log_err();
                                 new_tokens
@@ -410,8 +405,8 @@ impl QwenOAuthLanguageModel {
                     provider: PROVIDER_NAME,
                 });
             };
-            let response = qwen_stream_completion(http_client.as_ref(), &api_url, &token, request)
-                .await?;
+            let response =
+                qwen_stream_completion(http_client.as_ref(), &api_url, &token, request).await?;
             Ok(response)
         });
         async move { Ok(future.await?.boxed()) }.boxed()
@@ -443,10 +438,7 @@ impl LanguageModel for QwenOAuthLanguageModel {
         self.model.supports_images()
     }
 
-    fn supports_tool_choice(
-        &self,
-        choice: language_model::LanguageModelToolChoice,
-    ) -> bool {
+    fn supports_tool_choice(&self, choice: language_model::LanguageModelToolChoice) -> bool {
         use language_model::LanguageModelToolChoice;
         match choice {
             LanguageModelToolChoice::Auto => true,
@@ -542,7 +534,8 @@ impl ConfigurationView {
     }
 
     fn sign_in(&mut self, _: &gpui::ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        self.state.update(cx, |state, cx| state.start_oauth_flow(cx));
+        self.state
+            .update(cx, |state, cx| state.start_oauth_flow(cx));
     }
 
     fn sign_out(&mut self, _: &gpui::ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -599,8 +592,8 @@ async fn qwen_stream_completion(
 > {
     let uri = format!("{api_url}/chat/completions");
 
-    let mut body_value = serde_json::to_value(&request)
-        .map_err(|e| open_ai::RequestError::Other(e.into()))?;
+    let mut body_value =
+        serde_json::to_value(&request).map_err(|e| open_ai::RequestError::Other(e.into()))?;
     if let Some(obj) = body_value.as_object_mut() {
         obj.insert("enable_thinking".to_owned(), serde_json::Value::Bool(false));
     }
@@ -734,7 +727,9 @@ async fn poll_for_token(
 
     loop {
         if std::time::Instant::now() >= deadline {
-            return Err(anyhow!("Qwen device authorization timed out after 5 minutes"));
+            return Err(anyhow!(
+                "Qwen device authorization timed out after 5 minutes"
+            ));
         }
 
         smol::Timer::after(Duration::from_secs(current_interval)).await;
@@ -863,11 +858,22 @@ fn generate_uuid() -> String {
     rand::rng().fill_bytes(&mut bytes);
     format!(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5],
-        bytes[6], bytes[7],
-        bytes[8], bytes[9],
-        bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15],
     )
 }
 

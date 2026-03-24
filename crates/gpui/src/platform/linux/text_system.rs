@@ -418,8 +418,14 @@ impl CosmicTextSystemState {
                 if !group_runs.is_empty() {
                     // Flush any accumulated None-font-size runs
                     let group_fs = group_font_size.unwrap_or(font_size);
-                    let (group_ascent, group_descent, group_len, group_width) =
-                        self.layout_group(text, total_len, &group_runs, Some(group_fs), x_offset, &mut runs);
+                    let (group_ascent, group_descent, group_len, group_width) = self.layout_group(
+                        text,
+                        total_len,
+                        &group_runs,
+                        Some(group_fs),
+                        x_offset,
+                        &mut runs,
+                    );
                     max_ascent = max_ascent.max(group_ascent);
                     max_descent = max_descent.max(group_descent);
                     total_len += group_len;
@@ -429,8 +435,14 @@ impl CosmicTextSystemState {
                 }
 
                 // Layout this run individually
-                let (run_ascent, run_descent, _, run_width) =
-                    self.layout_group(text, total_len, &[(run.font_id, run.len)], run_font_size, x_offset, &mut runs);
+                let (run_ascent, run_descent, _, run_width) = self.layout_group(
+                    text,
+                    total_len,
+                    &[(run.font_id, run.len)],
+                    run_font_size,
+                    x_offset,
+                    &mut runs,
+                );
                 max_ascent = max_ascent.max(run_ascent);
                 max_descent = max_descent.max(run_descent);
                 total_len += run.len;
@@ -447,8 +459,14 @@ impl CosmicTextSystemState {
         // Process any remaining grouped None-font-size runs
         if !group_runs.is_empty() {
             let group_fs = group_font_size.unwrap_or(font_size);
-            let (group_ascent, group_descent, group_len, group_width) =
-                self.layout_group(text, total_len, &group_runs, Some(group_fs), x_offset, &mut runs);
+            let (group_ascent, group_descent, group_len, group_width) = self.layout_group(
+                text,
+                total_len,
+                &group_runs,
+                Some(group_fs),
+                x_offset,
+                &mut runs,
+            );
             max_ascent = max_ascent.max(group_ascent);
             max_descent = max_descent.max(group_descent);
             total_len += group_len;

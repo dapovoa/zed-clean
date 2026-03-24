@@ -549,10 +549,8 @@ impl ThemeSettings {
         }
         let status_color_refinement = status_colors_refinement(&theme_overrides.status);
 
-        let colors_refinement = theme_colors_refinement(
-            &theme_overrides.colors,
-            &status_color_refinement,
-        );
+        let colors_refinement =
+            theme_colors_refinement(&theme_overrides.colors, &status_color_refinement);
 
         base_theme.styles.colors.refine(&colors_refinement);
         base_theme.styles.status.refine(&status_color_refinement);

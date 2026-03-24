@@ -29,8 +29,8 @@ use encoding_rs::Encoding;
 use fs::MTime;
 use futures::channel::oneshot;
 use gpui::{
-    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, SharedString,
-    StyledText, Task, TextStyle,
+    App, AppContext as _, Context, Entity, EventEmitter, HighlightStyle, SharedString, StyledText,
+    Task, TextStyle,
 };
 
 use lsp::{LanguageServerId, NumberOrString};

@@ -5036,7 +5036,10 @@ impl ProjectPanel {
         let clean_edited_text = cx.theme().status().warning;
         let clean_active_bg = theme_colors.element_selected;
 
-        let has_git_changes = !matches!(details.filename_text_color, ui::Color::Default | ui::Color::Muted);
+        let has_git_changes = !matches!(
+            details.filename_text_color,
+            ui::Color::Default | ui::Color::Muted
+        );
 
         let clean_base_text = if is_active || is_marked {
             clean_active_text
@@ -5562,17 +5565,15 @@ impl ProjectPanel {
                                     ))
                                 }
 
-                                None => {
-                                    this.child(
-                                        div()
-                                            .whitespace_nowrap()
-                                            .when(
-                                                settings.bold_folder_labels && kind.is_dir(),
-                                                |this| this.font_weight(FontWeight::SEMIBOLD),
-                                            )
-                                            .child(file_name)
-                                    )
-                                }
+                                None => this.child(
+                                    div()
+                                        .whitespace_nowrap()
+                                        .when(
+                                            settings.bold_folder_labels && kind.is_dir(),
+                                            |this| this.font_weight(FontWeight::SEMIBOLD),
+                                        )
+                                        .child(file_name),
+                                ),
                             })
                     })
                     .on_secondary_mouse_down(cx.listener(
@@ -5739,7 +5740,7 @@ impl ProjectPanel {
                                 .when(index == active_index && is_active_or_marked, |this| {
                                     this.text_decoration_1().underline()
                                 })
-                                .child(component)
+                                .child(component),
                         )
                         .into_any()
                 });
@@ -5816,11 +5817,7 @@ impl ProjectPanel {
                     ))
                 })
             })
-            .child(
-                div()
-                    .whitespace_nowrap()
-                    .child(delimiter.clone()),
-            )
+            .child(div().whitespace_nowrap().child(delimiter.clone()))
     }
 
     fn details_for_entry(

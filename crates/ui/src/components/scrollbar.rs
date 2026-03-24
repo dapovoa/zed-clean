@@ -1319,17 +1319,28 @@ impl<T: ScrollableHandle> Element for ScrollbarElement<T> {
                     const MAXIMUM_OPACITY: f32 = 0.7;
                     let (custom_thumb, custom_thumb_hover, custom_thumb_active) = {
                         let state_read = self.state.read(cx);
-                        (state_read.thumb_color, state_read.thumb_hover_color, state_read.thumb_active_color)
+                        (
+                            state_read.thumb_color,
+                            state_read.thumb_hover_color,
+                            state_read.thumb_active_color,
+                        )
                     };
 
                     let (thumb_base_color, hovered) = match thumb_state {
-                        ThumbState::Dragging(dragged_axis, _) if dragged_axis == axis => {
-                            (custom_thumb_active.or(custom_thumb_hover).unwrap_or(colors.scrollbar_thumb_active_background), false)
-                        }
-                        ThumbState::Hover(hovered_axis) if hovered_axis == axis => {
-                            (custom_thumb_hover.unwrap_or(colors.scrollbar_thumb_hover_background), true)
-                        }
-                        _ => (custom_thumb.unwrap_or(colors.scrollbar_thumb_background), false),
+                        ThumbState::Dragging(dragged_axis, _) if dragged_axis == axis => (
+                            custom_thumb_active
+                                .or(custom_thumb_hover)
+                                .unwrap_or(colors.scrollbar_thumb_active_background),
+                            false,
+                        ),
+                        ThumbState::Hover(hovered_axis) if hovered_axis == axis => (
+                            custom_thumb_hover.unwrap_or(colors.scrollbar_thumb_hover_background),
+                            true,
+                        ),
+                        _ => (
+                            custom_thumb.unwrap_or(colors.scrollbar_thumb_background),
+                            false,
+                        ),
                     };
 
                     let blending_color = if hovered || reserved_space.needs_scroll_track() {

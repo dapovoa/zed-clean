@@ -308,9 +308,10 @@ impl ToolCall {
         if let Some(status) = status {
             // Check if this is a cancellation based on metadata
             let is_cancelled = meta.as_ref().map_or(false, |m| {
-                m.iter().any(|(k, v)| k.as_str() == "cancelled" && v.as_bool().unwrap_or(false))
+                m.iter()
+                    .any(|(k, v)| k.as_str() == "cancelled" && v.as_bool().unwrap_or(false))
             });
-            
+
             self.status = if is_cancelled {
                 ToolCallStatus::Canceled
             } else {

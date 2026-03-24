@@ -1910,11 +1910,14 @@ mod tests {
         init_test(cx);
 
         let fs = FakeFs::new(cx.executor());
-        fs.insert_tree(path!("/dir"), json!({"file1": "content1", "file2": "content2"}))
-            .await;
+        fs.insert_tree(
+            path!("/dir"),
+            json!({"file1": "content1", "file2": "content2"}),
+        )
+        .await;
         let project = Project::test(fs.clone(), [path!("/dir").as_ref()], cx).await;
         let action_log = cx.new(|_| ActionLog::new(project.clone()));
-        
+
         // Open and track two buffers
         let file_path1 = project
             .read_with(cx, |project, cx| project.find_project_path("dir/file1", cx))
@@ -1922,13 +1925,17 @@ mod tests {
         let file_path2 = project
             .read_with(cx, |project, cx| project.find_project_path("dir/file2", cx))
             .unwrap();
-        
+
         let buffer1 = project
-            .update(cx, |project, cx| project.open_buffer(file_path1.clone(), cx))
+            .update(cx, |project, cx| {
+                project.open_buffer(file_path1.clone(), cx)
+            })
             .await
             .unwrap();
         let buffer2 = project
-            .update(cx, |project, cx| project.open_buffer(file_path2.clone(), cx))
+            .update(cx, |project, cx| {
+                project.open_buffer(file_path2.clone(), cx)
+            })
             .await
             .unwrap();
 
@@ -1941,7 +1948,7 @@ mod tests {
                 log.will_delete_buffer(buffer2.clone(), cx);
             });
         });
-        
+
         // Actually delete the files
         project
             .update(cx, |project, cx| {
@@ -1957,32 +1964,34 @@ mod tests {
             .unwrap()
             .await
             .unwrap();
-        
+
         cx.run_until_parked();
-        
+
         // Verify both buffers are tracked as deleted
         assert_eq!(
             unreviewed_hunks(&action_log, cx).len(),
             2,
             "Both deleted buffers should have unreviewed hunks"
         );
-        
+
         // Call keep_all_edits - this should remove both deleted buffers
         action_log.update(cx, |log, cx| log.keep_all_edits(None, cx));
         cx.run_until_parked();
-        
+
         // After keep_all_edits, deleted buffers should be removed from tracked_buffers
         assert_eq!(
             unreviewed_hunks(&action_log, cx).len(),
             0,
             "All deleted buffers should be removed after keep_all_edits"
         );
-        
+
         // Verify tracked_buffers no longer contains the deleted buffers
-        let tracked_count = action_log.read_with(cx, |log, cx| {
-            log.tracked_buffers_for_debug(cx).count()
-        });
-        assert_eq!(tracked_count, 0, "No buffers should remain tracked after keep_all_edits on deleted buffers");
+        let tracked_count =
+            action_log.read_with(cx, |log, cx| log.tracked_buffers_for_debug(cx).count());
+        assert_eq!(
+            tracked_count, 0,
+            "No buffers should remain tracked after keep_all_edits on deleted buffers"
+        );
     }
 
     #[gpui::test(iterations = 10)]

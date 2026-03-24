@@ -7825,7 +7825,8 @@ pub fn render_breadcrumb_text(
         if index == 0
             && !workspace::TabBarSettings::get_global(cx).show
             && active_item.is_dirty(cx)
-            && let Some(styled_element) = apply_dirty_filename_style(&segment, &text_style, window, cx)
+            && let Some(styled_element) =
+                apply_dirty_filename_style(&segment, &text_style, window, cx)
         {
             return styled_element;
         }

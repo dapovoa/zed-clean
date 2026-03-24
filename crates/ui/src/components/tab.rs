@@ -179,7 +179,7 @@ impl RenderOnce for Tab {
                         .left_0()
                         .right_0()
                         .h(px(2.))
-                        .bg(active_border_color)
+                        .bg(active_border_color),
                 )
             })
             .cursor_pointer()

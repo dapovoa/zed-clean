@@ -342,9 +342,7 @@ impl TextLayout {
         let text_style = window.text_style();
         let rem_size = window.rem_size();
         let font_size = text_style.font_size.to_pixels(rem_size);
-        let line_height = text_style
-            .line_height
-            .to_pixels(font_size.into(), rem_size);
+        let line_height = text_style.line_height.to_pixels(font_size.into(), rem_size);
 
         let runs = if let Some(runs) = runs {
             runs

@@ -109,10 +109,10 @@ impl LanguageModels {
 
         // If any OpenAI-compatible provider is configured, exclude the official OpenAI provider
         // to avoid confusion (compatible != official OpenAI)
-        let has_openai_compatible = providers
-            .iter()
-            .any(|p| p.id().0.contains("openai_compatible") || p.id().0.contains("openai-compatible"));
-        
+        let has_openai_compatible = providers.iter().any(|p| {
+            p.id().0.contains("openai_compatible") || p.id().0.contains("openai-compatible")
+        });
+
         if has_openai_compatible {
             providers.retain(|p| p.id().0 != "openai");
         }

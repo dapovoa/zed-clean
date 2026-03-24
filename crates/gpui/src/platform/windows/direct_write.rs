@@ -611,13 +611,13 @@ impl DirectWriteState {
             // Collect font size ranges for use during glyph rendering
             let mut font_size_ranges: Vec<(u32, u32, f32)> = Vec::new();
             let mut current_text_pos: u32 = 0;
-            
+
             // First run uses the initial font_size
             let first_run = &font_runs[0];
             let first_font_size = first_run.font_size.unwrap_or(font_size).0;
             font_size_ranges.push((current_text_pos, first_run.len as u32, first_font_size));
             current_text_pos += first_run.len as u32;
-            
+
             for run in &font_runs[1..] {
                 let run_font_size = run.font_size.unwrap_or(font_size).0;
                 font_size_ranges.push((current_text_pos, run.len as u32, run_font_size));
@@ -1576,7 +1576,7 @@ impl IDWriteTextRenderer_Impl for TextRenderer_Impl {
             }
             glyph_idx += cluster_glyph_count;
         }
-        
+
         // Determine font_size for this glyph run based on the text position
         let start_pos = desc.textPosition;
         let end_pos = start_pos + desc.stringLength as u32;
@@ -1584,11 +1584,18 @@ impl IDWriteTextRenderer_Impl for TextRenderer_Impl {
             .font_size_ranges
             .iter()
             .find(|(range_start, range_len, _)| {
-                start_pos >= *range_start && (start_pos + desc.stringLength as u32) <= (*range_start + *range_len)
+                start_pos >= *range_start
+                    && (start_pos + desc.stringLength as u32) <= (*range_start + *range_len)
             })
             .map(|(_, _, fs)| *fs as f32)
-            .unwrap_or_else(|| context.font_size_ranges.first().map(|(_, _, fs)| *fs as f32).unwrap_or(font_size.0));
-        
+            .unwrap_or_else(|| {
+                context
+                    .font_size_ranges
+                    .first()
+                    .map(|(_, _, fs)| *fs as f32)
+                    .unwrap_or(font_size.0)
+            });
+
         context.runs.push(ShapedRun {
             font_id,
             glyphs,

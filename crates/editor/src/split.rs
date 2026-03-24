@@ -2091,8 +2091,7 @@ impl LhsEditor {
             groups
         };
 
-        let deduplicated_lhs_ids: Vec<ExcerptId> =
-            lhs_result.0.iter().dedup().copied().collect();
+        let deduplicated_lhs_ids: Vec<ExcerptId> = lhs_result.0.iter().dedup().copied().collect();
 
         Some((deduplicated_lhs_ids, rhs_merge_groups))
     }

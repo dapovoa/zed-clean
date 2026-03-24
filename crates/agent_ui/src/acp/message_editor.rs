@@ -1405,19 +1405,17 @@ impl Render for MessageEditor {
                 let mut local_player = cx.theme().players().local();
                 local_player.selection = colors.element_selection_background;
 
-                v_flex().size_full().flex_1().child(
-                    EditorElement::new(
-                        &self.editor,
-                        EditorStyle {
-                            background: Hsla::transparent_black(),
-                            local_player,
-                            text: text_style,
-                            syntax: cx.theme().syntax().clone(),
-                            inlay_hints_style: editor::make_inlay_hints_style(cx),
-                            ..Default::default()
-                        },
-                    )
-                )
+                v_flex().size_full().flex_1().child(EditorElement::new(
+                    &self.editor,
+                    EditorStyle {
+                        background: Hsla::transparent_black(),
+                        local_player,
+                        text: text_style,
+                        syntax: cx.theme().syntax().clone(),
+                        inlay_hints_style: editor::make_inlay_hints_style(cx),
+                        ..Default::default()
+                    },
+                ))
             })
     }
 }

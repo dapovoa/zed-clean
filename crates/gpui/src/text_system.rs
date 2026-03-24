@@ -474,7 +474,8 @@ impl WindowTextSystem {
                     && last_run.underline == run.underline
                     && last_run.strikethrough == run.strikethrough
                     && last_run.background_color == run.background_color
-                    && run.font_size.is_none()  // font_size doesn't affect decoration
+                    && run.font_size.is_none()
+                // font_size doesn't affect decoration
                 {
                     last_run.len += run_len_within_line as u32;
                     false

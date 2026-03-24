@@ -10326,10 +10326,7 @@ impl Editor {
                     };
 
                 let styled_text = gpui::StyledText::new(highlighted_edits.text)
-                    .with_default_highlights(
-                        &style.text,
-                        highlighted_edits.highlights,
-                    );
+                    .with_default_highlights(&style.text, highlighted_edits.highlights);
 
                 let preview = h_flex()
                     .gap_1()
@@ -24177,8 +24174,7 @@ impl Editor {
         {
             let editor_settings = EditorSettings::get_global(cx);
             if !self.scroll_manager.custom_vertical_scroll_margin {
-                self.scroll_manager.vertical_scroll_margin =
-                    editor_settings.vertical_scroll_margin;
+                self.scroll_manager.vertical_scroll_margin = editor_settings.vertical_scroll_margin;
             }
             self.show_breadcrumbs = editor_settings.toolbar.breadcrumbs;
             self.cursor_shape = editor_settings.cursor_shape.unwrap_or_default();

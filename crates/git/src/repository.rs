@@ -2375,7 +2375,7 @@ impl GitRepository for RealGitRepository {
                 let working_directory = working_directory?;
 
                 let git = GitBinary::new(git_binary_path, working_directory, executor);
-                
+
                 // Restore existing files to checkpoint state
                 git.run(&[
                     "restore",
@@ -2388,8 +2388,7 @@ impl GitRepository for RealGitRepository {
 
                 // Remove new files created after checkpoint
                 git.run(&[
-                    "clean",
-                    "-fd",  // -f: force, -d: include directories
+                    "clean", "-fd", // -f: force, -d: include directories
                 ])
                 .await?;
 

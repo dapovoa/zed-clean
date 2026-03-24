@@ -146,9 +146,7 @@ impl MarkdownStyle {
 
         let mut text_style = window.text_style();
         let line_height_multiplier = match font {
-            MarkdownFont::Agent | MarkdownFont::UserAgent => {
-                1.75
-            }
+            MarkdownFont::Agent | MarkdownFont::UserAgent => 1.75,
             MarkdownFont::Editor => 1.75,
         };
         let line_height: gpui::Pixels = buffer_font_size * line_height_multiplier;
@@ -249,15 +247,11 @@ impl MarkdownStyle {
                 font_fallbacks: theme_settings.buffer_font.fallbacks.clone(),
                 font_features: Some(theme_settings.buffer_font.features.clone()),
                 background_color: Some(match font {
-                    MarkdownFont::Agent | MarkdownFont::UserAgent => {
-                        colors.editor_background
-                    }
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.editor_background,
                     MarkdownFont::Editor => colors.editor_foreground.opacity(0.08),
                 }),
                 color: Some(match font {
-                    MarkdownFont::Agent | MarkdownFont::UserAgent => {
-                        colors.text
-                    }
+                    MarkdownFont::Agent | MarkdownFont::UserAgent => colors.text,
                     MarkdownFont::Editor => colors.text,
                 }),
                 ..Default::default()
@@ -1235,15 +1229,14 @@ impl Element for MarkdownElement {
                                         &self.code_block_renderer
                                     {
                                         let colors = cx.theme().colors();
-                                        parent_container = parent_container
-                                            .rounded_md()
-                                            .border_1()
-                                            .border_color(match self.style.font {
-                                                MarkdownFont::Agent | MarkdownFont::UserAgent => {
-                                                    colors.border
-                                                }
-                                                MarkdownFont::Editor => colors.border_variant,
-                                            });
+                                        parent_container =
+                                            parent_container.rounded_md().border_1().border_color(
+                                                match self.style.font {
+                                                    MarkdownFont::Agent
+                                                    | MarkdownFont::UserAgent => colors.border,
+                                                    MarkdownFont::Editor => colors.border_variant,
+                                                },
+                                            );
                                     }
 
                                     parent_container.style().refine(&self.style.code_block);
@@ -1287,8 +1280,7 @@ impl Element for MarkdownElement {
                                         .id(("code-block", range.start))
                                         .rounded_none() // Square corners inside the container
                                         .when(is_agent_block, |this| {
-                                            this.p_2()
-                                                .bg(cx.theme().colors().editor_background)
+                                            this.p_2().bg(cx.theme().colors().editor_background)
                                         })
                                         .map(|mut code_block| {
                                             if let Some(scroll_handle) = scroll_handle.as_ref() {

@@ -1273,13 +1273,11 @@ impl X11Client {
                         drop(state);
 
                         if event.valuator_mask[0] & 3 != 0 {
-                            window.handle_input(PlatformInput::MouseMove(
-                                crate::MouseMoveEvent {
-                                    position,
-                                    pressed_button,
-                                    modifiers,
-                                },
-                            ));
+                            window.handle_input(PlatformInput::MouseMove(crate::MouseMoveEvent {
+                                position,
+                                pressed_button,
+                                modifiers,
+                            }));
                         }
                     }
                 } else {
