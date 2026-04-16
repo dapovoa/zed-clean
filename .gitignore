@@ -23,6 +23,7 @@
 .wrangler
 .perf-runs
 /assets/*licenses.*
+!/assets/licenses.md
 /crates/collab/seed.json
 /crates/theme/schemas/theme.json
 /crates/zed/resources/flatpak/flatpak-cargo-sources.json
