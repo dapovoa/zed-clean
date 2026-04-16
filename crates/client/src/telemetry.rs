@@ -1,6 +1,5 @@
 mod event_coalescer;
 
-use crate::TelemetrySettings;
 use anyhow::{Context as _, Result};
 use clock::SystemClock;
 use fs::Fs;
@@ -11,7 +10,6 @@ use http_client::{self, AsyncBody, HttpClient, HttpClientWithUrl, Method, Reques
 use parking_lot::Mutex;
 use regex::Regex;
 use release_channel::ReleaseChannel;
-use settings::{Settings, SettingsStore};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs::File;
@@ -36,17 +34,19 @@ use worktree::{UpdatedEntriesSet, WorktreeId};
 
 use self::event_coalescer::EventCoalescer;
 
+#[allow(dead_code)]
 pub struct Telemetry {
     clock: Arc<dyn SystemClock>,
+    #[allow(dead_code)]
     http_client: Arc<HttpClientWithUrl>,
     executor: BackgroundExecutor,
     state: Arc<Mutex<TelemetryState>>,
 }
 
 struct TelemetryState {
-    settings: TelemetrySettings,
+    #[allow(dead_code)]
     system_id: Option<Arc<str>>,       // Per system
-    installation_id: Option<Arc<str>>, // Per app installation (different for dev, nightly, preview, and stable)
+    installation_id: Option<Arc<str>>, // Per app installation
     session_id: Option<String>,        // Per app launch
     metrics_id: Option<Arc<str>>,      // Per logged-in user
     release_channel: Option<ReleaseChannel>,
@@ -57,8 +57,11 @@ struct TelemetryState {
     log_file: Option<File>,
     is_staff: Option<bool>,
     first_event_date_time: Option<Instant>,
+    #[allow(dead_code)]
     event_coalescer: EventCoalescer,
+    #[allow(dead_code)]
     max_queue_size: usize,
+    #[allow(dead_code)]
     worktrees_with_project_type_events_sent: HashSet<WorktreeId>,
 
     os_name: String,
@@ -75,6 +78,7 @@ const MAX_QUEUE_LEN: usize = 5;
 const MAX_QUEUE_LEN: usize = 50;
 
 #[cfg(debug_assertions)]
+#[allow(dead_code)]
 const FLUSH_INTERVAL: Duration = Duration::from_secs(1);
 
 #[cfg(not(debug_assertions))]
@@ -192,7 +196,6 @@ impl Telemetry {
         cx: &mut App,
     ) -> Arc<Self> {
         let state = Arc::new(Mutex::new(TelemetryState {
-            settings: *TelemetrySettings::get_global(cx),
             architecture: env::consts::ARCH,
             release_channel: ReleaseChannel::try_global(cx),
             system_id: None,
@@ -222,16 +225,6 @@ impl Telemetry {
                 if let Some(tempfile) = File::create(Self::log_file_path()).ok() {
                     state.lock().log_file = Some(tempfile);
                 }
-            }
-        })
-        .detach();
-
-        cx.observe_global::<SettingsStore>({
-            let state = state.clone();
-
-            move |cx| {
-                let mut state = state.lock();
-                state.settings = *TelemetrySettings::get_global(cx);
             }
         })
         .detach();
@@ -276,7 +269,6 @@ impl Telemetry {
     }
 
     // Skip calling this function in tests.
-    // TestAppContext ends up calling this function on shutdown and it panics when trying to find the TelemetrySettings
     #[cfg(not(any(test, feature = "test-support")))]
     fn shutdown_telemetry(self: &Arc<Self>) -> impl Future<Output = ()> + use<> {
         telemetry::event!("App Closed");
@@ -385,10 +377,6 @@ impl Telemetry {
         is_staff: bool,
     ) {
         let mut state = self.state.lock();
-
-        if !state.settings.metrics {
-            return;
-        }
 
         let metrics_id: Option<Arc<str>> = metrics_id.map(|id| id.into());
         state.metrics_id.clone_from(&metrics_id);
@@ -515,59 +503,6 @@ impl Telemetry {
     fn report_event(self: &Arc<Self>, mut event: Event) {
         // Telemetry completely disabled in this build
         return;
-
-        let mut state = self.state.lock();
-        // RUST_LOG=telemetry=trace to debug telemetry events
-        log::trace!(target: "telemetry", "{:?}", event);
-
-        if !state.settings.metrics {
-            return;
-        }
-
-        match &mut event {
-            Event::Flexible(event) => event
-                .event_properties
-                .insert("event_source".into(), "zed".into()),
-        };
-
-        if state.flush_events_task.is_none() {
-            let this = self.clone();
-            state.flush_events_task = Some(self.executor.spawn(async move {
-                this.executor.timer(FLUSH_INTERVAL).await;
-                this.flush_events().detach();
-            }));
-        }
-
-        let date_time = self.clock.utc_now();
-
-        let milliseconds_since_first_event = match state.first_event_date_time {
-            Some(first_event_date_time) => date_time
-                .saturating_duration_since(first_event_date_time)
-                .min(Duration::from_secs(60 * 60 * 24))
-                .as_millis() as i64,
-            None => {
-                state.first_event_date_time = Some(date_time);
-                0
-            }
-        };
-
-        let signed_in = state.metrics_id.is_some();
-        let event_wrapper = EventWrapper {
-            signed_in,
-            milliseconds_since_first_event,
-            event,
-        };
-
-        state
-            .subscribers
-            .retain(|tx| tx.unbounded_send(event_wrapper.clone()).is_ok());
-
-        state.events_queue.push(event_wrapper);
-
-        if state.installation_id.is_some() && state.events_queue.len() >= state.max_queue_size {
-            drop(state);
-            self.flush_events().detach();
-        }
     }
 
     pub fn metrics_id(self: &Arc<Self>) -> Option<Arc<str>> {

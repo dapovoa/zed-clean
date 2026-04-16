@@ -2427,7 +2427,7 @@ impl Dismissable for ZedPredictUpsell {
 }
 
 pub fn should_show_upsell_modal() -> bool {
-    !ZedPredictUpsell::dismissed()
+    false
 }
 
 pub fn init(cx: &mut App) {

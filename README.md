@@ -32,6 +32,27 @@ This branch is not just an upstream mirror. It is the branch where local product
 cargo run -p zed
 ```
 
+## Environment Variables
+
+### Stateless Mode (safe testing)
+```bash
+ZED_STATELESS=1 cargo run -p zed
+```
+Runs without persisting settings, DB, or cache. Ideal for testing clean states.
+
+### Logging
+```bash
+ZED_LOG=debug cargo run -p zed
+ZED_LOG=info cargo run -p zed
+ZED_LOG=error cargo run -p zed
+```
+
+## Build Dependencies (Linux)
+
+```bash
+sudo apt install pkg-config libx11-dev libxkbcommon-dev libxcb1-dev libxcb-shape0-dev libasound2-dev libpango1.0-dev libgtk-3-dev libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev
+```
+
 ## Kept On Purpose
 
 - `crates/`, `assets/`, `extensions/`, `legal/`

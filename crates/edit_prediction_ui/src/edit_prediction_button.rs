@@ -453,34 +453,6 @@ impl Render for EditPredictionButton {
                         ep_icon = if enabled { icons.base } else { icons.disabled };
                         tooltip_meta = "Powered by Zeta"
                     }
-                };
-
-                if edit_prediction::should_show_upsell_modal() {
-                    let tooltip_meta = if self.user_store.read(cx).current_user().is_some() {
-                        "Choose a Plan"
-                    } else {
-                        "Sign In To Use"
-                    };
-
-                    return div().child(
-                        IconButton::new("zed-predict-pending-button", ep_icon)
-                            .shape(IconButtonShape::Square)
-                            .indicator(Indicator::dot().color(Color::Muted))
-                            .indicator_border_color(Some(cx.theme().colors().status_bar_background))
-                            .tooltip(move |_window, cx| {
-                                Tooltip::with_meta("Edit Predictions", None, tooltip_meta, cx)
-                            })
-                            .on_click(cx.listener(move |_, _, window, cx| {
-                                telemetry::event!(
-                                    "Pending ToS Clicked",
-                                    source = "Edit Prediction Status Button"
-                                );
-                                window.dispatch_action(
-                                    zed_actions::OpenZedPredictOnboarding.boxed_clone(),
-                                    cx,
-                                );
-                            })),
-                    );
                 }
 
                 let mut over_limit = false;
@@ -494,7 +466,6 @@ impl Render for EditPredictionButton {
                 }
 
                 let show_editor_predictions = self.editor_show_predictions;
-                let user = self.user_store.read(cx).current_user();
 
                 let indicator_color = if missing_token {
                     Some(Color::Error)
@@ -515,14 +486,10 @@ impl Render for EditPredictionButton {
                             .indicator_border_color(Some(cx.theme().colors().status_bar_background))
                     })
                     .when(!self.popover_menu_handle.is_deployed(), |element| {
-                        let user = user.clone();
-
                         element.tooltip(move |_window, cx| {
                             let description = if enabled {
                                 if show_editor_predictions {
                                     tooltip_meta
-                                } else if user.is_none() {
-                                    "Sign In To Use"
                                 } else {
                                     "Hidden For This File"
                                 }

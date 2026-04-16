@@ -30,7 +30,7 @@ use rand::prelude::*;
 use release_channel::{AppVersion, ReleaseChannel};
 use rpc::proto::{AnyTypedEnvelope, EnvelopedMessage, PeerId, RequestMessage};
 use serde::{Deserialize, Serialize};
-use settings::{RegisterSetting, Settings, SettingsContent};
+use settings::{RegisterSetting, Settings};
 use std::{
     any::TypeId,
     convert::TryFrom,
@@ -503,21 +503,6 @@ impl<T: 'static> Drop for PendingEntitySubscription<T> {
                     log::info!("unhandled message {}", message.payload_type_name());
                 }
             }
-        }
-    }
-}
-
-#[derive(Copy, Clone, Deserialize, Debug, RegisterSetting)]
-pub struct TelemetrySettings {
-    pub diagnostics: bool,
-    pub metrics: bool,
-}
-
-impl settings::Settings for TelemetrySettings {
-    fn from_settings(content: &SettingsContent) -> Self {
-        Self {
-            diagnostics: content.telemetry.as_ref().unwrap().diagnostics.unwrap(),
-            metrics: content.telemetry.as_ref().unwrap().metrics.unwrap(),
         }
     }
 }
