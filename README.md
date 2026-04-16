@@ -4,11 +4,11 @@
 ![Chat UX](https://img.shields.io/badge/Chat%20UX-FF6F00?style=flat-square)
 ![Linux Only](https://img.shields.io/badge/Linux%20Only-FCC624?style=flat-square&logo=linux&logoColor=000)
 
-# Personal Linux-first fork of Zed with custom agent/chat UI
+# Personal fork of Zed with custom agent/chat UI
 
-This branch is not just an upstream mirror. It is the branch where local product decisions live.
+This branch is not just an upstream mirror.
 
-## What Is Customized Here
+## What's Customized
 
 - agent panel header and navigation behavior
 - thread history UI for both ACP and text threads
@@ -20,45 +20,57 @@ This branch is not just an upstream mirror. It is the branch where local product
 - picker disabling while a thread is actively generating
 - selective upstream agent/chat UX ports without pulling the full upstream repo clutter
 
-## Repo Philosophy
+## What Was Kept
 
-- `main` should stay close to upstream `zed-industries/zed`
-- `clean` is the working branch for local UI, UX, Linux-only cleanup, and selected upstream ports
-- the repository is intentionally stripped of most CI, cloud, workflow, docs, packaging, and repo-maintenance files that are not needed for this branch
+- `crates/`, `assets/`, `extensions/`, `legal/`
+- core Cargo workspace files
+- linux-local helper scripts still useful for setup/install
+- license and third-party notice files
+
+## The Philosophy
+
+- this `clean` branch is for local UI/UX, Linux-only cleanup, and selected upstream ports
+- was intentionally stripped of most CI, cloud, workflow, docs, packaging, and repo-maintenance files
+
+## Dependencies
+
+```bash
+sudo apt install clang mold pkg-config libx11-dev libxkbcommon-dev libxcb1-dev libxcb-shape0-dev libasound2-dev libpango1.0-dev libgtk-3-dev libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev
+```
+
+## Build
+
+```bash
+./script/bundle-deb
+```
+
+```bash
+cargo clean && ./script/bundle-deb
+```
+
+```bash
+rm -rf target && ./script/bundle-deb
+```
+
+## Install
+
+```bash
+sudo dpkg -i target/release/zed-linux-x86_64.deb
+```
+
+## Uninstall
+
+```bash
+sudo dpkg -r zed
+```
 
 ## Run
 
 ```bash
 cargo run -p zed
-```
-
-## Environment Variables
-
-### Stateless Mode (safe testing)
-```bash
 ZED_STATELESS=1 cargo run -p zed
-```
-Runs without persisting settings, DB, or cache. Ideal for testing clean states.
-
-### Logging
-```bash
 ZED_LOG=debug cargo run -p zed
-ZED_LOG=info cargo run -p zed
-ZED_LOG=error cargo run -p zed
 ```
-
-## Build Dependencies (Linux)
-
-```bash
-sudo apt install pkg-config libx11-dev libxkbcommon-dev libxcb1-dev libxcb-shape0-dev libasound2-dev libpango1.0-dev libgtk-3-dev libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev
-```
-
-## Kept On Purpose
-
-- `crates/`, `assets/`, `extensions/`, `legal/`
-- core Cargo workspace files
-- Linux-local helper scripts still useful for setup/install
-- license and third-party notice files
 
 ## Attribution
 

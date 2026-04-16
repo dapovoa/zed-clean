@@ -40,6 +40,19 @@ export RELEASE_VERSION="$(
   sed -n '/^\[package\]/,/^\[/s/^version = "\(.*\)"/\1/p' crates/zed/Cargo.toml | head -n1
 )"
 
+if ! command -v clang >/dev/null 2>&1; then
+  echo "Error: clang is required for Linux builds. Install it first."
+  echo "Hint: sudo apt install clang"
+  exit 1
+fi
+
+if ! command -v mold >/dev/null 2>&1; then
+  echo "Error: mold is required for fast and reliable Linux linking in this repo."
+  echo "Hint: sudo apt install mold"
+  echo "Or run: ./script/install-mold"
+  exit 1
+fi
+
 export CC="${CC:-$(command -v clang || true)}"
 export RUSTFLAGS="${RUSTFLAGS:-} -C link-args=-Wl,--disable-new-dtags,-rpath,\$ORIGIN/../lib"
 

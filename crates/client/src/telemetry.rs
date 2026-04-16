@@ -82,6 +82,7 @@ const MAX_QUEUE_LEN: usize = 50;
 const FLUSH_INTERVAL: Duration = Duration::from_secs(1);
 
 #[cfg(not(debug_assertions))]
+#[allow(dead_code)]
 const FLUSH_INTERVAL: Duration = Duration::from_secs(60 * 5);
 static ZED_CLIENT_CHECKSUM_SEED: LazyLock<Option<Vec<u8>>> = LazyLock::new(|| {
     option_env!("ZED_CLIENT_CHECKSUM_SEED")
