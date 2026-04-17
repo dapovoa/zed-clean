@@ -1,5 +1,7 @@
-use acp_thread::ThreadStatus;
-use agent_ui::{AgentPanel, AgentPanelEvent};
+use acp_thread::{AgentSessionInfo, ThreadStatus};
+use agent_ui::{
+    AgentPanel, AgentPanelEvent, ThreadMetadata, ThreadsArchiveView, ThreadsArchiveViewEvent,
+};
 use db::kvp::KEY_VALUE_STORE;
 use fs::Fs;
 use fuzzy::StringMatchCandidate;
@@ -8,6 +10,7 @@ use gpui::{
     Subscription, Task, Window, px,
 };
 use picker::{Picker, PickerDelegate};
+use project::agent_server_store::{CLAUDE_CODE_NAME, CODEX_NAME, GEMINI_NAME};
 use project::Event as ProjectEvent;
 use recent_projects::{RecentProjectEntry, get_recent_projects};
 
@@ -149,6 +152,11 @@ impl SidebarEntry {
 struct SidebarMatch {
     entry: SidebarEntry,
     positions: Vec<usize>,
+}
+
+enum SidebarView {
+    ThreadList,
+    Archive(Entity<ThreadsArchiveView>),
 }
 
 struct WorkspacePickerDelegate {
@@ -661,6 +669,8 @@ pub struct Sidebar {
     _project_subscriptions: Vec<Subscription>,
     _agent_panel_subscriptions: Vec<Subscription>,
     _thread_subscriptions: Vec<Subscription>,
+    view: SidebarView,
+    _archive_subscription: Option<Subscription>,
     #[cfg(any(test, feature = "test-support"))]
     test_thread_infos: HashMap<usize, AgentThreadInfo>,
     #[cfg(any(test, feature = "test-support"))]
@@ -719,6 +729,8 @@ impl Sidebar {
             _project_subscriptions: Vec::new(),
             _agent_panel_subscriptions: Vec::new(),
             _thread_subscriptions: Vec::new(),
+            view: SidebarView::ThreadList,
+            _archive_subscription: None,
             #[cfg(any(test, feature = "test-support"))]
             test_thread_infos: HashMap::new(),
             #[cfg(any(test, feature = "test-support"))]
@@ -951,6 +963,168 @@ impl Sidebar {
             }
         });
     }
+
+    fn toggle_archive(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match self.view {
+            SidebarView::ThreadList => self.show_archive(window, cx),
+            SidebarView::Archive(_) => self.show_thread_list(cx),
+        }
+    }
+
+    fn show_archive(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let active_workspace = self
+            .multi_workspace
+            .read(cx)
+            .workspaces()
+            .get(self.multi_workspace.read(cx).active_workspace_index())
+            .cloned();
+        let Some(active_workspace) = active_workspace else {
+            return;
+        };
+
+        let archive_view =
+            cx.new(|cx| ThreadsArchiveView::new(active_workspace.downgrade(), window, cx));
+        let subscription = cx.subscribe_in(
+            &archive_view,
+            window,
+            |this, _, event: &ThreadsArchiveViewEvent, window, cx| match event {
+                ThreadsArchiveViewEvent::Close => this.show_thread_list(cx),
+                ThreadsArchiveViewEvent::Unarchive { thread } => {
+                    this.show_thread_list(cx);
+                    this.activate_archived_thread(thread.clone(), window, cx);
+                }
+            },
+        );
+
+        archive_view.update(cx, |view, cx| view.focus_filter_editor(window, cx));
+        self._archive_subscription = Some(subscription);
+        self.view = SidebarView::Archive(archive_view);
+        cx.notify();
+    }
+
+    fn show_thread_list(&mut self, cx: &mut Context<Self>) {
+        self.view = SidebarView::ThreadList;
+        self._archive_subscription = None;
+        cx.notify();
+    }
+
+    fn workspace_paths_key(workspace: &Entity<Workspace>, cx: &App) -> String {
+        let paths: Vec<_> = workspace
+            .read(cx)
+            .worktrees(cx)
+            .filter(|wt| wt.read(cx).is_visible())
+            .map(|wt| wt.read(cx).abs_path())
+            .collect();
+        sorted_paths_key(&paths)
+    }
+
+    fn open_archived_thread_in_workspace(
+        workspace: &Entity<Workspace>,
+        metadata: &ThreadMetadata,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(panel) = workspace.read(cx).panel::<AgentPanel>(cx) else {
+            return;
+        };
+
+        let mut thread = AgentSessionInfo::new(metadata.session_id.clone());
+        thread.cwd = Self::archived_thread_paths(metadata).first().cloned();
+        thread.title = Some(metadata.title.clone());
+        thread.updated_at = Some(metadata.updated_at);
+
+        let agent = match metadata.agent_id.as_ref() {
+            "Zed Agent" => agent_ui::ExternalAgent::NativeAgent,
+            GEMINI_NAME => agent_ui::ExternalAgent::Gemini,
+            CLAUDE_CODE_NAME => agent_ui::ExternalAgent::ClaudeCode,
+            CODEX_NAME => agent_ui::ExternalAgent::Codex,
+            name => agent_ui::ExternalAgent::Custom {
+                name: name.to_string().into(),
+            },
+        };
+
+        panel.update(cx, |panel, cx| {
+            panel.open_thread_with_agent(agent, thread, window, cx);
+        });
+    }
+
+    fn archived_thread_paths(metadata: &ThreadMetadata) -> Vec<PathBuf> {
+        if metadata.folder_paths.is_empty() {
+            metadata
+                .main_worktree_paths
+                .paths()
+                .iter()
+                .map(|path| path.to_path_buf())
+                .collect()
+        } else {
+            metadata
+                .folder_paths
+                .paths()
+                .iter()
+                .map(|path| path.to_path_buf())
+                .collect()
+        }
+    }
+
+    fn activate_archived_thread(
+        &mut self,
+        metadata: ThreadMetadata,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let target_paths = Self::archived_thread_paths(&metadata);
+        let target_key = sorted_paths_key(&target_paths);
+        let maybe_index = self
+            .multi_workspace
+            .read(cx)
+            .workspaces()
+            .iter()
+            .enumerate()
+            .find_map(|(index, workspace)| {
+                (Self::workspace_paths_key(workspace, cx) == target_key).then_some(index)
+            });
+
+        if let Some(index) = maybe_index {
+            let workspace = self.multi_workspace.read(cx).workspaces()[index].clone();
+            self.multi_workspace.update(cx, |multi_workspace, cx| {
+                multi_workspace.activate_index(index, window, cx);
+            });
+            Self::open_archived_thread_in_workspace(&workspace, &metadata, window, cx);
+            return;
+        }
+
+        let paths = target_paths;
+        if paths.is_empty() {
+            let workspace = self.multi_workspace.read(cx).workspace().clone();
+            Self::open_archived_thread_in_workspace(&workspace, &metadata, window, cx);
+            return;
+        }
+
+        let multi_workspace = self.multi_workspace.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let open_task = multi_workspace.update_in(cx, |multi_workspace, window, cx| {
+                multi_workspace.open_project(paths, OpenMode::Activate, window, cx)
+            })?;
+            open_task.await?;
+
+            this.update_in(cx, |this, window, cx| {
+                let target_paths = Self::archived_thread_paths(&metadata);
+                let target_key = sorted_paths_key(&target_paths);
+                let workspace = this
+                    .multi_workspace
+                    .read(cx)
+                    .workspaces()
+                    .iter()
+                    .find(|workspace| Self::workspace_paths_key(workspace, cx) == target_key)
+                    .cloned()
+                    .unwrap_or_else(|| this.multi_workspace.read(cx).workspace().clone());
+                Self::open_archived_thread_in_workspace(&workspace, &metadata, window, cx);
+            })?;
+
+            Ok::<(), db::anyhow::Error>(())
+        })
+        .detach_and_log_err(cx);
+    }
 }
 
 impl WorkspaceSidebar for Sidebar {
@@ -970,7 +1144,10 @@ impl WorkspaceSidebar for Sidebar {
 
 impl Focusable for Sidebar {
     fn focus_handle(&self, cx: &App) -> FocusHandle {
-        self.picker.read(cx).focus_handle(cx)
+        match &self.view {
+            SidebarView::ThreadList => self.picker.read(cx).focus_handle(cx),
+            SidebarView::Archive(view) => view.read(cx).focus_handle(cx),
+        }
     }
 }
 
@@ -996,6 +1173,7 @@ impl Render for Sidebar {
         let titlebar_height = ui::utils::platform_title_bar_height(window);
         let ui_font = theme::setup_ui_font(window, cx);
         let is_focused = self.focus_handle(cx).is_focused(window);
+        let showing_archive = matches!(self.view, SidebarView::Archive(_));
 
         let focus_tooltip_label = if is_focused {
             "Focus Workspace"
@@ -1066,6 +1244,25 @@ impl Render for Sidebar {
                             }))
                     })
                     .child(
+                        IconButton::new(
+                            if showing_archive {
+                                "show-thread-list"
+                            } else {
+                                "show-archive"
+                            },
+                            IconName::HistoryRerun,
+                        )
+                        .icon_size(IconSize::Small)
+                        .tooltip(Tooltip::text(if showing_archive {
+                            "Show Thread List"
+                        } else {
+                            "Show Archive"
+                        }))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.toggle_archive(window, cx);
+                        })),
+                    )
+                    .child(
                         IconButton::new("new-workspace", IconName::Plus)
                             .icon_size(IconSize::Small)
                             .tooltip(|_window, cx| {
@@ -1078,7 +1275,10 @@ impl Render for Sidebar {
                             })),
                     ),
             )
-            .child(self.picker.clone())
+            .child(match &self.view {
+                SidebarView::ThreadList => self.picker.clone().into_any_element(),
+                SidebarView::Archive(view) => view.clone().into_any_element(),
+            })
     }
 }
 

@@ -818,6 +818,16 @@ impl AgentPanel {
         );
     }
 
+    pub fn open_thread_with_agent(
+        &mut self,
+        agent: crate::ExternalAgent,
+        thread: AgentSessionInfo,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.load_agent_thread_for_agent(agent, thread, window, cx);
+    }
+
     pub(crate) fn context_server_registry(&self) -> &Entity<ContextServerRegistry> {
         &self.context_server_registry
     }

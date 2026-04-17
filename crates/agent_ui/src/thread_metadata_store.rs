@@ -260,6 +260,34 @@ impl ThreadMetadataStore {
         }
     }
 
+    pub fn update_working_directories(
+        &mut self,
+        session_id: &acp::SessionId,
+        folder_paths: PathList,
+        cx: &mut Context<Self>,
+    ) {
+        let old_key = self
+            .threads
+            .get(session_id)
+            .map(|metadata| metadata.folder_paths.paths().to_vec());
+        if let Some(metadata) = self.threads.get_mut(session_id) {
+            if let Some(old_key) = old_key {
+                if let Some(paths) = self.threads_by_paths.get_mut(&old_key) {
+                    paths.remove(session_id);
+                }
+            }
+            metadata.folder_paths = folder_paths;
+            let metadata_clone = metadata.clone();
+            self.update_paths_index(&metadata_clone);
+            if let Err(err) = self.pending_thread_ops_tx.try_send(vec![DbOperation::Upsert(
+                metadata_clone,
+            )]) {
+                log::error!("failed to enqueue thread metadata save: {}", err);
+            }
+            cx.notify();
+        }
+    }
+
     pub fn delete(&mut self, session_id: acp::SessionId, cx: &mut Context<Self>) {
         self.remove_from_paths_index(&session_id);
         self.threads.remove(&session_id);

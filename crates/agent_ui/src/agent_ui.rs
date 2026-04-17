@@ -21,6 +21,7 @@ mod terminal_inline_assistant;
 mod text_thread_editor;
 mod text_thread_history;
 pub mod thread_metadata_store;
+pub mod threads_archive_view;
 mod ui;
 
 use std::rc::Rc;
@@ -56,6 +57,7 @@ pub use crate::inline_assistant::InlineAssistant;
 pub use agent_diff::{AgentDiffPane, AgentDiffToolbar};
 pub use text_thread_editor::{AgentPanelDelegate, TextThreadEditor};
 pub use thread_metadata_store::{ThreadMetadata, ThreadMetadataStore};
+pub use threads_archive_view::{ThreadsArchiveView, ThreadsArchiveViewEvent};
 use zed_actions;
 
 actions!(
