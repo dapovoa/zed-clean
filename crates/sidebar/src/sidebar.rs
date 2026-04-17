@@ -137,7 +137,8 @@ impl ProjectGroupEntry {
 #[derive(Clone)]
 enum SidebarEntry {
     Separator(SharedString),
-    ProjectGroup(ProjectGroupEntry),
+    ProjectHeader(ProjectGroupEntry),
+    ProjectThread(ProjectGroupEntry),
     RecentProject(RecentProjectEntry),
 }
 
@@ -145,7 +146,12 @@ impl SidebarEntry {
     fn searchable_text(&self) -> &str {
         match self {
             SidebarEntry::Separator(_) => "",
-            SidebarEntry::ProjectGroup(entry) => entry.worktree_label.as_ref(),
+            SidebarEntry::ProjectHeader(entry) => entry.worktree_label.as_ref(),
+            SidebarEntry::ProjectThread(entry) => entry
+                .thread_info
+                .as_ref()
+                .map(|info| info.title.as_ref())
+                .unwrap_or(""),
             SidebarEntry::RecentProject(entry) => entry.name.as_ref(),
         }
     }
@@ -214,7 +220,7 @@ impl WorkspacePickerDelegate {
             .entries
             .iter()
             .filter_map(|entry| match entry {
-                SidebarEntry::ProjectGroup(thread) => thread
+                SidebarEntry::ProjectThread(thread) => thread
                     .thread_info
                     .as_ref()
                     .map(|info| (thread.key.clone(), info.status.clone())),
@@ -265,7 +271,7 @@ impl WorkspacePickerDelegate {
             .entries
             .iter()
             .filter_map(|entry| match entry {
-                SidebarEntry::ProjectGroup(thread) => Some(thread.clone()),
+                SidebarEntry::ProjectHeader(thread) => Some(thread.clone()),
                 _ => None,
             })
             .collect();
@@ -298,7 +304,10 @@ impl WorkspacePickerDelegate {
             self.entries
                 .push(SidebarEntry::Separator("Projects".into()));
             for group in project_groups {
-                self.entries.push(SidebarEntry::ProjectGroup(group));
+                self.entries.push(SidebarEntry::ProjectHeader(group.clone()));
+                if group.thread_info.is_some() {
+                    self.entries.push(SidebarEntry::ProjectThread(group));
+                }
             }
         }
 
@@ -375,7 +384,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
     ) -> bool {
         match self.matches.get(ix) {
             Some(SidebarMatch {
-                entry: SidebarEntry::Separator(_),
+                entry: SidebarEntry::Separator(_) | SidebarEntry::ProjectHeader(_),
                 ..
             }) => false,
             _ => true,
@@ -413,7 +422,14 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 .as_ref()
                 .and_then(|active_key| {
                     entries.iter().position(|entry| {
-                        matches!(entry, SidebarEntry::ProjectGroup(group) if &group.key == active_key)
+                        matches!(entry, SidebarEntry::ProjectThread(group) if &group.key == active_key)
+                    })
+                })
+                .or_else(|| {
+                    self.active_group_key.as_ref().and_then(|active_key| {
+                        entries.iter().position(|entry| {
+                            matches!(entry, SidebarEntry::ProjectHeader(group) if &group.key == active_key)
+                        })
                     })
                 })
                 .unwrap_or(0);
@@ -426,12 +442,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 })
                 .collect();
 
-            let separator_offset = if self.project_group_count > 0 {
-                1
-            } else {
-                0
-            };
-            self.selected_index = (active_index + separator_offset).min(self.matches.len().saturating_sub(1));
+            self.selected_index = active_index.min(self.matches.len().saturating_sub(1));
             return Task::ready(());
         }
 
@@ -475,7 +486,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                             entry: entry.clone(),
                         };
                         match entry {
-                            SidebarEntry::ProjectGroup(_) => {
+                            SidebarEntry::ProjectHeader(_) | SidebarEntry::ProjectThread(_) => {
                                 workspace_matches.push(sidebar_match)
                             }
                             SidebarEntry::RecentProject(_) => project_matches.push(sidebar_match),
@@ -528,7 +539,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
 
         match &selected_match.entry {
             SidebarEntry::Separator(_) => {}
-            SidebarEntry::ProjectGroup(thread_entry) => {
+            SidebarEntry::ProjectHeader(thread_entry) | SidebarEntry::ProjectThread(thread_entry) => {
                 let target_index = thread_entry.activation_index;
                 self.multi_workspace.update(cx, |multi_workspace, cx| {
                     multi_workspace.activate_index(target_index, window, cx);
@@ -564,7 +575,13 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     .child(ListSubHeader::new(title.clone()).inset(true))
                     .into_any_element(),
             ),
-            SidebarEntry::ProjectGroup(thread_entry) => {
+            SidebarEntry::ProjectHeader(group_entry) => Some(
+                v_flex()
+                    .when(index > 0, |this| this.mt_1())
+                    .child(ListSubHeader::new(group_entry.worktree_label.clone()).inset(true))
+                    .into_any_element(),
+            ),
+            SidebarEntry::ProjectThread(thread_entry) => {
                 let worktree_label = thread_entry.worktree_label.clone();
                 let full_path = thread_entry.full_path.clone();
                 let thread_info = thread_entry.thread_info.clone();
@@ -611,7 +628,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                         ("workspace-item", activation_index),
                         thread_subtitle.unwrap_or("New Thread".into()),
                     )
-                    .icon(IconName::Folder)
+                    .icon(IconName::ZedAgent)
                     .running(running)
                     .generation_done(has_notification)
                     .generating_title(generating_title)
