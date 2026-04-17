@@ -1,5 +1,6 @@
 use crate::{
-    NewFile, Open, PathList, SerializedWorkspaceLocation, WORKSPACE_DB, Workspace, WorkspaceId,
+    NewFile, Open, OpenMode, PathList, SerializedWorkspaceLocation, WORKSPACE_DB, Workspace,
+    WorkspaceId,
     item::{Item, ItemEvent},
 };
 use git::Clone as GitClone;
@@ -281,7 +282,12 @@ impl WelcomePage {
                     self.workspace
                         .update(cx, |workspace, cx| {
                             workspace
-                                .open_workspace_for_paths(true, paths, window, cx)
+                                .open_workspace_for_paths(
+                                    OpenMode::ReplaceCurrentWindow,
+                                    paths,
+                                    window,
+                                    cx,
+                                )
                                 .detach_and_log_err(cx);
                         })
                         .log_err();

@@ -42,7 +42,7 @@ use ui::{
 };
 use util::{ResultExt, paths::PathExt};
 use workspace::{
-    HistoryManager, ModalView, MultiWorkspace, OpenOptions, OpenVisible, PathList,
+    HistoryManager, ModalView, MultiWorkspace, OpenMode, OpenOptions, OpenVisible, PathList,
     SerializedWorkspaceLocation, WORKSPACE_DB, Workspace, WorkspaceId,
     notifications::DetachAndPromptErr, with_active_or_new_workspace,
 };
@@ -886,7 +886,12 @@ impl PickerDelegate for RecentProjectsDelegate {
                                     cx.defer(move |cx| {
                                         if let Some(task) = handle
                                             .update(cx, |multi_workspace, window, cx| {
-                                                multi_workspace.open_project(paths, window, cx)
+                                                multi_workspace.open_project(
+                                                    paths,
+                                                    OpenMode::Activate,
+                                                    window,
+                                                    cx,
+                                                )
                                             })
                                             .log_err()
                                         {
@@ -896,7 +901,12 @@ impl PickerDelegate for RecentProjectsDelegate {
                                 }
                                 return;
                             } else {
-                                workspace.open_workspace_for_paths(false, paths, window, cx)
+                                workspace.open_workspace_for_paths(
+                                    OpenMode::Activate,
+                                    paths,
+                                    window,
+                                    cx,
+                                )
                             }
                         }
                         SerializedWorkspaceLocation::Remote(mut connection) => {

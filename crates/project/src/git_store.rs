@@ -6803,3 +6803,33 @@ fn tracked_status_to_proto(code: StatusCode) -> i32 {
         StatusCode::Unmodified => proto::GitStatus::Unmodified as _,
     }
 }
+
+pub fn linked_worktree_short_name(
+    main_worktree_path: &Path,
+    linked_worktree_path: &Path,
+) -> Option<SharedString> {
+    if main_worktree_path == linked_worktree_path {
+        return None;
+    }
+    let project_name = main_worktree_path.file_name()?.to_str()?;
+    let directory_name = linked_worktree_path.file_name()?.to_str()?;
+    let name = if directory_name != project_name {
+        directory_name.to_string()
+    } else {
+        linked_worktree_path
+            .parent()?
+            .file_name()?
+            .to_str()?
+            .to_string()
+    };
+    Some(name.into())
+}
+
+pub fn worktrees_directory_for_repo(
+    _original_repo_abs_path: &Path,
+    worktree_directory_setting: &str,
+) -> Result<PathBuf> {
+    anyhow::bail!(
+        "worktrees_directory_for_repo is not yet implemented: setting={worktree_directory_setting:?}"
+    )
+}

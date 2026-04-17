@@ -21,8 +21,8 @@ use ui::{Divider, DividerColor, KeyBinding, ListSubHeader, Tab, ThreadItem, Tool
 use ui_input::ErasedEditor;
 use util::ResultExt as _;
 use workspace::{
-    FocusWorkspaceSidebar, MultiWorkspace, NewWorkspaceInWindow, Sidebar as WorkspaceSidebar,
-    SidebarEvent, ToggleWorkspaceSidebar, Workspace,
+    FocusWorkspaceSidebar, MultiWorkspace, NewWorkspaceInWindow, OpenMode,
+    Sidebar as WorkspaceSidebar, SidebarEvent, ToggleWorkspaceSidebar, Workspace,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -317,7 +317,7 @@ impl WorkspacePickerDelegate {
         cx.defer(move |cx| {
             if let Some(task) = handle
                 .update(cx, |multi_workspace, window, cx| {
-                    multi_workspace.open_project(paths, window, cx)
+                    multi_workspace.open_project(paths, OpenMode::Activate, window, cx)
                 })
                 .log_err()
             {
@@ -806,8 +806,14 @@ impl Sidebar {
         title: SharedString,
         status: AgentThreadStatus,
     ) {
-        self.test_thread_infos
-            .insert(index, AgentThreadInfo { title, status });
+        self.test_thread_infos.insert(
+            index,
+            AgentThreadInfo {
+                title,
+                status,
+                generating_title: false,
+            },
+        );
     }
 
     #[cfg(any(test, feature = "test-support"))]

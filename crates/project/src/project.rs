@@ -34,6 +34,7 @@ pub mod yarn;
 
 use dap::inline_value::{InlineValueLocation, VariableLookupKind, VariableScope};
 use itertools::Either;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     git_store::GitStore,
@@ -135,6 +136,7 @@ use text::{Anchor, BufferId, OffsetRangeExt, Point, Rope};
 use toolchain_store::EmptyToolchainStore;
 use util::{
     ResultExt as _, maybe,
+    path_list::PathList,
     paths::{PathStyle, SanitizedPath, is_absolute},
     rel_path::RelPath,
 };
@@ -2286,6 +2288,16 @@ impl Project {
     pub fn worktree_for_root_name(&self, root_name: &str, cx: &App) -> Option<Entity<Worktree>> {
         self.visible_worktrees(cx)
             .find(|tree| tree.read(cx).root_name() == root_name)
+    }
+
+    pub fn project_group_key(&self, cx: &App) -> ProjectGroupKey {
+        let roots = self
+            .visible_worktrees(cx)
+            .map(|worktree| worktree.read(cx).snapshot().abs_path().to_path_buf())
+            .collect::<Vec<_>>();
+        let host = self.remote_connection_options(cx);
+        let path_list = PathList::new(&roots);
+        ProjectGroupKey::new(host, path_list)
     }
 
     #[inline]
@@ -6019,6 +6031,33 @@ impl<'a> Iterator for PathMatchCandidateSetIter<'a> {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
+pub struct AgentId(pub SharedString);
+
+impl AgentId {
+    pub fn new(id: impl Into<SharedString>) -> Self {
+        Self(id.into())
+    }
+}
+
+impl std::fmt::Display for AgentId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for AgentId {
+    fn from(s: String) -> Self {
+        Self(s.into())
+    }
+}
+
+impl AsRef<str> for AgentId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl EventEmitter<Event> for Project {}
 
 impl<'a> From<&'a ProjectPath> for SettingsLocation<'a> {
@@ -6036,6 +6075,42 @@ impl<P: Into<Arc<RelPath>>> From<(WorktreeId, P)> for ProjectPath {
             worktree_id,
             path: path.into(),
         }
+    }
+}
+
+/// Paths are normalized to the main worktree path so related workspaces can be
+/// grouped under the same project identity.
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+pub struct ProjectGroupKey {
+    paths: PathList,
+    host: Option<RemoteConnectionOptions>,
+}
+
+impl ProjectGroupKey {
+    pub(crate) fn new(host: Option<RemoteConnectionOptions>, paths: PathList) -> Self {
+        Self { paths, host }
+    }
+
+    pub fn display_name(&self) -> SharedString {
+        let mut names = Vec::with_capacity(self.paths.paths().len());
+        for abs_path in self.paths.paths() {
+            if let Some(name) = abs_path.file_name() {
+                names.push(name.to_string_lossy().to_string());
+            }
+        }
+        if names.is_empty() {
+            "Empty Workspace".into()
+        } else {
+            names.join(", ").into()
+        }
+    }
+
+    pub fn path_list(&self) -> &PathList {
+        &self.paths
+    }
+
+    pub fn host(&self) -> Option<RemoteConnectionOptions> {
+        self.host.clone()
     }
 }
 

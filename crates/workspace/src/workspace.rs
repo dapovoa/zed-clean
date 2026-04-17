@@ -80,8 +80,8 @@ pub use persistence::{
 };
 use postage::stream::Stream;
 use project::{
-    DirectoryLister, Project, ProjectEntryId, ProjectPath, ResolvedPath, Worktree, WorktreeId,
-    WorktreeSettings,
+    DirectoryLister, Project, ProjectEntryId, ProjectGroupKey, ProjectPath, ResolvedPath,
+    Worktree, WorktreeId, WorktreeSettings,
     debugger::{breakpoint_store::BreakpointStoreEvent, session::ThreadStatus},
     project_settings::ProjectSettings,
     toolchain_store::ToolchainStoreEvent,
@@ -200,6 +200,15 @@ pub trait DebuggerProvider {
     fn debug_scenario_scheduled_last(&self, cx: &App) -> bool;
 
     fn active_thread_state(&self, cx: &App) -> Option<ThreadStatus>;
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OpenMode {
+    /// Open in this window when possible, otherwise fall back to a new window.
+    #[default]
+    Activate,
+    /// Force reusing the current multi-workspace window.
+    ReplaceCurrentWindow,
 }
 
 actions!(
@@ -1876,7 +1885,7 @@ impl Workspace {
 
                                 workspace
                             });
-                            cx.new(|cx| MultiWorkspace::new(workspace, cx))
+                            cx.new(|cx| MultiWorkspace::new(workspace, window, cx))
                         }
                     })?;
                     let workspace =
@@ -2042,6 +2051,10 @@ impl Workspace {
 
     pub fn project(&self) -> &Entity<Project> {
         &self.project
+    }
+
+    pub fn project_group_key(&self, cx: &App) -> ProjectGroupKey {
+        self.project.read(cx).project_group_key(cx)
     }
 
     pub fn path_style(&self, cx: &App) -> PathStyle {
@@ -2941,7 +2954,7 @@ impl Workspace {
 
     pub fn open_workspace_for_paths(
         &mut self,
-        replace_current_window: bool,
+        open_mode: OpenMode,
         paths: Vec<PathBuf>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -2951,12 +2964,15 @@ impl Workspace {
         let has_worktree = self.project.read(cx).worktrees(cx).next().is_some();
         let has_dirty_items = self.items(cx).any(|item| item.is_dirty(cx));
 
-        let window_to_replace = if replace_current_window {
-            window_handle
-        } else if is_remote || has_worktree || has_dirty_items {
-            None
-        } else {
-            window_handle
+        let window_to_replace = match open_mode {
+            OpenMode::ReplaceCurrentWindow => window_handle,
+            OpenMode::Activate => {
+                if is_remote || has_worktree || has_dirty_items {
+                    None
+                } else {
+                    window_handle
+                }
+            }
         };
         let app_state = self.app_state.clone();
 
@@ -8425,7 +8441,7 @@ pub fn open_workspace_by_id(
                         workspace.centered_layout = centered_layout;
                         workspace
                     });
-                    cx.new(|cx| MultiWorkspace::new(workspace, cx))
+                    cx.new(|cx| MultiWorkspace::new(workspace, window, cx))
                 }
             })?;
 
@@ -8973,7 +8989,7 @@ pub fn join_in_room_project(
                     let workspace = cx.new(|cx| {
                         Workspace::new(Default::default(), project, app_state.clone(), window, cx)
                     });
-                    cx.new(|cx| MultiWorkspace::new(workspace, cx))
+                    cx.new(|cx| MultiWorkspace::new(workspace, window, cx))
                 })
             })?
         };

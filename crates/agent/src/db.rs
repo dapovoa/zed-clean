@@ -17,6 +17,7 @@ use sqlez::{
 };
 use std::sync::Arc;
 use ui::{App, SharedString};
+use util::path_list::PathList;
 use zed_env_vars::ZED_STATELESS;
 
 pub type DbMessage = crate::Message;
@@ -27,9 +28,10 @@ pub type DbLanguageModel = crate::legacy_thread::SerializedLanguageModel;
 pub struct DbThreadMetadata {
     pub id: acp::SessionId,
     pub parent_session_id: Option<acp::SessionId>,
-    #[serde(alias = "summary")]
     pub title: SharedString,
     pub updated_at: DateTime<Utc>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub folder_paths: PathList,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -424,19 +426,29 @@ impl ThreadsDatabase {
             let connection = connection.lock();
 
             let mut select = connection
-                .select_bound::<(), (Arc<str>, Option<Arc<str>>, String, String)>(indoc! {"
-                SELECT id, parent_id, summary, updated_at FROM threads ORDER BY updated_at DESC
+                .select_bound::<(), (Arc<str>, Option<Arc<str>>, Option<String>, Option<String>, String, String, Option<String>)>(indoc! {"
+                SELECT id, parent_id, folder_paths, folder_paths_order, summary, updated_at, created_at FROM threads ORDER BY updated_at DESC, created_at DESC
             "})?;
 
             let rows = select(())?;
             let mut threads = Vec::new();
 
-            for (id, parent_id, summary, updated_at) in rows {
+            for (id, parent_id, folder_paths, folder_paths_order, summary, updated_at, created_at) in rows {
+                let folder_paths = folder_paths
+                    .map(|paths| {
+                        PathList::deserialize(&util::path_list::SerializedPathList {
+                            paths,
+                            order: folder_paths_order.unwrap_or_default(),
+                        })
+                    })
+                    .unwrap_or_default();
                 threads.push(DbThreadMetadata {
                     id: acp::SessionId::new(id),
                     parent_session_id: parent_id.map(acp::SessionId::new),
                     title: summary.into(),
                     updated_at: DateTime::parse_from_rfc3339(&updated_at)?.with_timezone(&Utc),
+                    created_at: created_at.map(|s| DateTime::parse_from_rfc3339(&s).map(|dt| dt.with_timezone(&Utc))).transpose().ok().flatten(),
+                    folder_paths,
                 });
             }
 

@@ -5,14 +5,16 @@ use gpui::{
     ManagedView, MouseButton, Pixels, Render, Subscription, Task, Tiling, Window, actions,
     deferred, px,
 };
-use project::Project;
+use project::{Project, ProjectGroupKey};
+use project::Event as ProjectEvent;
 use std::path::PathBuf;
 use ui::prelude::*;
 
 const SIDEBAR_RESIZE_HANDLE_SIZE: Pixels = px(6.0);
 
 use crate::{
-    DockPosition, Item, ModalView, Panel, Workspace, WorkspaceId, client_side_decorations,
+    DockPosition, Item, ModalView, OpenMode, Panel, Workspace, WorkspaceId,
+    client_side_decorations,
 };
 
 actions!(
@@ -95,20 +97,52 @@ impl<T: Sidebar> SidebarHandle for Entity<T> {
 pub struct MultiWorkspace {
     workspaces: Vec<Entity<Workspace>>,
     active_workspace_index: usize,
+    project_group_keys: Vec<ProjectGroupKey>,
     sidebar: Option<Box<dyn SidebarHandle>>,
     sidebar_open: bool,
+    _worktree_subscription: Option<Subscription>,
     _sidebar_subscription: Option<Subscription>,
 }
 
 impl MultiWorkspace {
-    pub fn new(workspace: Entity<Workspace>, _cx: &mut Context<Self>) -> Self {
+    pub fn new(workspace: Entity<Workspace>, window: &Window, cx: &mut Context<Self>) -> Self {
+        let worktree_subscription = Self::subscribe_to_workspace(workspace.clone(), window, cx);
+        Self::subscribe_to_workspace_events(workspace.clone(), window, cx);
         Self {
+            project_group_keys: vec![workspace.read(cx).project_group_key(cx)],
             workspaces: vec![workspace],
             active_workspace_index: 0,
             sidebar: None,
             sidebar_open: false,
+            _worktree_subscription: Some(worktree_subscription),
             _sidebar_subscription: None,
         }
+    }
+
+    fn subscribe_to_workspace(
+        workspace: Entity<Workspace>,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Subscription {
+        let project = workspace.read(cx).project().clone();
+        let workspace = workspace.downgrade();
+        cx.subscribe_in(&project, window, move |this, _, event, _window, cx| {
+            match event {
+                ProjectEvent::WorktreeAdded(_) | ProjectEvent::WorktreeRemoved(_) => {
+                    if let Some(workspace) = workspace.upgrade() {
+                        this.add_project_group_key(workspace.read(cx).project_group_key(cx));
+                    }
+                }
+                _ => {}
+            }
+        })
+    }
+
+    fn subscribe_to_workspace_events(
+        _workspace: Entity<Workspace>,
+        _window: &Window,
+        _cx: &mut Context<Self>,
+    ) {
     }
 
     pub fn register_sidebar<T: Sidebar>(
@@ -216,6 +250,25 @@ impl MultiWorkspace {
         self.sidebar_open
     }
 
+    pub fn project_groups(
+        &self,
+        cx: &App,
+    ) -> impl Iterator<Item = (ProjectGroupKey, Vec<Entity<Workspace>>)> {
+        let mut groups = self
+            .project_group_keys
+            .iter()
+            .rev()
+            .map(|key| (key.clone(), Vec::new()))
+            .collect::<Vec<_>>();
+        for workspace in &self.workspaces {
+            let key = workspace.read(cx).project_group_key(cx);
+            if let Some((_, workspaces)) = groups.iter_mut().find(|(k, _)| k == &key) {
+                workspaces.push(workspace.clone());
+            }
+        }
+        groups.into_iter()
+    }
+
     pub fn workspace(&self) -> &Entity<Workspace> {
         &self.workspaces[self.active_workspace_index]
     }
@@ -228,9 +281,22 @@ impl MultiWorkspace {
         self.active_workspace_index
     }
 
+    pub fn add_project_group_key(&mut self, project_group_key: ProjectGroupKey) {
+        if self.project_group_keys.contains(&project_group_key) {
+            return;
+        }
+        self.project_group_keys.push(project_group_key);
+    }
+
+    pub fn project_group_keys(&self) -> impl Iterator<Item = &ProjectGroupKey> {
+        self.project_group_keys.iter()
+    }
+
     pub fn activate(&mut self, workspace: Entity<Workspace>, cx: &mut Context<Self>) {
         if !self.multi_workspace_enabled(cx) {
             self.workspaces[0] = workspace;
+            self.project_group_keys.clear();
+            self.add_project_group_key(self.workspaces[0].read(cx).project_group_key(cx));
             self.active_workspace_index = 0;
             cx.notify();
             return;
@@ -249,6 +315,7 @@ impl MultiWorkspace {
         if let Some(index) = self.workspaces.iter().position(|w| *w == workspace) {
             index
         } else {
+            self.add_project_group_key(workspace.read(cx).project_group_key(cx));
             if self.sidebar_open {
                 workspace.update(cx, |workspace, cx| {
                     workspace.set_workspace_sidebar_open(true, cx);
@@ -404,7 +471,7 @@ impl MultiWorkspace {
     #[cfg(any(test, feature = "test-support"))]
     pub fn test_new(project: Entity<Project>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let workspace = cx.new(|cx| Workspace::test_new(project, window, cx));
-        Self::new(workspace, cx)
+        Self::new(workspace, window, cx)
     }
 
     #[cfg(any(test, feature = "test-support"))]
@@ -459,6 +526,7 @@ impl MultiWorkspace {
     pub fn open_project(
         &mut self,
         paths: Vec<PathBuf>,
+        open_mode: OpenMode,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Task<Result<()>> {
@@ -466,7 +534,7 @@ impl MultiWorkspace {
 
         if self.multi_workspace_enabled(cx) {
             workspace.update(cx, |workspace, cx| {
-                workspace.open_workspace_for_paths(true, paths, window, cx)
+                workspace.open_workspace_for_paths(open_mode, paths, window, cx)
             })
         } else {
             cx.spawn_in(window, async move |_this, cx| {
@@ -478,7 +546,7 @@ impl MultiWorkspace {
                 if should_continue {
                     workspace
                         .update_in(cx, |workspace, window, cx| {
-                            workspace.open_workspace_for_paths(true, paths, window, cx)
+                            workspace.open_workspace_for_paths(open_mode, paths, window, cx)
                         })?
                         .await
                 } else {

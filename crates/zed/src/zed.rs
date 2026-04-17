@@ -88,7 +88,7 @@ use workspace::notifications::{
 };
 
 use workspace::{
-    AppState, MultiWorkspace, NewFile, NewWindow, OpenLog, Panel, Toast, Workspace,
+    AppState, MultiWorkspace, NewFile, NewWindow, OpenLog, OpenMode, Panel, Toast, Workspace,
     WorkspaceSettings, create_and_open_local_file,
     notifications::simple_message_notification::MessageNotification, open_new,
 };
@@ -797,7 +797,7 @@ fn register_actions(
 
                 if let Some(task) = this
                     .update_in(cx, |this, window, cx| {
-                        this.open_workspace_for_paths(false, paths, window, cx)
+                        this.open_workspace_for_paths(OpenMode::Activate, paths, window, cx)
                     })
                     .log_err()
                 {
@@ -5808,7 +5808,7 @@ mod tests {
 
         window_a
             .update(cx, |multi_workspace, window, cx| {
-                multi_workspace.open_project(vec![dir2.into()], window, cx)
+                multi_workspace.open_project(vec![dir2.into()], OpenMode::Activate, window, cx)
             })
             .unwrap()
             .await

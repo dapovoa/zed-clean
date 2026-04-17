@@ -20,7 +20,9 @@ use remote_connection::{RemoteConnectionModal, connect};
 use std::{path::PathBuf, sync::Arc};
 use ui::{HighlightedLabel, KeyBinding, ListItem, ListItemSpacing, prelude::*};
 use util::ResultExt;
-use workspace::{ModalView, MultiWorkspace, Workspace, notifications::DetachAndPromptErr};
+use workspace::{
+    ModalView, MultiWorkspace, OpenMode, Workspace, notifications::DetachAndPromptErr,
+};
 
 actions!(git, [WorktreeFromDefault, WorktreeFromDefaultOnWindow]);
 
@@ -342,7 +344,11 @@ impl WorktreeListDelegate {
                 workspace
                     .update_in(cx, |workspace, window, cx| {
                         workspace.open_workspace_for_paths(
-                            replace_current_window,
+                            if replace_current_window {
+                                OpenMode::ReplaceCurrentWindow
+                            } else {
+                                OpenMode::Activate
+                            },
                             vec![new_worktree_path],
                             window,
                             cx,
@@ -393,7 +399,16 @@ impl WorktreeListDelegate {
 
         if is_local {
             let open_task = workspace.update(cx, |workspace, cx| {
-                workspace.open_workspace_for_paths(replace_current_window, vec![path], window, cx)
+                workspace.open_workspace_for_paths(
+                    if replace_current_window {
+                        OpenMode::ReplaceCurrentWindow
+                    } else {
+                        OpenMode::Activate
+                    },
+                    vec![path],
+                    window,
+                    cx,
+                )
             });
             cx.spawn(async move |_, _| {
                 open_task?.await?;
@@ -518,7 +533,7 @@ async fn open_remote_worktree(
                 workspace.centered_layout = workspace_position.centered_layout;
                 workspace
             });
-            cx.new(|cx| MultiWorkspace::new(workspace, cx))
+            cx.new(|cx| MultiWorkspace::new(workspace, window, cx))
         })?
     };
 

@@ -27,6 +27,7 @@ use crate::{
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     slash_command::SlashCommandCompletionProvider,
     text_thread_editor::{AgentPanelDelegate, TextThreadEditor, make_lsp_adapter_delegate},
+    thread_metadata_store::ThreadMetadataStore,
     ui::{AgentOnboardingModal, EndTrialUpsell},
 };
 use crate::{
@@ -1804,6 +1805,9 @@ impl AgentPanel {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if let Some(store) = ThreadMetadataStore::try_global(cx) {
+            store.update(cx, |store, cx| store.unarchive(&thread.session_id, cx));
+        }
         let Some(agent) = self.selected_external_agent() else {
             return;
         };

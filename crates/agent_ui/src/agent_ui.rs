@@ -20,6 +20,7 @@ mod terminal_codegen;
 mod terminal_inline_assistant;
 mod text_thread_editor;
 mod text_thread_history;
+pub mod thread_metadata_store;
 mod ui;
 
 use std::rc::Rc;
@@ -54,6 +55,7 @@ use crate::agent_registry_ui::AgentRegistryPage;
 pub use crate::inline_assistant::InlineAssistant;
 pub use agent_diff::{AgentDiffPane, AgentDiffToolbar};
 pub use text_thread_editor::{AgentPanelDelegate, TextThreadEditor};
+pub use thread_metadata_store::{ThreadMetadata, ThreadMetadataStore};
 use zed_actions;
 
 actions!(
@@ -283,6 +285,7 @@ pub fn init(
     assistant_slash_command::init(cx);
     agent_panel::init(cx);
     context_server_configuration::init(language_registry.clone(), fs.clone(), cx);
+    thread_metadata_store::init(cx);
     TextThreadEditor::init(cx);
 
     register_slash_commands(cx);

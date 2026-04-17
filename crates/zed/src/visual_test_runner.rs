@@ -54,8 +54,8 @@ use {
     feature_flags::FeatureFlagAppExt as _,
     git_ui::project_diff::ProjectDiff,
     gpui::{
-        App, AppContext as _, Bounds, KeyBinding, Modifiers, SharedString, VisualTestAppContext,
-        WindowBounds, WindowHandle, WindowOptions, point, px, size,
+        point, px, size, App, AppContext as _, Bounds, KeyBinding, Modifiers, SharedString,
+        VisualTestAppContext, WindowBounds, WindowHandle, WindowOptions,
     },
     image::RgbaImage,
     project_panel::ProjectPanel,
@@ -2568,7 +2568,7 @@ fn run_multi_workspace_sidebar_visual_tests(
                         Workspace::new(None, project2.clone(), app_state.clone(), window, cx)
                     });
                     cx.new(|cx| {
-                        let mut multi_workspace = MultiWorkspace::new(workspace1, cx);
+                        let mut multi_workspace = MultiWorkspace::new(workspace1, window, cx);
                         multi_workspace.activate(workspace2, cx);
                         multi_workspace
                     })
