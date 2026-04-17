@@ -539,11 +539,28 @@ impl PickerDelegate for WorkspacePickerDelegate {
 
         match &selected_match.entry {
             SidebarEntry::Separator(_) => {}
-            SidebarEntry::ProjectHeader(thread_entry) | SidebarEntry::ProjectThread(thread_entry) => {
+            SidebarEntry::ProjectHeader(thread_entry) => {
                 let target_index = thread_entry.activation_index;
                 self.multi_workspace.update(cx, |multi_workspace, cx| {
                     multi_workspace.activate_index(target_index, window, cx);
                 });
+            }
+            SidebarEntry::ProjectThread(thread_entry) => {
+                let target_index = thread_entry.activation_index;
+                let target_workspace = self
+                    .multi_workspace
+                    .read(cx)
+                    .workspaces()
+                    .get(target_index)
+                    .cloned();
+                self.multi_workspace.update(cx, |multi_workspace, cx| {
+                    multi_workspace.activate_index(target_index, window, cx);
+                });
+                if let Some(workspace) = target_workspace {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                    });
+                }
             }
             SidebarEntry::RecentProject(project_entry) => {
                 let paths = project_entry.paths.clone();
