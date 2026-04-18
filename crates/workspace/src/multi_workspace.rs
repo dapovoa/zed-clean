@@ -7,6 +7,7 @@ use gpui::{
 };
 use project::{Project, ProjectGroupKey};
 use project::Event as ProjectEvent;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use ui::prelude::*;
 
@@ -274,19 +275,15 @@ impl MultiWorkspace {
         &self,
         cx: &App,
     ) -> impl Iterator<Item = (ProjectGroupKey, Vec<Entity<Workspace>>)> {
-        let mut groups = self
-            .project_group_keys
-            .iter()
-            .rev()
-            .map(|key| (key.clone(), Vec::new()))
-            .collect::<Vec<_>>();
+        let mut groups: HashMap<ProjectGroupKey, Vec<Entity<Workspace>>> = HashMap::new();
         for workspace in &self.workspaces {
             let key = workspace.read(cx).project_group_key(cx);
-            if let Some((_, workspaces)) = groups.iter_mut().find(|(k, _)| k == &key) {
-                workspaces.push(workspace.clone());
-            }
+            groups.entry(key).or_default().push(workspace.clone());
         }
-        groups.into_iter().filter(|(_, workspaces)| !workspaces.is_empty())
+        self.project_group_keys
+            .iter()
+            .rev()
+            .filter_map(move |key| groups.remove(key).map(|workspaces| (key.clone(), workspaces)))
     }
 
     pub fn workspace(&self) -> &Entity<Workspace> {
