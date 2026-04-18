@@ -34,6 +34,8 @@ use workspace::{
     Sidebar as WorkspaceSidebar, SidebarEvent, ToggleWorkspaceSidebar, Workspace,
 };
 
+gpui::actions!(agents_sidebar, [NewThreadInGroup, ToggleArchive]);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AgentThreadStatus {
     Running,
@@ -538,6 +540,64 @@ impl WorkspacePickerDelegate {
         }
     }
 
+    fn group_for_entry(entry: &SidebarEntry) -> Option<ProjectGroupEntry> {
+        match entry {
+            SidebarEntry::ProjectHeader(group)
+            | SidebarEntry::ProjectNewThread(group) => Some(group.clone()),
+            SidebarEntry::ProjectDraftThread { group, .. }
+            | SidebarEntry::ProjectThread { group, .. }
+            | SidebarEntry::ProjectViewMore { group, .. } => Some(group.clone()),
+            SidebarEntry::Separator(_) | SidebarEntry::RecentProject(_) => None,
+        }
+    }
+
+    fn selected_project_group(&self) -> Option<ProjectGroupEntry> {
+        self.matches
+            .get(self.selected_index)
+            .and_then(|matched| Self::group_for_entry(&matched.entry))
+            .or_else(|| {
+                self.active_group_key.as_ref().and_then(|active_key| {
+                    self.entries.iter().find_map(|entry| {
+                        let group = Self::group_for_entry(entry)?;
+                        (&group.key == active_key).then_some(group)
+                    })
+                })
+            })
+    }
+
+    fn activate_group_workspace(
+        &self,
+        group: &ProjectGroupEntry,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) -> Option<Entity<Workspace>> {
+        let target_index = group.activation_index;
+        let target_workspace = self
+            .multi_workspace
+            .read(cx)
+            .workspaces()
+            .get(target_index)
+            .cloned();
+        self.multi_workspace.update(cx, |multi_workspace, cx| {
+            multi_workspace.activate_index(target_index, window, cx);
+        });
+        target_workspace
+    }
+
+    fn open_new_thread_in_group(
+        &mut self,
+        group: &ProjectGroupEntry,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) {
+        if let Some(workspace) = self.activate_group_workspace(group, window, cx) {
+            workspace.update(cx, |workspace, cx| {
+                workspace.focus_panel::<AgentPanel>(window, cx);
+            });
+            window.dispatch_action(NewThread.boxed_clone(), cx);
+        }
+    }
+
     fn set_recent_projects(&mut self, recent_projects: Vec<RecentProjectEntry>, cx: &App) {
         self.recent_project_thread_titles.clear();
         if let Some(map) = read_thread_title_map() {
@@ -895,34 +955,14 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 });
             }
             SidebarEntry::ProjectDraftThread { group, .. } => {
-                let target_index = group.activation_index;
-                let target_workspace = self
-                    .multi_workspace
-                    .read(cx)
-                    .workspaces()
-                    .get(target_index)
-                    .cloned();
-                self.multi_workspace.update(cx, |multi_workspace, cx| {
-                    multi_workspace.activate_index(target_index, window, cx);
-                });
-                if let Some(workspace) = target_workspace {
+                if let Some(workspace) = self.activate_group_workspace(&group, window, cx) {
                     workspace.update(cx, |workspace, cx| {
                         workspace.focus_panel::<AgentPanel>(window, cx);
                     });
                 }
             }
             SidebarEntry::ProjectThread { group, thread } => {
-                let target_index = group.activation_index;
-                let target_workspace = self
-                    .multi_workspace
-                    .read(cx)
-                    .workspaces()
-                    .get(target_index)
-                    .cloned();
-                self.multi_workspace.update(cx, |multi_workspace, cx| {
-                    multi_workspace.activate_index(target_index, window, cx);
-                });
-                if let Some(workspace) = target_workspace {
+                if let Some(workspace) = self.activate_group_workspace(&group, window, cx) {
                     let mut agent_thread = AgentSessionInfo::new(thread.metadata.session_id.clone());
                     agent_thread.cwd = thread.metadata.folder_paths.paths().first().cloned();
                     agent_thread.title = Some(thread.metadata.title.clone());
@@ -962,22 +1002,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 self.refresh_after_structure_change(window, cx);
             }
             SidebarEntry::ProjectNewThread(group) => {
-                let target_index = group.activation_index;
-                let target_workspace = self
-                    .multi_workspace
-                    .read(cx)
-                    .workspaces()
-                    .get(target_index)
-                    .cloned();
-                self.multi_workspace.update(cx, |multi_workspace, cx| {
-                    multi_workspace.activate_index(target_index, window, cx);
-                });
-                if let Some(workspace) = target_workspace {
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.focus_panel::<AgentPanel>(window, cx);
-                    });
-                    window.dispatch_action(NewThread.boxed_clone(), cx);
-                }
+                self.open_new_thread_in_group(&group, window, cx);
             }
             SidebarEntry::RecentProject(project_entry) => {
                 let paths = project_entry.paths.clone();
@@ -1012,7 +1037,9 @@ impl PickerDelegate for WorkspacePickerDelegate {
             SidebarEntry::ProjectHeader(group_entry) => Some(
                 {
                     let picker = cx.entity().downgrade();
+                    let disclosure_picker = picker.clone();
                     let group_key = group_entry.key.clone();
+                    let new_thread_group = group_entry.clone();
                     v_flex()
                         .when(index > 0, |this| this.mt_1())
                         .child(
@@ -1037,6 +1064,35 @@ impl PickerDelegate for WorkspacePickerDelegate {
                                             )
                                         })
                                         .child(
+                                            IconButton::new(
+                                                SharedString::from(format!(
+                                                    "new-thread-in-group-{}",
+                                                    group_entry.activation_index
+                                                )),
+                                                IconName::Thread,
+                                            )
+                                            .icon_size(IconSize::XSmall)
+                                            .tooltip(|_window, cx| {
+                                                Tooltip::for_action(
+                                                    "New Thread In Project",
+                                                    &NewThreadInGroup,
+                                                    cx,
+                                                )
+                                            })
+                                            .on_click(move |_, window, cx| {
+                                                if let Some(picker) = picker.upgrade() {
+                                                    let group = new_thread_group.clone();
+                                                    picker.update(cx, |picker, cx| {
+                                                        picker
+                                                            .delegate
+                                                            .open_new_thread_in_group(
+                                                                &group, window, cx,
+                                                            );
+                                                    });
+                                                }
+                                            }),
+                                        )
+                                        .child(
                                             Disclosure::new(
                                                 SharedString::from(format!(
                                                     "collapse-group-{}",
@@ -1045,7 +1101,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                                                 !self.collapsed_groups.contains(&group_entry.key),
                                             )
                                             .on_click(move |_, window, cx| {
-                                                if let Some(picker) = picker.upgrade() {
+                                                if let Some(picker) = disclosure_picker.upgrade() {
                                                     picker.update(cx, |picker, cx| {
                                                         picker.delegate.toggle_group_collapsed(
                                                             &group_key, window, cx,
@@ -1555,6 +1611,24 @@ impl Sidebar {
         }
     }
 
+    fn selected_project_group(&self, cx: &App) -> Option<ProjectGroupEntry> {
+        self.picker.read(cx).delegate.selected_project_group()
+    }
+
+    fn new_thread_in_group(&mut self, _: &NewThreadInGroup, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(group) = self.selected_project_group(cx) else {
+            return;
+        };
+        self.show_thread_list(cx);
+        self.picker.update(cx, |picker, cx| {
+            picker.delegate.open_new_thread_in_group(&group, window, cx);
+        });
+    }
+
+    fn on_toggle_archive(&mut self, _: &ToggleArchive, window: &mut Window, cx: &mut Context<Self>) {
+        self.toggle_archive(window, cx);
+    }
+
     fn show_archive(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let active_workspace = self
             .multi_workspace
@@ -1907,14 +1981,26 @@ impl Render for Sidebar {
                             IconName::HistoryRerun,
                         )
                         .icon_size(IconSize::Small)
-                        .tooltip(Tooltip::text(if showing_archive {
-                            "Show Thread List"
-                        } else {
-                            "Show Archive"
-                        }))
+                        .tooltip(|_window, cx| {
+                            Tooltip::for_action("Toggle Archive", &ToggleArchive, cx)
+                        })
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.toggle_archive(window, cx);
                         })),
+                    )
+                    .child(
+                        IconButton::new("new-thread-in-selected-group", IconName::Thread)
+                            .icon_size(IconSize::Small)
+                            .tooltip(|_window, cx| {
+                                Tooltip::for_action(
+                                    "New Thread In Selected Project",
+                                    &NewThreadInGroup,
+                                    cx,
+                                )
+                            })
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.new_thread_in_group(&NewThreadInGroup, window, cx);
+                            })),
                     )
                     .child(
                         IconButton::new("new-workspace", IconName::Plus)
@@ -1933,6 +2019,8 @@ impl Render for Sidebar {
                 SidebarView::ThreadList => self.picker.clone().into_any_element(),
                 SidebarView::Archive(view) => view.clone().into_any_element(),
             })
+            .on_action(cx.listener(Self::new_thread_in_group))
+            .on_action(cx.listener(Self::on_toggle_archive))
     }
 }
 
