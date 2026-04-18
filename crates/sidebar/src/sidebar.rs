@@ -1,4 +1,7 @@
+mod thread_switcher;
+
 use acp_thread::{AgentSessionInfo, ThreadStatus};
+use agent_client_protocol as acp;
 use agent_ui::{
     AgentPanel, AgentPanelEvent, NewThread, ThreadMetadata, ThreadMetadataStore,
     ThreadsArchiveView, ThreadsArchiveViewEvent,
@@ -33,8 +36,9 @@ use workspace::{
     FocusWorkspaceSidebar, MultiWorkspace, NewWorkspaceInWindow, OpenMode,
     Sidebar as WorkspaceSidebar, SidebarEvent, ToggleWorkspaceSidebar, Workspace,
 };
+use crate::thread_switcher::{ThreadSwitcher, ThreadSwitcherEntry, ThreadSwitcherEvent};
 
-gpui::actions!(agents_sidebar, [NewThreadInGroup, ToggleArchive]);
+gpui::actions!(agents_sidebar, [NewThreadInGroup, ToggleArchive, ToggleThreadSwitcher]);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AgentThreadStatus {
@@ -1294,8 +1298,10 @@ pub struct Sidebar {
     _project_subscriptions: Vec<Subscription>,
     _agent_panel_subscriptions: Vec<Subscription>,
     _thread_subscriptions: Vec<Subscription>,
+    _thread_switcher_subscriptions: Vec<Subscription>,
     view: SidebarView,
     _archive_subscription: Option<Subscription>,
+    thread_switcher: Option<Entity<ThreadSwitcher>>,
     #[cfg(any(test, feature = "test-support"))]
     test_thread_infos: HashMap<usize, AgentThreadInfo>,
     #[cfg(any(test, feature = "test-support"))]
@@ -1354,8 +1360,10 @@ impl Sidebar {
             _project_subscriptions: Vec::new(),
             _agent_panel_subscriptions: Vec::new(),
             _thread_subscriptions: Vec::new(),
+            _thread_switcher_subscriptions: Vec::new(),
             view: SidebarView::ThreadList,
             _archive_subscription: None,
+            thread_switcher: None,
             #[cfg(any(test, feature = "test-support"))]
             test_thread_infos: HashMap::new(),
             #[cfg(any(test, feature = "test-support"))]
@@ -1609,6 +1617,174 @@ impl Sidebar {
             SidebarView::ThreadList => self.show_archive(window, cx),
             SidebarView::Archive(_) => self.show_thread_list(cx),
         }
+    }
+
+    fn format_switcher_timestamp() -> SharedString {
+        "".into()
+    }
+
+    fn mru_threads_for_switcher(&self, cx: &App) -> Vec<ThreadSwitcherEntry> {
+        let groups = self.picker.read(cx).delegate.current_project_groups();
+        let workspaces = self.multi_workspace.read(cx).workspaces().to_vec();
+        let notified = self.picker.read(cx).delegate.notified_groups.clone();
+
+        let mut entries = groups
+            .into_iter()
+            .flat_map(|group| {
+                let workspace = workspaces.get(group.activation_index).cloned();
+                let project_name = group.worktree_label.clone();
+                let is_notified = notified.contains(&group.key);
+                group.threads.into_iter().filter_map(move |thread| {
+                    let workspace = workspace.clone()?;
+                    Some(ThreadSwitcherEntry {
+                        session_id: thread.metadata.session_id.clone(),
+                        title: thread.metadata.title.clone(),
+                        icon: thread.icon,
+                        status: thread.status,
+                        workspace,
+                        project_name: project_name.clone(),
+                        worktree_label: thread.worktree_label.clone(),
+                        generating_title: thread.generating_title,
+                        notified: is_notified,
+                        timestamp: Self::format_switcher_timestamp(),
+                    })
+                })
+            })
+            .collect::<Vec<_>>();
+
+        entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        entries
+    }
+
+    fn open_thread_metadata_in_workspace(
+        workspace: &Entity<Workspace>,
+        session_id: &acp::SessionId,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let store = ThreadMetadataStore::global(cx);
+        let Some(metadata) = ({
+            let store = store.read(cx);
+            store.entry(session_id).cloned()
+        }) else {
+            return;
+        };
+
+        let mut thread = AgentSessionInfo::new(metadata.session_id.clone());
+        thread.cwd = Self::archived_thread_paths(&metadata).first().cloned();
+        thread.title = Some(metadata.title.clone());
+        thread.updated_at = Some(metadata.updated_at);
+
+        let agent = match metadata.agent_id.as_ref() {
+            "Zed Agent" => agent_ui::ExternalAgent::NativeAgent,
+            GEMINI_NAME => agent_ui::ExternalAgent::Gemini,
+            CLAUDE_CODE_NAME => agent_ui::ExternalAgent::ClaudeCode,
+            CODEX_NAME => agent_ui::ExternalAgent::Codex,
+            name => agent_ui::ExternalAgent::Custom {
+                name: name.to_string().into(),
+            },
+        };
+
+        if let Some(panel) = workspace.read(cx).panel::<AgentPanel>(cx) {
+            panel.update(cx, |panel, cx| {
+                panel.open_thread_with_agent(agent, thread, window, cx);
+            });
+        }
+    }
+
+    fn dismiss_thread_switcher(&mut self) {
+        self.thread_switcher = None;
+        self._thread_switcher_subscriptions.clear();
+    }
+
+    fn on_toggle_thread_switcher(
+        &mut self,
+        _: &ToggleThreadSwitcher,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(thread_switcher) = &self.thread_switcher {
+            thread_switcher.update(cx, |switcher, cx| {
+                switcher.cycle_selection(cx);
+            });
+            return;
+        }
+
+        let entries = self.mru_threads_for_switcher(cx);
+        if entries.len() < 2 {
+            return;
+        }
+
+        let original_workspace = self
+            .multi_workspace
+            .read(cx)
+            .workspaces()
+            .get(self.multi_workspace.read(cx).active_workspace_index())
+            .cloned();
+        let original_session_id = original_workspace.as_ref().and_then(|workspace| {
+            let agent_panel = workspace.read(cx).panel::<AgentPanel>(cx)?;
+            let thread = agent_panel.read(cx).active_agent_thread(cx)?;
+            Some(thread.read(cx).session_id().clone())
+        });
+
+        let Some(active_workspace) = original_workspace.clone() else {
+            return;
+        };
+
+        active_workspace.update(cx, |workspace, cx| {
+            workspace.toggle_modal(window, cx, |window, cx| {
+                ThreadSwitcher::new(entries, false, window, cx)
+            });
+        });
+
+        let Some(thread_switcher) = active_workspace.read(cx).active_modal::<ThreadSwitcher>(cx) else {
+            return;
+        };
+
+        let mut subscriptions = Vec::new();
+        subscriptions.push(cx.subscribe_in(
+            &thread_switcher,
+            window,
+            move |this, _, event: &ThreadSwitcherEvent, window, cx| match event {
+                ThreadSwitcherEvent::Preview { session_id, workspace } => {
+                    this.multi_workspace.update(cx, |mw, cx| {
+                        mw.activate(workspace.clone(), cx);
+                    });
+                    Self::open_thread_metadata_in_workspace(workspace, session_id, window, cx);
+                }
+                ThreadSwitcherEvent::Confirmed { session_id, workspace } => {
+                    this.multi_workspace.update(cx, |mw, cx| {
+                        mw.activate(workspace.clone(), cx);
+                    });
+                    Self::open_thread_metadata_in_workspace(workspace, session_id, window, cx);
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                    });
+                    this.dismiss_thread_switcher();
+                }
+                ThreadSwitcherEvent::Dismissed => {
+                    if let (Some(workspace), Some(session_id)) =
+                        (original_workspace.clone(), original_session_id.clone())
+                    {
+                        this.multi_workspace.update(cx, |mw, cx| {
+                            mw.activate(workspace.clone(), cx);
+                        });
+                        Self::open_thread_metadata_in_workspace(&workspace, &session_id, window, cx);
+                    }
+                    this.dismiss_thread_switcher();
+                }
+            },
+        ));
+        subscriptions.push(cx.subscribe_in(
+            &thread_switcher,
+            window,
+            |this, _, _: &gpui::DismissEvent, _window, _cx| {
+                this.dismiss_thread_switcher();
+            },
+        ));
+
+        self.thread_switcher = Some(thread_switcher);
+        self._thread_switcher_subscriptions = subscriptions;
     }
 
     fn selected_project_group(&self, cx: &App) -> Option<ProjectGroupEntry> {
@@ -2021,6 +2197,7 @@ impl Render for Sidebar {
             })
             .on_action(cx.listener(Self::new_thread_in_group))
             .on_action(cx.listener(Self::on_toggle_archive))
+            .on_action(cx.listener(Self::on_toggle_thread_switcher))
     }
 }
 
