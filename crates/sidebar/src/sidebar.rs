@@ -1,17 +1,19 @@
 use acp_thread::{AgentSessionInfo, ThreadStatus};
 use agent_ui::{
-    AgentPanel, AgentPanelEvent, ThreadMetadata, ThreadsArchiveView, ThreadsArchiveViewEvent,
+    AgentPanel, AgentPanelEvent, NewThread, ThreadMetadata, ThreadMetadataStore,
+    ThreadsArchiveView, ThreadsArchiveViewEvent,
 };
 use db::kvp::KEY_VALUE_STORE;
 use fs::Fs;
 use fuzzy::StringMatchCandidate;
 use gpui::{
-    App, Context, Entity, EventEmitter, FocusHandle, Focusable, Pixels, Render, SharedString,
-    Subscription, Task, Window, px,
+    Action as _, App, Context, Entity, EventEmitter, FocusHandle, Focusable, Pixels, Render,
+    SharedString, Subscription, Task, Window, px,
 };
 use picker::{Picker, PickerDelegate};
 use project::ProjectGroupKey;
 use project::agent_server_store::{CLAUDE_CODE_NAME, CODEX_NAME, GEMINI_NAME};
+use project::git_store::linked_worktree_short_name;
 use project::Event as ProjectEvent;
 use recent_projects::{RecentProjectEntry, get_recent_projects};
 
@@ -21,7 +23,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use theme::ActiveTheme;
 use ui::utils::TRAFFIC_LIGHT_PADDING;
-use ui::{Divider, DividerColor, KeyBinding, ListSubHeader, Tab, ThreadItem, Tooltip, prelude::*};
+use ui::{
+    CommonAnimationExt, Disclosure, Divider, DividerColor, KeyBinding, ListSubHeader, Tab,
+    ThreadItem, Tooltip, prelude::*,
+};
 use ui_input::ErasedEditor;
 use util::ResultExt as _;
 use workspace::{
@@ -42,12 +47,24 @@ struct AgentThreadInfo {
     generating_title: bool,
 }
 
+#[derive(Clone)]
+struct ProjectThreadSummary {
+    metadata: ThreadMetadata,
+    status: AgentThreadStatus,
+    generating_title: bool,
+    is_active: bool,
+    icon: IconName,
+    worktree_label: SharedString,
+    full_path: SharedString,
+}
+
 const LAST_THREAD_TITLES_KEY: &str = "sidebar-last-thread-titles";
 
 const DEFAULT_WIDTH: Pixels = px(320.0);
 const MIN_WIDTH: Pixels = px(200.0);
 const MAX_WIDTH: Pixels = px(800.0);
 const MAX_MATCHES: usize = 100;
+const DEFAULT_THREADS_SHOWN: usize = 5;
 
 #[derive(Clone)]
 struct ProjectGroupEntry {
@@ -55,11 +72,62 @@ struct ProjectGroupEntry {
     activation_index: usize,
     workspace_indices: Vec<usize>,
     worktree_label: SharedString,
-    full_path: SharedString,
+    threads: Vec<ProjectThreadSummary>,
     thread_info: Option<AgentThreadInfo>,
+    draft_text: Option<SharedString>,
+    has_running_threads: bool,
+    is_remote: bool,
 }
 
 impl ProjectGroupEntry {
+    fn thread_icon(agent_id: &str) -> IconName {
+        match agent_id {
+            "Zed Agent" => IconName::ZedAgent,
+            GEMINI_NAME => IconName::AiGemini,
+            CLAUDE_CODE_NAME => IconName::AiClaude,
+            CODEX_NAME => IconName::Terminal,
+            _ => IconName::Terminal,
+        }
+    }
+
+    fn thread_worktree_label(key: &ProjectGroupKey, metadata: &ThreadMetadata) -> SharedString {
+        let main_paths = key.path_list().paths();
+        let mut names = Vec::new();
+
+        for path in metadata.folder_paths.paths() {
+            if main_paths.iter().any(|main_path| main_path.as_path() == path.as_path()) {
+                continue;
+            }
+
+            let label = main_paths
+                .iter()
+                .find_map(|main_path| linked_worktree_short_name(main_path, path))
+                .unwrap_or_else(|| {
+                    path.file_name()
+                        .map(|name| name.to_string_lossy().to_string().into())
+                        .unwrap_or_else(|| path.to_string_lossy().to_string().into())
+                });
+            names.push(label.to_string());
+        }
+
+        if names.is_empty() {
+            key.display_name()
+        } else {
+            names.join(", ").into()
+        }
+    }
+
+    fn thread_full_path(metadata: &ThreadMetadata) -> SharedString {
+        metadata
+            .folder_paths
+            .paths()
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+            .into()
+    }
+
     fn new(
         key: ProjectGroupKey,
         workspaces: &[(usize, Entity<Workspace>)],
@@ -75,14 +143,61 @@ impl ProjectGroupEntry {
             .unwrap_or_else(|| workspaces[0].0);
 
         let worktree_label = key.display_name();
-        let full_path: SharedString = key
-            .path_list()
-            .paths()
+        let active_session_id = workspaces
             .iter()
-            .map(|path| path.to_string_lossy().to_string())
-            .collect::<Vec<_>>()
-            .join("\n")
-            .into();
+            .find(|(index, _)| *index == active_workspace_index)
+            .and_then(|(_, workspace)| Self::active_session_id(workspace, cx));
+        let store = ThreadMetadataStore::global(cx);
+        let mut seen_session_ids = HashSet::new();
+        let mut thread_metadata = Vec::new();
+        {
+            let store = store.read(cx);
+            for metadata in store.entries_for_main_worktree_path(key.path_list()) {
+                if seen_session_ids.insert(metadata.session_id.clone()) {
+                    thread_metadata.push(metadata.clone());
+                }
+            }
+            for metadata in store.entries_for_path(key.path_list()) {
+                if seen_session_ids.insert(metadata.session_id.clone()) {
+                    thread_metadata.push(metadata.clone());
+                }
+            }
+        }
+
+        let mut threads: Vec<ProjectThreadSummary> = thread_metadata
+            .into_iter()
+            .map(|metadata| {
+                let live_info = Self::thread_info_for_metadata(workspaces, &metadata, cx);
+                let (status, generating_title, title) = if let Some(info) = live_info {
+                    (info.status, info.generating_title, info.title)
+                } else {
+                    (
+                        AgentThreadStatus::Completed,
+                        false,
+                        metadata.title.clone(),
+                    )
+                };
+
+                let mut metadata = metadata;
+                metadata.title = title;
+                ProjectThreadSummary {
+                    is_active: active_session_id
+                        .as_ref()
+                        .is_some_and(|session_id| session_id == metadata.session_id.0.as_ref()),
+                    icon: Self::thread_icon(metadata.agent_id.as_ref()),
+                    worktree_label: Self::thread_worktree_label(&key, &metadata),
+                    full_path: Self::thread_full_path(&metadata),
+                    metadata,
+                    status,
+                    generating_title,
+                }
+            })
+            .collect();
+        threads.sort_by(|a, b| b.metadata.updated_at.cmp(&a.metadata.updated_at));
+
+        let has_running_threads = threads
+            .iter()
+            .any(|thread| thread.status == AgentThreadStatus::Running);
 
         let thread_info = workspaces
             .iter()
@@ -92,6 +207,13 @@ impl ProjectGroupEntry {
                 workspaces
                     .iter()
                     .find_map(|(_, workspace)| Self::thread_info(workspace, cx))
+            })
+            .or_else(|| {
+            threads.first().map(|thread| AgentThreadInfo {
+                title: thread.metadata.title.clone(),
+                status: thread.status.clone(),
+                generating_title: thread.generating_title,
+            })
             })
             .or_else(|| {
             if key.path_list().paths().is_empty() {
@@ -106,13 +228,26 @@ impl ProjectGroupEntry {
             })
         });
 
+        let draft_text = workspaces
+            .iter()
+            .find(|(index, _)| *index == active_workspace_index)
+            .and_then(|(_, workspace)| {
+                let agent_panel = workspace.read(cx).panel::<AgentPanel>(cx)?;
+                agent_panel.read(cx).active_agent_draft_text(cx)
+            });
+
+        let is_remote = key.host().is_some();
+
         Self {
             key,
             activation_index,
             workspace_indices,
             worktree_label,
-            full_path,
+            threads,
             thread_info,
+            draft_text,
+            has_running_threads,
+            is_remote,
         }
     }
 
@@ -132,13 +267,60 @@ impl ProjectGroupEntry {
             generating_title,
         })
     }
+
+    fn active_session_id(workspace: &Entity<Workspace>, cx: &App) -> Option<String> {
+        let agent_panel = workspace.read(cx).panel::<AgentPanel>(cx)?;
+        let thread = agent_panel.read(cx).active_agent_thread(cx)?;
+        Some(thread.read(cx).session_id().0.to_string())
+    }
+
+    fn thread_info_for_metadata(
+        workspaces: &[(usize, Entity<Workspace>)],
+        metadata: &ThreadMetadata,
+        cx: &App,
+    ) -> Option<AgentThreadInfo> {
+        workspaces.iter().find_map(|(_, workspace)| {
+            let agent_panel = workspace.read(cx).panel::<AgentPanel>(cx)?;
+            let thread = agent_panel.read(cx).active_agent_thread(cx)?;
+            let thread_ref = thread.read(cx);
+            if thread_ref.session_id() != &metadata.session_id {
+                return None;
+            }
+
+            let title = thread_ref.title();
+            let status = match thread_ref.status() {
+                ThreadStatus::Generating => AgentThreadStatus::Running,
+                ThreadStatus::Idle => AgentThreadStatus::Completed,
+            };
+            let generating_title = status == AgentThreadStatus::Running && title.is_empty();
+            Some(AgentThreadInfo {
+                title,
+                status,
+                generating_title,
+            })
+        })
+    }
 }
 
 #[derive(Clone)]
 enum SidebarEntry {
     Separator(SharedString),
     ProjectHeader(ProjectGroupEntry),
-    ProjectThread(ProjectGroupEntry),
+    ProjectDraftThread {
+        group: ProjectGroupEntry,
+        title: SharedString,
+    },
+    ProjectThread {
+        group: ProjectGroupEntry,
+        thread: ProjectThreadSummary,
+    },
+    ProjectViewMore {
+        group: ProjectGroupEntry,
+        shown: usize,
+        total: usize,
+        is_fully_expanded: bool,
+    },
+    ProjectNewThread(ProjectGroupEntry),
     RecentProject(RecentProjectEntry),
 }
 
@@ -147,11 +329,10 @@ impl SidebarEntry {
         match self {
             SidebarEntry::Separator(_) => "",
             SidebarEntry::ProjectHeader(entry) => entry.worktree_label.as_ref(),
-            SidebarEntry::ProjectThread(entry) => entry
-                .thread_info
-                .as_ref()
-                .map(|info| info.title.as_ref())
-                .unwrap_or(""),
+            SidebarEntry::ProjectDraftThread { title, .. } => title.as_ref(),
+            SidebarEntry::ProjectThread { thread, .. } => thread.metadata.title.as_ref(),
+            SidebarEntry::ProjectViewMore { .. } => "",
+            SidebarEntry::ProjectNewThread(_) => "New Thread",
             SidebarEntry::RecentProject(entry) => entry.name.as_ref(),
         }
     }
@@ -168,6 +349,25 @@ enum SidebarView {
     Archive(Entity<ThreadsArchiveView>),
 }
 
+#[derive(Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
+enum SerializedSidebarView {
+    #[default]
+    ThreadList,
+    Archive,
+}
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+struct SerializedSidebarState {
+    #[serde(default)]
+    width: Option<f32>,
+    #[serde(default)]
+    active_view: SerializedSidebarView,
+    #[serde(default)]
+    collapsed_groups: Vec<Vec<PathBuf>>,
+    #[serde(default)]
+    expanded_groups: Vec<(Vec<PathBuf>, usize)>,
+}
+
 struct WorkspacePickerDelegate {
     multi_workspace: Entity<MultiWorkspace>,
     entries: Vec<SidebarEntry>,
@@ -182,6 +382,8 @@ struct WorkspacePickerDelegate {
     query: String,
     hovered_thread_item: Option<ProjectGroupKey>,
     notified_groups: HashSet<ProjectGroupKey>,
+    collapsed_groups: HashSet<ProjectGroupKey>,
+    expanded_groups: HashMap<ProjectGroupKey, usize>,
 }
 
 impl WorkspacePickerDelegate {
@@ -198,6 +400,8 @@ impl WorkspacePickerDelegate {
             query: String::new(),
             hovered_thread_item: None,
             notified_groups: HashSet::new(),
+            collapsed_groups: HashSet::new(),
+            expanded_groups: HashMap::new(),
         }
     }
 
@@ -207,6 +411,8 @@ impl WorkspacePickerDelegate {
         active_group_key: Option<ProjectGroupKey>,
         cx: &App,
     ) {
+        let project_group_keys: HashSet<ProjectGroupKey> =
+            project_groups.iter().map(|group| group.key.clone()).collect();
         if let Some(hovered_key) = self.hovered_thread_item.as_ref() {
             let still_exists = project_groups
                 .iter()
@@ -215,15 +421,18 @@ impl WorkspacePickerDelegate {
                 self.hovered_thread_item = None;
             }
         }
+        self.expanded_groups
+            .retain(|group_key, _| project_group_keys.contains(group_key));
+        self.collapsed_groups
+            .retain(|group_key| project_group_keys.contains(group_key));
 
         let old_statuses: HashMap<ProjectGroupKey, AgentThreadStatus> = self
             .entries
             .iter()
             .filter_map(|entry| match entry {
-                SidebarEntry::ProjectThread(thread) => thread
-                    .thread_info
-                    .as_ref()
-                    .map(|info| (thread.key.clone(), info.status.clone())),
+                SidebarEntry::ProjectThread { group, thread } => {
+                    Some((group.key.clone(), thread.status.clone()))
+                }
                 _ => None,
             })
             .collect();
@@ -251,6 +460,82 @@ impl WorkspacePickerDelegate {
         self.active_group_key = active_group_key;
         self.project_group_count = project_groups.len();
         self.rebuild_entries(project_groups, cx);
+    }
+
+    fn current_project_groups(&self) -> Vec<ProjectGroupEntry> {
+        self.entries
+            .iter()
+            .filter_map(|entry| match entry {
+                SidebarEntry::ProjectHeader(group) => Some(group.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn refresh_after_structure_change(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) {
+        let project_groups = self.current_project_groups();
+        self.rebuild_entries(project_groups, cx);
+        let query = self.query.clone();
+        cx.spawn_in(window, async move |picker, cx| {
+            picker
+                .update_in(cx, |picker, window, cx| {
+                    picker.update_matches(query, window, cx);
+                })
+                .log_err();
+        })
+        .detach();
+    }
+
+    fn toggle_group_collapsed(
+        &mut self,
+        group_key: &ProjectGroupKey,
+        window: &mut Window,
+        cx: &mut Context<Picker<Self>>,
+    ) {
+        if self.collapsed_groups.contains(group_key) {
+            self.collapsed_groups.remove(group_key);
+        } else {
+            self.collapsed_groups.insert(group_key.clone());
+        }
+        self.refresh_after_structure_change(window, cx);
+    }
+
+    fn serialized_state(&self) -> SerializedSidebarState {
+        SerializedSidebarState {
+            width: None,
+            active_view: SerializedSidebarView::ThreadList,
+            collapsed_groups: self
+                .collapsed_groups
+                .iter()
+                .map(|group_key| {
+                    group_key
+                        .path_list()
+                        .paths()
+                        .iter()
+                        .map(|path| path.to_path_buf())
+                        .collect()
+                })
+                .collect(),
+            expanded_groups: self
+                .expanded_groups
+                .iter()
+                .map(|(group_key, batches)| {
+                    (
+                        group_key
+                            .path_list()
+                            .paths()
+                            .iter()
+                            .map(|path| path.to_path_buf())
+                            .collect(),
+                        *batches,
+                    )
+                })
+                .collect(),
+        }
     }
 
     fn set_recent_projects(&mut self, recent_projects: Vec<RecentProjectEntry>, cx: &App) {
@@ -305,8 +590,59 @@ impl WorkspacePickerDelegate {
                 .push(SidebarEntry::Separator("Projects".into()));
             for group in project_groups {
                 self.entries.push(SidebarEntry::ProjectHeader(group.clone()));
-                if group.thread_info.is_some() {
-                    self.entries.push(SidebarEntry::ProjectThread(group));
+                if self.collapsed_groups.contains(&group.key) {
+                    continue;
+                }
+
+                let total_threads = group.threads.len();
+                if let Some(draft_title) = group.draft_text.clone() {
+                    self.entries.push(SidebarEntry::ProjectDraftThread {
+                        group: group.clone(),
+                        title: draft_title,
+                    });
+                }
+                if total_threads == 0 {
+                    if group.draft_text.is_none() {
+                        self.entries.push(SidebarEntry::ProjectNewThread(group.clone()));
+                    }
+                    continue;
+                }
+
+                let visible_threads = if self.query.is_empty() {
+                    let extra_batches = self.expanded_groups.get(&group.key).copied().unwrap_or(0);
+                    (DEFAULT_THREADS_SHOWN * (extra_batches + 1)).min(total_threads)
+                } else {
+                    total_threads
+                };
+
+                let mut visible = Vec::new();
+                let mut promoted = Vec::new();
+                for (index, thread) in group.threads.iter().cloned().enumerate() {
+                    let within_limit = index < visible_threads;
+                    let should_promote =
+                        thread.status == AgentThreadStatus::Running || thread.is_active;
+                    if within_limit {
+                        visible.push(thread);
+                    } else if should_promote {
+                        promoted.push(thread);
+                    }
+                }
+
+                let shown = visible.len() + promoted.len();
+                for thread in visible.into_iter().chain(promoted.into_iter()) {
+                    self.entries.push(SidebarEntry::ProjectThread {
+                        group: group.clone(),
+                        thread,
+                    });
+                }
+
+                if self.query.is_empty() && total_threads > DEFAULT_THREADS_SHOWN {
+                    self.entries.push(SidebarEntry::ProjectViewMore {
+                        group: group.clone(),
+                        shown,
+                        total: total_threads,
+                        is_fully_expanded: shown >= total_threads,
+                    });
                 }
             }
         }
@@ -422,7 +758,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 .as_ref()
                 .and_then(|active_key| {
                     entries.iter().position(|entry| {
-                        matches!(entry, SidebarEntry::ProjectThread(group) if &group.key == active_key)
+                        matches!(entry, SidebarEntry::ProjectThread { group, .. } if &group.key == active_key)
                     })
                 })
                 .or_else(|| {
@@ -453,7 +789,12 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     let data_entries: Vec<(usize, &SidebarEntry)> = entries
                         .iter()
                         .enumerate()
-                        .filter(|(_, entry)| !matches!(entry, SidebarEntry::Separator(_)))
+                        .filter(|(_, entry)| {
+                            !matches!(
+                                entry,
+                                SidebarEntry::Separator(_) | SidebarEntry::ProjectViewMore { .. }
+                            )
+                        })
                         .collect();
 
                     let candidates: Vec<StringMatchCandidate> = data_entries
@@ -481,14 +822,18 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     for search_match in search_matches {
                         let (original_index, _) = data_entries[search_match.candidate_id];
                         let entry = entries[original_index].clone();
-                        let sidebar_match = SidebarMatch {
-                            positions: search_match.positions,
-                            entry: entry.clone(),
-                        };
-                        match entry {
-                            SidebarEntry::ProjectHeader(_) | SidebarEntry::ProjectThread(_) => {
+                    let sidebar_match = SidebarMatch {
+                        positions: search_match.positions,
+                        entry: entry.clone(),
+                    };
+                    match entry {
+                            SidebarEntry::ProjectHeader(_)
+                            | SidebarEntry::ProjectDraftThread { .. }
+                            | SidebarEntry::ProjectThread { .. } => {
                                 workspace_matches.push(sidebar_match)
                             }
+                            SidebarEntry::ProjectViewMore { .. } => {}
+                            SidebarEntry::ProjectNewThread(_) => workspace_matches.push(sidebar_match),
                             SidebarEntry::RecentProject(_) => project_matches.push(sidebar_match),
                             SidebarEntry::Separator(_) => {}
                         }
@@ -533,11 +878,15 @@ impl PickerDelegate for WorkspacePickerDelegate {
     }
 
     fn confirm(&mut self, _secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
-        let Some(selected_match) = self.matches.get(self.selected_index) else {
+        let Some(selected_entry) = self
+            .matches
+            .get(self.selected_index)
+            .map(|sidebar_match| sidebar_match.entry.clone())
+        else {
             return;
         };
 
-        match &selected_match.entry {
+        match selected_entry {
             SidebarEntry::Separator(_) => {}
             SidebarEntry::ProjectHeader(thread_entry) => {
                 let target_index = thread_entry.activation_index;
@@ -545,8 +894,8 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     multi_workspace.activate_index(target_index, window, cx);
                 });
             }
-            SidebarEntry::ProjectThread(thread_entry) => {
-                let target_index = thread_entry.activation_index;
+            SidebarEntry::ProjectDraftThread { group, .. } => {
+                let target_index = group.activation_index;
                 let target_workspace = self
                     .multi_workspace
                     .read(cx)
@@ -560,6 +909,74 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     workspace.update(cx, |workspace, cx| {
                         workspace.focus_panel::<AgentPanel>(window, cx);
                     });
+                }
+            }
+            SidebarEntry::ProjectThread { group, thread } => {
+                let target_index = group.activation_index;
+                let target_workspace = self
+                    .multi_workspace
+                    .read(cx)
+                    .workspaces()
+                    .get(target_index)
+                    .cloned();
+                self.multi_workspace.update(cx, |multi_workspace, cx| {
+                    multi_workspace.activate_index(target_index, window, cx);
+                });
+                if let Some(workspace) = target_workspace {
+                    let mut agent_thread = AgentSessionInfo::new(thread.metadata.session_id.clone());
+                    agent_thread.cwd = thread.metadata.folder_paths.paths().first().cloned();
+                    agent_thread.title = Some(thread.metadata.title.clone());
+                    agent_thread.updated_at = Some(thread.metadata.updated_at);
+
+                    let agent = match thread.metadata.agent_id.as_ref() {
+                        "Zed Agent" => agent_ui::ExternalAgent::NativeAgent,
+                        GEMINI_NAME => agent_ui::ExternalAgent::Gemini,
+                        CLAUDE_CODE_NAME => agent_ui::ExternalAgent::ClaudeCode,
+                        CODEX_NAME => agent_ui::ExternalAgent::Codex,
+                        name => agent_ui::ExternalAgent::Custom {
+                            name: name.to_string().into(),
+                        },
+                    };
+
+                    if let Some(panel) = workspace.read(cx).panel::<AgentPanel>(cx) {
+                        panel.update(cx, |panel, cx| {
+                            panel.open_thread_with_agent(agent, agent_thread, window, cx);
+                        });
+                    }
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                    });
+                }
+            }
+            SidebarEntry::ProjectViewMore {
+                group,
+                is_fully_expanded,
+                ..
+            } => {
+                if is_fully_expanded {
+                    self.expanded_groups.remove(&group.key);
+                } else {
+                    let current = self.expanded_groups.get(&group.key).copied().unwrap_or(0);
+                    self.expanded_groups.insert(group.key.clone(), current + 1);
+                }
+                self.refresh_after_structure_change(window, cx);
+            }
+            SidebarEntry::ProjectNewThread(group) => {
+                let target_index = group.activation_index;
+                let target_workspace = self
+                    .multi_workspace
+                    .read(cx)
+                    .workspaces()
+                    .get(target_index)
+                    .cloned();
+                self.multi_workspace.update(cx, |multi_workspace, cx| {
+                    multi_workspace.activate_index(target_index, window, cx);
+                });
+                if let Some(workspace) = target_workspace {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.focus_panel::<AgentPanel>(window, cx);
+                    });
+                    window.dispatch_action(NewThread.boxed_clone(), cx);
                 }
             }
             SidebarEntry::RecentProject(project_entry) => {
@@ -593,17 +1010,73 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     .into_any_element(),
             ),
             SidebarEntry::ProjectHeader(group_entry) => Some(
-                v_flex()
-                    .when(index > 0, |this| this.mt_1())
-                    .child(ListSubHeader::new(group_entry.worktree_label.clone()).inset(true))
-                    .into_any_element(),
+                {
+                    let picker = cx.entity().downgrade();
+                    let group_key = group_entry.key.clone();
+                    v_flex()
+                        .when(index > 0, |this| this.mt_1())
+                        .child(
+                            ListSubHeader::new(group_entry.worktree_label.clone())
+                                .inset(true)
+                                .end_slot(
+                                    h_flex()
+                                        .gap_1()
+                                        .when(group_entry.has_running_threads, |this| {
+                                            this.child(
+                                                Icon::new(IconName::LoadCircle)
+                                                    .size(IconSize::XSmall)
+                                                    .color(Color::Muted)
+                                                    .with_rotate_animation(2),
+                                            )
+                                        })
+                                        .when(group_entry.is_remote, |this| {
+                                            this.child(
+                                                Icon::new(IconName::Server)
+                                                    .size(IconSize::XSmall)
+                                                    .color(Color::Muted),
+                                            )
+                                        })
+                                        .child(
+                                            Disclosure::new(
+                                                SharedString::from(format!(
+                                                    "collapse-group-{}",
+                                                    group_entry.activation_index
+                                                )),
+                                                !self.collapsed_groups.contains(&group_entry.key),
+                                            )
+                                            .on_click(move |_, window, cx| {
+                                                if let Some(picker) = picker.upgrade() {
+                                                    picker.update(cx, |picker, cx| {
+                                                        picker.delegate.toggle_group_collapsed(
+                                                            &group_key, window, cx,
+                                                        );
+                                                    });
+                                                }
+                                            }),
+                                        )
+                                        .into_any_element(),
+                                ),
+                        )
+                        .into_any_element()
+                },
             ),
-            SidebarEntry::ProjectThread(thread_entry) => {
-                let worktree_label = thread_entry.worktree_label.clone();
-                let full_path = thread_entry.full_path.clone();
-                let thread_info = thread_entry.thread_info.clone();
-                let activation_index = thread_entry.activation_index;
-                let group_key = thread_entry.key.clone();
+            SidebarEntry::ProjectDraftThread { group, title } => Some(
+                ThreadItem::new(
+                    SharedString::from(format!("workspace-draft-thread-{}", group.activation_index)),
+                    title.clone(),
+                )
+                .icon(IconName::ZedAgent)
+                .generating_title(title.as_ref() == "New Thread…")
+                .selected(selected)
+                .worktree(group.worktree_label.clone())
+                .worktree_highlight_positions(positions.clone())
+                .into_any_element(),
+            ),
+            SidebarEntry::ProjectThread { group, thread } => {
+                let worktree_label = thread.worktree_label.clone();
+                let full_path = thread.full_path.clone();
+                let activation_index = group.activation_index;
+                let group_key = group.key.clone();
                 let multi_workspace = self.multi_workspace.clone();
                 let workspace_count = self.multi_workspace.read(cx).workspaces().len();
                 let is_hovered = self
@@ -628,31 +1101,25 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 });
 
                 let has_notification = self.notified_groups.contains(&group_key);
-                let thread_subtitle = thread_info.as_ref().map(|info| info.title.clone());
-                let generating_title = thread_info
-                    .as_ref()
-                    .is_some_and(|info| info.generating_title);
-                let running = matches!(
-                    thread_info,
-                    Some(AgentThreadInfo {
-                        status: AgentThreadStatus::Running,
-                        ..
-                    })
-                );
+                let generating_title = thread.generating_title;
+                let running = thread.status == AgentThreadStatus::Running;
 
                 Some(
                     ThreadItem::new(
-                        ("workspace-item", activation_index),
-                        thread_subtitle.unwrap_or("New Thread".into()),
+                        SharedString::from(format!(
+                            "workspace-item-{}-{}",
+                            activation_index, thread.metadata.session_id.0
+                        )),
+                        thread.metadata.title.clone(),
                     )
-                    .icon(IconName::ZedAgent)
+                    .icon(thread.icon)
                     .running(running)
                     .generation_done(has_notification)
                     .generating_title(generating_title)
                     .selected(selected)
                     .worktree(worktree_label.clone())
                     .worktree_highlight_positions(positions.clone())
-                    .when(workspace_count > 1 && thread_entry.workspace_indices.len() == 1, |item| {
+                    .when(workspace_count > 1 && group.workspace_indices.len() == 1, |item| {
                         item.action_slot(remove_btn)
                     })
                     .hovered(is_hovered)
@@ -679,6 +1146,47 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     .into_any_element(),
                 )
             }
+            SidebarEntry::ProjectViewMore {
+                group,
+                shown,
+                total,
+                is_fully_expanded,
+            } => {
+                let label: SharedString = if *is_fully_expanded {
+                    "Show Less".into()
+                } else {
+                    format!("View More ({})", total.saturating_sub(*shown)).into()
+                };
+
+                Some(
+                    ThreadItem::new(
+                        SharedString::from(format!(
+                            "workspace-view-more-{}",
+                            group.activation_index
+                        )),
+                        label,
+                    )
+                    .icon(if *is_fully_expanded {
+                        IconName::ChevronUp
+                    } else {
+                        IconName::ChevronDown
+                    })
+                    .selected(selected)
+                    .worktree(group.worktree_label.clone())
+                    .into_any_element(),
+                )
+            }
+            SidebarEntry::ProjectNewThread(group) => Some(
+                ThreadItem::new(
+                    SharedString::from(format!("workspace-new-thread-{}", group.activation_index)),
+                    "New Thread",
+                )
+                .icon(IconName::Plus)
+                .selected(selected)
+                .worktree(group.worktree_label.clone())
+                .worktree_highlight_positions(positions.clone())
+                .into_any_element(),
+            ),
             SidebarEntry::RecentProject(project_entry) => {
                 let name = project_entry.name.clone();
                 let full_path = project_entry.full_path.clone();
@@ -1215,6 +1723,76 @@ impl WorkspaceSidebar for Sidebar {
 
     fn has_notifications(&self, cx: &App) -> bool {
         !self.picker.read(cx).delegate.notified_groups.is_empty()
+    }
+
+    fn serialized_state(&self, cx: &App) -> Option<String> {
+        let mut state = self.picker.read(cx).delegate.serialized_state();
+        state.width = Some(f32::from(self.width));
+        state.active_view = match self.view {
+            SidebarView::ThreadList => SerializedSidebarView::ThreadList,
+            SidebarView::Archive(_) => SerializedSidebarView::Archive,
+        };
+        serde_json::to_string(&state).ok()
+    }
+
+    fn restore_serialized_state(
+        &mut self,
+        state: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(serialized) = serde_json::from_str::<SerializedSidebarState>(state).ok() else {
+            return;
+        };
+
+        if let Some(width) = serialized.width {
+            self.width = px(width).clamp(MIN_WIDTH, MAX_WIDTH);
+        }
+
+        let project_group_keys: Vec<ProjectGroupKey> = self
+            .multi_workspace
+            .read(cx)
+            .project_groups(cx)
+            .map(|(key, _)| key)
+            .collect();
+
+        let collapsed_groups: HashSet<ProjectGroupKey> = serialized
+            .collapsed_groups
+            .iter()
+            .filter_map(|paths| {
+                let path_key = sorted_paths_key(paths);
+                project_group_keys
+                    .iter()
+                    .find(|key| sorted_paths_key(key.path_list().paths()) == path_key)
+                    .cloned()
+            })
+            .collect();
+        let expanded_groups: HashMap<ProjectGroupKey, usize> = serialized
+            .expanded_groups
+            .iter()
+            .filter_map(|(paths, batches)| {
+                let path_key = sorted_paths_key(paths);
+                project_group_keys
+                    .iter()
+                    .find(|key| sorted_paths_key(key.path_list().paths()) == path_key)
+                    .cloned()
+                    .map(|key| (key, *batches))
+            })
+            .collect();
+
+        self.picker.update(cx, |picker, cx| {
+            picker.delegate.collapsed_groups = collapsed_groups;
+            picker.delegate.expanded_groups = expanded_groups;
+            let query = picker.query(cx);
+            picker.update_matches(query, window, cx);
+        });
+        self.queue_refresh(self.multi_workspace.clone(), window, cx);
+
+        if matches!(serialized.active_view, SerializedSidebarView::Archive) {
+            self.show_archive(window, cx);
+        } else {
+            self.show_thread_list(cx);
+        }
     }
 }
 

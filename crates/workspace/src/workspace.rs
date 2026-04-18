@@ -8002,6 +8002,11 @@ pub async fn restore_multiworkspace(
         window_handle
             .update(cx, |multi_workspace, window, cx| {
                 multi_workspace.open_sidebar(window, cx);
+                if let Some(sidebar_state) = state.sidebar_state.as_deref()
+                    && let Some(sidebar) = multi_workspace.sidebar()
+                {
+                    sidebar.restore_serialized_state(sidebar_state, window, cx);
+                }
             })
             .ok();
     }

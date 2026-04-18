@@ -42,6 +42,16 @@ pub trait Sidebar: EventEmitter<SidebarEvent> + Focusable + Render + Sized {
     fn width(&self, cx: &App) -> Pixels;
     fn set_width(&mut self, width: Option<Pixels>, cx: &mut Context<Self>);
     fn has_notifications(&self, cx: &App) -> bool;
+    fn serialized_state(&self, _cx: &App) -> Option<String> {
+        None
+    }
+    fn restore_serialized_state(
+        &mut self,
+        _state: &str,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) {
+    }
 }
 
 pub trait SidebarHandle: 'static + Send + Sync {
@@ -50,6 +60,8 @@ pub trait SidebarHandle: 'static + Send + Sync {
     fn focus_handle(&self, cx: &App) -> FocusHandle;
     fn focus(&self, window: &mut Window, cx: &mut App);
     fn has_notifications(&self, cx: &App) -> bool;
+    fn serialized_state(&self, cx: &App) -> Option<String>;
+    fn restore_serialized_state(&self, state: &str, window: &mut Window, cx: &mut App);
     fn to_any(&self) -> AnyView;
     fn entity_id(&self) -> EntityId;
 }
@@ -83,6 +95,14 @@ impl<T: Sidebar> SidebarHandle for Entity<T> {
 
     fn has_notifications(&self, cx: &App) -> bool {
         self.read(cx).has_notifications(cx)
+    }
+
+    fn serialized_state(&self, cx: &App) -> Option<String> {
+        self.read(cx).serialized_state(cx)
+    }
+
+    fn restore_serialized_state(&self, state: &str, window: &mut Window, cx: &mut App) {
+        self.update(cx, |this, cx| this.restore_serialized_state(state, window, cx))
     }
 
     fn to_any(&self) -> AnyView {
@@ -361,6 +381,13 @@ impl MultiWorkspace {
         let state = crate::persistence::model::MultiWorkspaceState {
             active_workspace_id: self.workspace().read(cx).database_id(),
             sidebar_open: self.sidebar_open,
+            sidebar_state: self.sidebar.as_ref().and_then(|sidebar| {
+                if self.sidebar_open {
+                    sidebar.serialized_state(cx)
+                } else {
+                    None
+                }
+            }),
         };
         cx.background_spawn(async move {
             crate::persistence::write_multi_workspace_state(window_id, state).await;

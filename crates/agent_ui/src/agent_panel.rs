@@ -1550,6 +1550,32 @@ impl AgentPanel {
         }
     }
 
+    pub fn active_agent_draft_text(&self, cx: &App) -> Option<SharedString> {
+        let thread_view = match &self.active_view {
+            ActiveView::AgentThread { thread_view, .. } => thread_view,
+            _ => return None,
+        };
+
+        let active_thread = thread_view.read(cx).active_thread()?.clone();
+        let thread_view = active_thread.read(cx);
+        if !thread_view.thread.read(cx).entries().is_empty() {
+            return None;
+        }
+
+        let raw = thread_view.message_editor.read(cx).text(cx);
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return Some("New Thread…".into());
+        }
+
+        let mut text = trimmed.split_whitespace().collect::<Vec<_>>().join(" ");
+        const MAX_CHARS: usize = 250;
+        if let Some((truncate_at, _)) = text.char_indices().nth(MAX_CHARS) {
+            text.truncate(truncate_at);
+        }
+        Some(text.into())
+    }
+
     pub(crate) fn active_native_agent_thread(&self, cx: &App) -> Option<Entity<agent::Thread>> {
         match &self.active_view {
             ActiveView::AgentThread { thread_view, .. } => {

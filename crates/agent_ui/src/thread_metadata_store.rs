@@ -189,6 +189,19 @@ impl ThreadMetadataStore {
             .filter(|thread| !thread.archived)
     }
 
+    pub fn entries_for_main_worktree_path(
+        &self,
+        path_list: &PathList,
+    ) -> impl Iterator<Item = &ThreadMetadata> {
+        let paths = path_list.paths();
+        self.threads_by_main_paths
+            .iter()
+            .filter(move |(paths_key, _)| paths_key.as_slice() == paths)
+            .flat_map(|(_, sessions)| sessions.iter())
+            .filter_map(|session_id| self.threads.get(session_id))
+            .filter(|thread| !thread.archived)
+    }
+
     pub fn archived_entries(&self) -> impl Iterator<Item = &ThreadMetadata> {
         self.threads.values().filter(|thread| thread.archived)
     }
@@ -333,6 +346,10 @@ impl ThreadMetadataStore {
             .entry(metadata.folder_paths.paths().to_vec())
             .or_insert_with(HashSet::default)
             .insert(entry.clone());
+        self.threads_by_main_paths
+            .entry(metadata.main_worktree_paths.paths().to_vec())
+            .or_insert_with(HashSet::default)
+            .insert(entry);
     }
 
     fn remove_from_paths_index(&mut self, session_id: &acp::SessionId) {
@@ -340,6 +357,10 @@ impl ThreadMetadataStore {
             let entry = metadata.session_id.clone();
             let key = metadata.folder_paths.paths().to_vec();
             if let Some(paths) = self.threads_by_paths.get_mut(&key) {
+                paths.remove(&entry);
+            }
+            let main_key = metadata.main_worktree_paths.paths().to_vec();
+            if let Some(paths) = self.threads_by_main_paths.get_mut(&main_key) {
                 paths.remove(&entry);
             }
         }
