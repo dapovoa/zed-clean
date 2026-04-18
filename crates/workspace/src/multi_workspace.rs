@@ -286,7 +286,7 @@ impl MultiWorkspace {
                 workspaces.push(workspace.clone());
             }
         }
-        groups.into_iter()
+        groups.into_iter().filter(|(_, workspaces)| !workspaces.is_empty())
     }
 
     pub fn workspace(&self) -> &Entity<Workspace> {

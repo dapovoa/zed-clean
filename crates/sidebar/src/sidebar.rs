@@ -1666,10 +1666,6 @@ impl Sidebar {
         }
     }
 
-    fn format_switcher_timestamp() -> SharedString {
-        "".into()
-    }
-
     fn mru_threads_for_switcher(&self, cx: &App) -> Vec<ThreadSwitcherEntry> {
         let groups = self.picker.read(cx).delegate.current_project_groups();
         let workspaces = self.multi_workspace.read(cx).workspaces().to_vec();
@@ -1693,13 +1689,14 @@ impl Sidebar {
                         worktree_label: thread.worktree_label.clone(),
                         generating_title: thread.generating_title,
                         notified: is_notified,
-                        timestamp: Self::format_switcher_timestamp(),
+                        timestamp: format_thread_timestamp(thread.metadata.updated_at),
+                        updated_at: thread.metadata.updated_at,
                     })
                 })
             })
             .collect::<Vec<_>>();
 
-        entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        entries.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         entries
     }
 

@@ -1,4 +1,5 @@
 use agent_client_protocol as acp;
+use chrono::{DateTime, Utc};
 use gpui::{
     Action as _, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, Modifiers,
     ModifiersChangedEvent, Render, SharedString, prelude::*,
@@ -20,6 +21,7 @@ pub(crate) struct ThreadSwitcherEntry {
     pub generating_title: bool,
     pub notified: bool,
     pub timestamp: SharedString,
+    pub updated_at: DateTime<Utc>,
 }
 
 pub(crate) enum ThreadSwitcherEvent {
