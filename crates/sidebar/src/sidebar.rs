@@ -25,6 +25,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use theme::ActiveTheme;
+use time::OffsetDateTime;
 use ui::utils::TRAFFIC_LIGHT_PADDING;
 use ui::{
     CommonAnimationExt, Disclosure, Divider, DividerColor, KeyBinding, ListSubHeader, Tab,
@@ -135,6 +136,10 @@ impl ProjectGroupEntry {
             .collect::<Vec<_>>()
             .join("\n")
             .into()
+    }
+
+    fn thread_count(&self) -> usize {
+        self.threads.len() + usize::from(self.draft_text.is_some())
     }
 
     fn new(
@@ -1047,14 +1052,24 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     let disclosure_picker = picker.clone();
                     let group_key = group_entry.key.clone();
                     let new_thread_group = group_entry.clone();
+                    let is_active_group = self
+                        .active_group_key
+                        .as_ref()
+                        .is_some_and(|active_key| active_key == &group_entry.key);
                     v_flex()
                         .when(index > 0, |this| this.mt_1())
                         .child(
                             ListSubHeader::new(group_entry.worktree_label.clone())
                                 .inset(true)
+                                .toggle_state(is_active_group)
                                 .end_slot(
                                     h_flex()
                                         .gap_1()
+                                        .child(
+                                            Label::new(group_entry.thread_count().to_string())
+                                                .size(LabelSize::XSmall)
+                                                .color(Color::Muted),
+                                        )
                                         .when(group_entry.has_running_threads, |this| {
                                             this.child(
                                                 Icon::new(IconName::LoadCircle)
@@ -1131,6 +1146,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 .icon(IconName::ZedAgent)
                 .generating_title(title.as_ref() == "New Thread…")
                 .selected(selected)
+                .timestamp("Draft")
                 .worktree(group.worktree_label.clone())
                 .worktree_highlight_positions(positions.clone())
                 .into_any_element(),
@@ -1180,6 +1196,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                     .generation_done(has_notification)
                     .generating_title(generating_title)
                     .selected(selected)
+                    .timestamp(format_thread_timestamp(thread.metadata.updated_at))
                     .worktree(worktree_label.clone())
                     .worktree_highlight_positions(positions.clone())
                     .when(workspace_count > 1 && group.workspace_indices.len() == 1, |item| {
@@ -1246,6 +1263,7 @@ impl PickerDelegate for WorkspacePickerDelegate {
                 )
                 .icon(IconName::Plus)
                 .selected(selected)
+                .timestamp("Create")
                 .worktree(group.worktree_label.clone())
                 .worktree_highlight_positions(positions.clone())
                 .into_any_element(),
@@ -2084,6 +2102,18 @@ fn sorted_paths_key<P: AsRef<Path>>(paths: &[P]) -> String {
     sorted.join("\n")
 }
 
+fn format_thread_timestamp(timestamp: chrono::DateTime<chrono::Utc>) -> SharedString {
+    let timestamp = OffsetDateTime::from_unix_timestamp(timestamp.timestamp())
+        .unwrap_or_else(|_| OffsetDateTime::now_utc());
+    time_format::format_localized_timestamp(
+        timestamp,
+        OffsetDateTime::now_utc(),
+        time::UtcOffset::UTC,
+        time_format::TimestampFormat::Relative,
+    )
+    .into()
+}
+
 fn read_thread_title_map() -> Option<HashMap<String, String>> {
     let json = KEY_VALUE_STORE
         .read_kvp(LAST_THREAD_TITLES_KEY)
@@ -2131,41 +2161,62 @@ impl Render for Sidebar {
                     .border_color(cx.theme().colors().border)
                     .child({
                         let focus_handle = cx.focus_handle();
-                        IconButton::new("close-sidebar", IconName::WorkspaceNavOpen)
-                            .icon_size(IconSize::Small)
-                            .tooltip(Tooltip::element(move |_, cx| {
+                        h_flex()
+                            .gap_2()
+                            .items_center()
+                            .child(
+                                IconButton::new("close-sidebar", IconName::WorkspaceNavOpen)
+                                    .icon_size(IconSize::Small)
+                                    .tooltip(Tooltip::element(move |_, cx| {
+                                        v_flex()
+                                            .gap_1()
+                                            .child(
+                                                h_flex()
+                                                    .gap_2()
+                                                    .justify_between()
+                                                    .child(Label::new("Close Sidebar"))
+                                                    .child(KeyBinding::for_action_in(
+                                                        &ToggleWorkspaceSidebar,
+                                                        &focus_handle,
+                                                        cx,
+                                                    )),
+                                            )
+                                            .child(
+                                                h_flex()
+                                                    .pt_1()
+                                                    .gap_2()
+                                                    .border_t_1()
+                                                    .border_color(
+                                                        cx.theme().colors().border_variant,
+                                                    )
+                                                    .justify_between()
+                                                    .child(Label::new(focus_tooltip_label))
+                                                    .child(KeyBinding::for_action_in(
+                                                        &FocusWorkspaceSidebar,
+                                                        &focus_handle,
+                                                        cx,
+                                                    )),
+                                            )
+                                            .into_any_element()
+                                    }))
+                                    .on_click(cx.listener(|_this, _, _window, cx| {
+                                        cx.emit(SidebarEvent::Close);
+                                    })),
+                            )
+                            .child(
                                 v_flex()
-                                    .gap_1()
+                                    .gap_0()
+                                    .child(Label::new("Agents"))
                                     .child(
-                                        h_flex()
-                                            .gap_2()
-                                            .justify_between()
-                                            .child(Label::new("Close Sidebar"))
-                                            .child(KeyBinding::for_action_in(
-                                                &ToggleWorkspaceSidebar,
-                                                &focus_handle,
-                                                cx,
-                                            )),
-                                    )
-                                    .child(
-                                        h_flex()
-                                            .pt_1()
-                                            .gap_2()
-                                            .border_t_1()
-                                            .border_color(cx.theme().colors().border_variant)
-                                            .justify_between()
-                                            .child(Label::new(focus_tooltip_label))
-                                            .child(KeyBinding::for_action_in(
-                                                &FocusWorkspaceSidebar,
-                                                &focus_handle,
-                                                cx,
-                                            )),
-                                    )
-                                    .into_any_element()
-                            }))
-                            .on_click(cx.listener(|_this, _, _window, cx| {
-                                cx.emit(SidebarEvent::Close);
-                            }))
+                                        Label::new(if showing_archive {
+                                            "Archive"
+                                        } else {
+                                            "Projects"
+                                        })
+                                        .size(LabelSize::XSmall)
+                                        .color(Color::Muted),
+                                    ),
+                            )
                     })
                     .child(
                         IconButton::new(
