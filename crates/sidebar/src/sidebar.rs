@@ -1056,10 +1056,16 @@ impl PickerDelegate for WorkspacePickerDelegate {
                         .active_group_key
                         .as_ref()
                         .is_some_and(|active_key| active_key == &group_entry.key);
+                    let workspace_count = self.multi_workspace.read(cx).workspaces().len();
                     v_flex()
                         .when(index > 0, |this| this.mt_1())
                         .child(
                             ListSubHeader::new(group_entry.worktree_label.clone())
+                                .left_icon(Some(if group_entry.is_remote {
+                                    IconName::Server
+                                } else {
+                                    IconName::Folder
+                                }))
                                 .inset(true)
                                 .toggle_state(is_active_group)
                                 .end_slot(
@@ -1078,13 +1084,35 @@ impl PickerDelegate for WorkspacePickerDelegate {
                                                     .with_rotate_animation(2),
                                             )
                                         })
-                                        .when(group_entry.is_remote, |this| {
-                                            this.child(
-                                                Icon::new(IconName::Server)
-                                                    .size(IconSize::XSmall)
-                                                    .color(Color::Muted),
-                                            )
-                                        })
+                                        .when(
+                                            workspace_count > 1
+                                                && group_entry.workspace_indices.len() == 1,
+                                            |this| {
+                                                let multi_workspace = self.multi_workspace.clone();
+                                                let activation_index = group_entry.activation_index;
+                                                this.child(
+                                                    IconButton::new(
+                                                        SharedString::from(format!(
+                                                            "remove-group-workspace-{}",
+                                                            activation_index
+                                                        )),
+                                                        IconName::Close,
+                                                    )
+                                                    .icon_size(IconSize::XSmall)
+                                                    .icon_color(Color::Muted)
+                                                    .tooltip(Tooltip::text("Remove Workspace"))
+                                                    .on_click(move |_, window, cx| {
+                                                        multi_workspace.update(cx, |mw, cx| {
+                                                            mw.remove_workspace(
+                                                                activation_index,
+                                                                window,
+                                                                cx,
+                                                            );
+                                                        });
+                                                    }),
+                                                )
+                                            },
+                                        )
                                         .child(
                                             IconButton::new(
                                                 SharedString::from(format!(
@@ -1105,11 +1133,9 @@ impl PickerDelegate for WorkspacePickerDelegate {
                                                 if let Some(picker) = picker.upgrade() {
                                                     let group = new_thread_group.clone();
                                                     picker.update(cx, |picker, cx| {
-                                                        picker
-                                                            .delegate
-                                                            .open_new_thread_in_group(
-                                                                &group, window, cx,
-                                                            );
+                                                        picker.delegate.open_new_thread_in_group(
+                                                            &group, window, cx,
+                                                        );
                                                     });
                                                 }
                                             }),
