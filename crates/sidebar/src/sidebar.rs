@@ -38,7 +38,10 @@ use workspace::{
 };
 use crate::thread_switcher::{ThreadSwitcher, ThreadSwitcherEntry, ThreadSwitcherEvent};
 
-gpui::actions!(agents_sidebar, [NewThreadInGroup, ToggleArchive, ToggleThreadSwitcher]);
+gpui::actions!(
+    agents_sidebar,
+    [NewThreadInGroup, ToggleArchive, ToggleThreadSwitcher, FocusSidebarFilter]
+);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AgentThreadStatus {
@@ -1805,6 +1808,23 @@ impl Sidebar {
         self.toggle_archive(window, cx);
     }
 
+    fn focus_sidebar_filter(
+        &mut self,
+        _: &FocusSidebarFilter,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match &self.view {
+            SidebarView::ThreadList => {
+                let handle = self.picker.read(cx).focus_handle(cx);
+                window.focus(&handle, cx);
+            }
+            SidebarView::Archive(view) => {
+                view.update(cx, |view, cx| view.focus_filter_editor(window, cx));
+            }
+        }
+    }
+
     fn show_archive(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let active_workspace = self
             .multi_workspace
@@ -2197,6 +2217,7 @@ impl Render for Sidebar {
             })
             .on_action(cx.listener(Self::new_thread_in_group))
             .on_action(cx.listener(Self::on_toggle_archive))
+            .on_action(cx.listener(Self::focus_sidebar_filter))
             .on_action(cx.listener(Self::on_toggle_thread_switcher))
     }
 }
