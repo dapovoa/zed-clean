@@ -543,6 +543,31 @@ pub enum ContentBlock {
 }
 
 impl ContentBlock {
+    fn sanitize_reasoning_markup(input: &str) -> String {
+        fn strip_block(mut text: String, open: &str, close: &str) -> String {
+            while let Some(start) = text.find(open) {
+                if let Some(rel_end) = text[start + open.len()..].find(close) {
+                    let end = start + open.len() + rel_end + close.len();
+                    text.replace_range(start..end, "");
+                } else {
+                    text.replace_range(start.., "");
+                    break;
+                }
+            }
+            text
+        }
+
+        let mut out = input.to_string();
+        out = strip_block(out, "<think>", "</think>");
+        out = strip_block(out, "<thinking>", "</thinking>");
+        out = out.replace("<redacted_thinking />", "");
+        out = out.replace("<think>", "");
+        out = out.replace("</think>", "");
+        out = out.replace("<thinking>", "");
+        out = out.replace("</thinking>", "");
+        out
+    }
+
     pub fn new(
         block: acp::ContentBlock,
         language_registry: &Arc<LanguageRegistry>,
@@ -633,7 +658,9 @@ impl ContentBlock {
 
     fn block_string_contents(block: &acp::ContentBlock, path_style: PathStyle) -> String {
         match block {
-            acp::ContentBlock::Text(text_content) => text_content.text.clone(),
+            acp::ContentBlock::Text(text_content) => {
+                Self::sanitize_reasoning_markup(&text_content.text)
+            }
             acp::ContentBlock::ResourceLink(resource_link) => {
                 Self::resource_link_md(&resource_link.uri, path_style)
             }

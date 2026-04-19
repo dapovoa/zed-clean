@@ -291,16 +291,9 @@ impl AcpThreadView {
         &self,
         markdown: Entity<Markdown>,
         style: MarkdownStyle,
-        cx: &mut Context<Self>,
+        _cx: &Context<Self>,
     ) -> MarkdownElement {
-        let source = markdown.read(cx).source().to_string();
-        let sanitized = Self::sanitize_reasoning_markup(&source);
-        if sanitized == source {
-            self.render_markdown(markdown, style)
-        } else {
-            let sanitized_markdown = cx.new(|cx| Markdown::new(sanitized.into(), None, None, cx));
-            self.render_markdown(sanitized_markdown, style)
-        }
+        self.render_markdown(markdown, style)
     }
 
     pub fn new(
