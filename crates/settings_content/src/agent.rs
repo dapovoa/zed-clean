@@ -9,6 +9,37 @@ use crate::ExtendingVec;
 
 use crate::DockPosition;
 
+/// Where to position the threads sidebar.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    MergeFrom,
+    strum::VariantArray,
+    strum::VariantNames,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum SidebarDockPosition {
+    /// Always show the sidebar on the left side.
+    #[default]
+    Left,
+    /// Always show the sidebar on the right side.
+    Right,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum SidebarSide {
+    #[default]
+    Left,
+    Right,
+}
+
 #[with_fallible_options]
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema, MergeFrom, Debug, Default)]
 pub struct AgentSettingsContent {
@@ -24,6 +55,14 @@ pub struct AgentSettingsContent {
     ///
     /// Default: right
     pub dock: Option<DockPosition>,
+    /// Whether the agent panel should use flexible (proportional) sizing.
+    ///
+    /// Default: true
+    pub flexible: Option<bool>,
+    /// Where to position the threads sidebar.
+    ///
+    /// Default: left
+    pub sidebar_side: Option<SidebarDockPosition>,
     /// Default width in pixels when the agent panel is docked to the left or right.
     ///
     /// Default: 640
@@ -34,6 +73,12 @@ pub struct AgentSettingsContent {
     /// Default: 320
     #[serde(serialize_with = "crate::serialize_optional_f32_with_two_decimal_places")]
     pub default_height: Option<f32>,
+    /// Maximum content width in pixels for the agent panel. Content will be
+    /// centered when the panel is wider than this value.
+    ///
+    /// Default: 850
+    #[serde(serialize_with = "crate::serialize_optional_f32_with_two_decimal_places")]
+    pub max_content_width: Option<f32>,
     /// The default model to use when creating new chats and for other features when a specific model is not specified.
     pub default_model: Option<LanguageModelSelection>,
     /// Favorite models to show at the top of the model selector.
@@ -94,6 +139,10 @@ pub struct AgentSettingsContent {
     ///
     /// Default: true
     pub expand_terminal_card: Option<bool>,
+    /// How thinking blocks should be displayed by default in the agent panel.
+    ///
+    /// Default: auto
+    pub thinking_display: Option<ThinkingBlockDisplay>,
     /// Whether clicking the stop button on a running terminal tool should also cancel the agent's generation.
     /// Note that this only applies to the stop button, not to ctrl+c inside the terminal.
     ///
@@ -127,6 +176,14 @@ pub struct AgentSettingsContent {
 impl AgentSettingsContent {
     pub fn set_dock(&mut self, dock: DockPosition) {
         self.dock = Some(dock);
+    }
+
+    pub fn set_sidebar_side(&mut self, position: SidebarDockPosition) {
+        self.sidebar_side = Some(position);
+    }
+
+    pub fn set_flexible_size(&mut self, flexible: bool) {
+        self.flexible = Some(flexible);
     }
 
     pub fn set_model(&mut self, language_model: LanguageModelSelection) {
@@ -222,6 +279,34 @@ pub enum DefaultAgentView {
     #[default]
     Thread,
     TextThread,
+}
+
+/// How thinking blocks should be displayed by default in the agent panel.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    MergeFrom,
+    strum::VariantArray,
+    strum::VariantNames,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ThinkingBlockDisplay {
+    /// Thinking blocks expand while streaming and collapse again when generation advances.
+    #[default]
+    Auto,
+    /// Reserved for future constrained preview behavior; currently same as `auto`.
+    Preview,
+    /// Thinking blocks are expanded by default.
+    AlwaysExpanded,
+    /// Thinking blocks are collapsed by default.
+    AlwaysCollapsed,
 }
 
 #[derive(

@@ -27,7 +27,8 @@ use crate::{
     agent_configuration::{AgentConfiguration, AssistantConfigurationEvent},
     slash_command::SlashCommandCompletionProvider,
     text_thread_editor::{AgentPanelDelegate, TextThreadEditor, make_lsp_adapter_delegate},
-    thread_metadata_store::ThreadMetadataStore,
+    thread_metadata_store::{ThreadMetadata, ThreadMetadataStore},
+    threads_archive_view::{ThreadsArchiveView, ThreadsArchiveViewEvent},
     ui::{AgentOnboardingModal, EndTrialUpsell},
 };
 use crate::{
@@ -286,6 +287,7 @@ pub fn init(cx: &mut App) {
 enum HistoryKind {
     AgentThreads,
     TextThreads,
+    ArchivedThreads,
 }
 
 enum ActiveView {
@@ -468,6 +470,7 @@ pub struct AgentPanel {
     language_registry: Arc<LanguageRegistry>,
     acp_history: Entity<AcpThreadHistory>,
     text_thread_history: Entity<TextThreadHistory>,
+    threads_archive_view: Entity<ThreadsArchiveView>,
     thread_store: Entity<ThreadStore>,
     text_thread_store: Entity<assistant_text_thread::TextThreadStore>,
     prompt_store: Option<Entity<PromptStore>>,
@@ -643,6 +646,8 @@ impl AgentPanel {
         let acp_history = cx.new(|cx| AcpThreadHistory::new(None, window, cx));
         let text_thread_history =
             cx.new(|cx| TextThreadHistory::new(text_thread_store.clone(), window, cx));
+        let threads_archive_view =
+            cx.new(|cx| ThreadsArchiveView::new(workspace.clone(), window, cx));
         cx.subscribe_in(
             &acp_history,
             window,
@@ -664,6 +669,17 @@ impl AgentPanel {
             },
         )
         .detach();
+        cx.subscribe_in(
+            &threads_archive_view,
+            window,
+            |this, _, event, window, cx| match event {
+                ThreadsArchiveViewEvent::Close => this.go_back(&workspace::GoBack, window, cx),
+                ThreadsArchiveViewEvent::Unarchive { thread } => {
+                    this.open_archived_thread(thread.clone(), window, cx)
+                }
+            },
+        )
+        .detach();
 
         let active_view = ActiveView::Uninitialized;
 
@@ -680,6 +696,7 @@ impl AgentPanel {
                             let view_all_label = match kind {
                                 HistoryKind::AgentThreads => "View All",
                                 HistoryKind::TextThreads => "View All Text Threads",
+                                HistoryKind::ArchivedThreads => "View All",
                             };
                             menu = menu.action(view_all_label, Box::new(OpenHistory));
                         }
@@ -766,6 +783,7 @@ impl AgentPanel {
             onboarding,
             acp_history,
             text_thread_history,
+            threads_archive_view,
             thread_store,
             selected_agent: AgentType::default(),
             show_trust_workspace_message: false,
@@ -1081,6 +1099,66 @@ impl AgentPanel {
 
         self.set_active_view(ActiveView::History { kind }, true, window, cx);
         cx.notify();
+    }
+
+    fn open_archived_threads(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let ActiveView::History {
+            kind: HistoryKind::ArchivedThreads,
+        } = self.active_view
+        {
+            if let Some(previous_view) = self.previous_view.take() {
+                self.set_active_view(previous_view, true, window, cx);
+            }
+            return;
+        }
+
+        self.set_active_view(
+            ActiveView::History {
+                kind: HistoryKind::ArchivedThreads,
+            },
+            true,
+            window,
+            cx,
+        );
+        cx.notify();
+    }
+
+    fn external_agent_for_thread(thread: &ThreadMetadata) -> ExternalAgent {
+        let agent_id = thread.agent_id.as_ref();
+        if agent_id == agent::ZED_AGENT_ID.as_ref() {
+            ExternalAgent::NativeAgent
+        } else if agent_id == "Gemini CLI" {
+            ExternalAgent::Gemini
+        } else if agent_id == "Claude Code" {
+            ExternalAgent::ClaudeCode
+        } else if agent_id == "Codex" {
+            ExternalAgent::Codex
+        } else {
+            ExternalAgent::Custom {
+                name: thread.agent_id.0.clone(),
+            }
+        }
+    }
+
+    fn open_archived_thread(
+        &mut self,
+        thread: ThreadMetadata,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(store) = ThreadMetadataStore::try_global(cx) {
+            store.update(cx, |store, cx| store.unarchive(&thread.session_id, cx));
+        }
+
+        let agent = Self::external_agent_for_thread(&thread);
+        let session = AgentSessionInfo {
+            session_id: thread.session_id,
+            cwd: None,
+            title: Some(thread.title),
+            updated_at: Some(thread.updated_at),
+            meta: None,
+        };
+        self.load_agent_thread_for_agent(agent, session, window, cx);
     }
 
     pub(crate) fn open_saved_text_thread(
@@ -1733,6 +1811,7 @@ impl AgentPanel {
                     });
                 }
             }
+            HistoryKind::ArchivedThreads => {}
         }
 
         menu.separator()
@@ -1913,6 +1992,7 @@ impl Focusable for AgentPanel {
             ActiveView::History { kind } => match kind {
                 HistoryKind::AgentThreads => self.acp_history.focus_handle(cx),
                 HistoryKind::TextThreads => self.text_thread_history.focus_handle(cx),
+                HistoryKind::ArchivedThreads => self.threads_archive_view.focus_handle(cx),
             },
             ActiveView::TextThread {
                 text_thread_editor, ..
@@ -2142,6 +2222,7 @@ impl AgentPanel {
                 let title = match kind {
                     HistoryKind::AgentThreads => "History",
                     HistoryKind::TextThreads => "Text Thread History",
+                    HistoryKind::ArchivedThreads => "Archived Threads",
                 };
                 Label::new(title).truncate().into_any_element()
             }
@@ -2374,6 +2455,21 @@ impl AgentPanel {
             .tooltip({
                 move |_window, cx| {
                     Tooltip::for_action_in("View Thread History", &OpenHistory, &focus_handle, cx)
+                }
+            })
+    }
+
+    fn render_open_archive_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let focus_handle = self.focus_handle(cx);
+
+        IconButton::new("open-archive", IconName::Box)
+            .icon_size(IconSize::Small)
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.open_archived_threads(window, cx);
+            }))
+            .tooltip({
+                move |_window, cx| {
+                    Tooltip::for_action_in("View Archived Threads", &OpenHistory, &focus_handle, cx)
                 }
             })
     }
@@ -2689,6 +2785,7 @@ impl AgentPanel {
         };
 
         let show_history_menu = self.history_kind_for_selected_agent(cx).is_some();
+        let show_archive_button = matches!(self.selected_agent, AgentType::NativeAgent);
 
         h_flex()
             .id("agent-panel-toolbar")
@@ -2725,6 +2822,9 @@ impl AgentPanel {
                     .child(new_thread_menu)
                     .when(show_history_menu, |this| {
                         this.child(self.render_open_history_button(cx))
+                    })
+                    .when(show_history_menu && show_archive_button, |this| {
+                        this.child(self.render_open_archive_button(cx))
                     })
                     .when(show_history_menu, |this| {
                         this.child(self.render_recent_entries_menu(
@@ -3099,6 +3199,7 @@ impl Render for AgentPanel {
         // - Font size works as expected and can be changed with cmd-+/cmd-
         // - Scrolling in all views works as expected
         // - Files can be dropped into the panel
+        let max_content_width = AgentSettings::get_global(cx).max_content_width;
         let content = v_flex()
             .relative()
             .size_full()
@@ -3142,11 +3243,20 @@ impl Render for AgentPanel {
                 match &self.active_view {
                     ActiveView::Uninitialized => parent,
                     ActiveView::AgentThread { thread_view, .. } => parent
-                        .child(thread_view.clone())
+                        .child(
+                            v_flex()
+                                .size_full()
+                                .max_w(max_content_width)
+                                .mx_auto()
+                                .child(thread_view.clone()),
+                        )
                         .child(self.render_drag_target(cx)),
                     ActiveView::History { kind } => match kind {
                         HistoryKind::AgentThreads => parent.child(self.acp_history.clone()),
                         HistoryKind::TextThreads => parent.child(self.text_thread_history.clone()),
+                        HistoryKind::ArchivedThreads => {
+                            parent.child(self.threads_archive_view.clone())
+                        }
                     },
                     ActiveView::TextThread {
                         text_thread_editor,
@@ -3172,12 +3282,18 @@ impl Render for AgentPanel {
                                     this
                                 }
                             })
-                            .child(self.render_text_thread(
-                                text_thread_editor,
-                                buffer_search_bar,
-                                window,
-                                cx,
-                            ))
+                            .child(
+                                v_flex()
+                                    .size_full()
+                                    .max_w(max_content_width)
+                                    .mx_auto()
+                                    .child(self.render_text_thread(
+                                        text_thread_editor,
+                                        buffer_search_bar,
+                                        window,
+                                        cx,
+                                    )),
+                            )
                     }
                     ActiveView::Configuration => parent.children(self.configuration.clone()),
                 }

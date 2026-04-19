@@ -1,5 +1,6 @@
 use gpui::{Corner, List};
 use language_model::LanguageModelEffortLevel;
+use settings::ThinkingBlockDisplay;
 use settings::update_settings_file;
 use theme::ThemeSettings;
 use ui::{ButtonLike, SplitButton, SplitButtonStyle, Tab};
@@ -4353,8 +4354,13 @@ impl AcpThreadView {
         cx: &Context<Self>,
     ) -> AnyElement {
         let key = (entry_ix, chunk_ix);
-
-        let is_open = self.expanded_thinking_blocks.contains(&key);
+        let is_user_toggled = self.expanded_thinking_blocks.contains(&key);
+        let thinking_display = AgentSettings::get_global(cx).thinking_display;
+        let is_open = match thinking_display {
+            ThinkingBlockDisplay::Auto | ThinkingBlockDisplay::Preview => is_user_toggled,
+            ThinkingBlockDisplay::AlwaysExpanded => !is_user_toggled,
+            ThinkingBlockDisplay::AlwaysCollapsed => is_user_toggled,
+        };
         let is_generating = matches!(self.thread.read(cx).status(), ThreadStatus::Generating);
 
         // Duration in seconds for the completed thinking block.

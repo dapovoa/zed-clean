@@ -934,10 +934,19 @@
     "button": true,
     // Where to dock the agent panel. Can be 'left', 'right' or 'bottom'.
     "dock": "right",
+    // Whether the agent panel should use flexible (proportional) sizing.
+    //
+    // Default: true
+    "flexible": true,
+    // Where to position the threads sidebar. Can be 'left' or 'right'.
+    "sidebar_side": "left",
     // Default width when the agent panel is docked to the left or right.
     "default_width": 640,
     // Default height when the agent panel is docked to the bottom.
     "default_height": 320,
+    // Maximum content width when the agent panel is wider than this value.
+    // Content will be centered within the panel.
+    "max_content_width": 850,
     // The view to use by default (thread, or text_thread)
     "default_view": "thread",
     // The default model to use when creating new threads.
@@ -1089,6 +1098,11 @@
     //
     // Default: true
     "expand_terminal_card": true,
+    // How thinking blocks should be displayed by default in the agent panel.
+    //
+    // Choices: auto, preview, always_expanded, always_collapsed
+    // Default: auto
+    "thinking_display": "auto",
     // Whether clicking the stop button on a running terminal tool should also cancel the agent's generation.
     // Note that this only applies to the stop button, not to ctrl+c inside the terminal.
     //
