@@ -262,6 +262,47 @@ pub struct TurnFields {
 }
 
 impl AcpThreadView {
+    fn sanitize_reasoning_markup(input: &str) -> String {
+        fn strip_block(mut text: String, open: &str, close: &str) -> String {
+            while let Some(start) = text.find(open) {
+                if let Some(rel_end) = text[start + open.len()..].find(close) {
+                    let end = start + open.len() + rel_end + close.len();
+                    text.replace_range(start..end, "");
+                } else {
+                    text.replace_range(start.., "");
+                    break;
+                }
+            }
+            text
+        }
+
+        let mut out = input.to_string();
+        out = strip_block(out, "<think>", "</think>");
+        out = strip_block(out, "<thinking>", "</thinking>");
+        out = out.replace("<redacted_thinking />", "");
+        out = out.replace("<think>", "");
+        out = out.replace("</think>", "");
+        out = out.replace("<thinking>", "");
+        out = out.replace("</thinking>", "");
+        out
+    }
+
+    fn render_assistant_markdown(
+        &self,
+        markdown: Entity<Markdown>,
+        style: MarkdownStyle,
+        cx: &mut Context<Self>,
+    ) -> MarkdownElement {
+        let source = markdown.read(cx).source().to_string();
+        let sanitized = Self::sanitize_reasoning_markup(&source);
+        if sanitized == source {
+            self.render_markdown(markdown, style)
+        } else {
+            let sanitized_markdown = cx.new(|cx| Markdown::new(sanitized.into(), None, None, cx));
+            self.render_markdown(sanitized_markdown, style)
+        }
+    }
+
     pub fn new(
         parent_id: Option<acp::SessionId>,
         thread: Entity<AcpThread>,
@@ -3783,14 +3824,15 @@ impl AcpThreadView {
                         |(chunk_ix, chunk)| match chunk {
                             AssistantMessageChunk::Message { block } => {
                                 block.markdown().and_then(|md| {
-                                    let this_is_blank = md.read(cx).source().trim().is_empty();
+                                    let sanitized = Self::sanitize_reasoning_markup(md.read(cx).source());
+                                    let this_is_blank = sanitized.trim().is_empty();
                                     is_blank = is_blank && this_is_blank;
                                     if this_is_blank {
                                         return None;
                                     }
 
                                     Some(
-                                        self.render_markdown(md.clone(), style.clone())
+                                        self.render_assistant_markdown(md.clone(), style.clone(), cx)
                                             .into_any_element(),
                                     )
                                 })
@@ -4584,11 +4626,11 @@ impl AcpThreadView {
                         .iter()
                         .filter_map(|chunk| match chunk {
                             AssistantMessageChunk::Message { block } => {
-                                let markdown = block.to_markdown(cx);
+                                let markdown = Self::sanitize_reasoning_markup(block.to_markdown(cx));
                                 if markdown.trim().is_empty() {
                                     None
                                 } else {
-                                    Some(markdown.to_string())
+                                    Some(markdown)
                                 }
                             }
                             AssistantMessageChunk::Thought { .. } => None,
