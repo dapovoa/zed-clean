@@ -371,6 +371,25 @@ impl ThreadsDatabase {
             s().ok();
         }
 
+        if let Ok(mut s) = connection.exec(indoc! {"
+            ALTER TABLE threads ADD COLUMN folder_paths TEXT;
+            ALTER TABLE threads ADD COLUMN folder_paths_order TEXT;
+        "})
+        {
+            s().ok();
+        }
+
+        if let Ok(mut s) = connection.exec(indoc! {"
+            ALTER TABLE threads ADD COLUMN created_at TEXT;
+        "})
+        {
+            if s().is_ok() {
+                connection.exec(indoc! {"
+                    UPDATE threads SET created_at = updated_at WHERE created_at IS NULL
+                "})?()?;
+            }
+        }
+
         let db = Self {
             executor,
             connection: Arc::new(Mutex::new(connection)),
