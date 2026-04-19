@@ -1599,9 +1599,8 @@ impl AcpThread {
     ) {
         if let Some(buffer) = streaming_text_buffer.take() {
             if !buffer.pending.is_empty() {
-                buffer
-                    .target
-                    .update(cx, |markdown, cx| markdown.append(&buffer.pending, cx));
+                let sanitized = ContentBlock::sanitize_reasoning_markup(&buffer.pending);
+                buffer.target.update(cx, |markdown, cx| markdown.append(&sanitized, cx));
             }
         }
     }
@@ -1631,8 +1630,10 @@ impl AcpThread {
                             .ceil_char_boundary(buffer.bytes_to_reveal_per_tick)
                             .min(pending_len);
 
+                        let chunk = buffer.pending[..byte_boundary].to_string();
+                        let sanitized = ContentBlock::sanitize_reasoning_markup(&chunk);
                         buffer.target.update(cx, |markdown: &mut Markdown, cx| {
-                            markdown.append(&buffer.pending[..byte_boundary], cx);
+                            markdown.append(&sanitized, cx);
                             buffer.pending.drain(..byte_boundary);
                         });
 
